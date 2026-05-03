@@ -1,0 +1,2555 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { useTranslation } from 'react-i18next';
+import { db } from './db';
+import { GoogleGenAI } from '@google/genai';
+import Markdown from 'react-markdown';
+import {
+  MessageSquare,
+  Terminal,
+  Network,
+  Search,
+  Bell,
+  Settings,
+  Plus,
+  BookOpen,
+  Users,
+  Library,
+  Microscope,
+  Sparkles,
+  Maximize2,
+  Minimize2,
+  Quote,
+  Brain,
+  Bot,
+  Wand2,
+  Send,
+  SlidersHorizontal,
+  History,
+  ZoomIn,
+  Focus,
+  Image as ImageIcon,
+  FilePlus,
+  Trash2,
+  Link2,
+  X,
+  Camera,
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  Cpu,
+  ArrowRight,
+  ListChecks,
+  CheckCircle2,
+  Loader2,
+  PenLine,
+  Edit3,
+  FileText
+} from 'lucide-react';
+
+let maxZIndex = 10;
+
+function useDraggable(initialX: number, initialY: number, scale: number = 1, onDragEnd?: (pos: {x: number, y: number}) => void) {
+  const [pos, setPos] = useState({ x: initialX, y: initialY });
+  const [zIndex, setZIndex] = useState(maxZIndex);
+  const scaleRef = useRef(scale);
+  const posRef = useRef(pos);
+  scaleRef.current = scale;
+  
+  // Keep posRef up to date so we can send the latest pos on up
+  useEffect(() => {
+     posRef.current = pos;
+  }, [pos]);
+
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (
+      target.isContentEditable || 
+      target.tagName === 'BUTTON' || 
+      target.tagName === 'INPUT' ||
+      target.tagName === 'VIDEO' ||
+      target.closest('button')
+    ) {
+      return;
+    }
+    
+    maxZIndex += 1;
+    setZIndex(maxZIndex); 
+    
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const initialPos = { ...pos };
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      setPos({
+        x: initialPos.x + (moveEvent.clientX - startX) / scaleRef.current,
+        y: initialPos.y + (moveEvent.clientY - startY) / scaleRef.current,
+      });
+    };
+
+    const onPointerUp = () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      if (onDragEnd) {
+        // use a small timeout to let state settle
+        setTimeout(() => {
+          onDragEnd(posRef.current);
+        }, 0);
+      }
+    };
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+  };
+
+  return { pos, onPointerDown, zIndex };
+}
+
+interface DraggableNodeProps {
+  id: string;
+  nodesRef: any;
+  isConnecting: boolean;
+  onLink: (id: string) => void;
+  children: React.ReactNode;
+  initialX?: number;
+  initialY?: number;
+  onDelete?: () => void;
+  onCycleLayout?: () => void;
+  className?: string;
+  scale?: number;
+  isSelected?: boolean;
+  isEditing?: boolean;
+  onToggleSelect?: () => void;
+  allowPalette?: boolean;
+  onDragEnd?: (id: string, pos: {x: number, y: number}) => void;
+  onResizeEnd?: (size: { width: number, height: number }) => void;
+  initialWidth?: number;
+  initialHeight?: number;
+  rotation?: number;
+}
+
+function useResizable(initialWidth: number, initialHeight: number, scaleRef: React.MutableRefObject<number>, onResizeEnd?: (size: { width: number, height: number }) => void) {
+  const [size, setSize] = useState({ width: initialWidth, height: initialHeight });
+  const sizeRef = useRef(size);
+
+  useEffect(() => {
+    sizeRef.current = size;
+  }, [size]);
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const initialSize = { ...size };
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      setSize({
+        width: Math.max(100, initialSize.width + (moveEvent.clientX - startX) / scaleRef.current),
+        height: Math.max(50, initialSize.height + (moveEvent.clientY - startY) / scaleRef.current),
+      });
+    };
+
+    const onPointerUp = () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      if (onResizeEnd) {
+        onResizeEnd(sizeRef.current);
+      }
+    };
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+  };
+
+  return { size, onPointerDown };
+}
+
+const colorPresets = [
+  { bg: '#ffffff', text: '#1a1a1a', border: '#E6E4DF' },
+  { bg: '#F4F1ED', text: '#1a1a1a', border: '#d1cfca' },
+  { bg: '#fef3c7', text: '#92400e', border: '#fde68a' }, // Amber overlay
+  { bg: '#1a1a1a', text: '#ffffff', border: '#333333' }, // Pitch black
+  { bg: '#1e293b', text: '#f8fafc', border: '#334155' }, // Slate dark
+  { bg: '#C2410C', text: '#ffffff', border: '#a0350a' }, // Accent Ochre
+];
+
+const fontPresets = [
+  { name: 'Serif', value: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif' },
+  { name: 'Sans', value: 'ui-sans-serif, system-ui, sans-serif' },
+  { name: 'Mono', value: 'ui-monospace, Consolas, monospace' },
+];
+
+const DraggableNode: React.FC<DraggableNodeProps> = ({ 
+  id, nodesRef, isConnecting, onLink, children, 
+  initialX = 100, initialY = 100, initialWidth = 320, initialHeight = 0,
+  onDelete, onCycleLayout, className = '', scale = 1, 
+  isSelected, isEditing, onToggleSelect, allowPalette, onDragEnd, onResizeEnd,
+  rotation = 0
+}) => {
+  const { t } = useTranslation();
+  const scaleRef = useRef(scale);
+  useEffect(() => { scaleRef.current = scale; }, [scale]);
+
+  const node = useDraggable(initialX, initialY, scale, (pos) => {
+    if (onDragEnd) onDragEnd(id, pos);
+  });
+
+  const { size, onPointerDown: onResizePointerDown } = useResizable(initialWidth, initialHeight, scaleRef, (newSize) => {
+    if (onResizeEnd) onResizeEnd(newSize);
+  });
+
+  const [showPalette, setShowPalette] = useState(false);
+  const [styleOverrides, setStyleOverrides] = useState({ bg: '', text: '', font: '', border: '' });
+
+  return (
+    <div 
+      className={`absolute cursor-move group pointer-events-auto select-none ${className} ${isSelected ? 'ring-2 ring-[#C2410C]' : ''}`}
+      style={{ 
+        left: node.pos.x, 
+        top: node.pos.y, 
+        width: size.width || undefined,
+        height: size.height || undefined,
+        zIndex: node.zIndex,
+        transform: rotation ? `rotate(${rotation}deg) translateZ(0)` : 'translateZ(0)',
+        willChange: 'transform',
+        '--node-bg': styleOverrides.bg || undefined, 
+        '--node-text': styleOverrides.text || undefined, 
+        '--node-font': styleOverrides.font || undefined, 
+        '--node-border': styleOverrides.border || undefined 
+      } as React.CSSProperties}
+      onDoubleClick={(e) => {
+        if (allowPalette) {
+          e.stopPropagation();
+          setShowPalette(true);
+        }
+      }}
+      onPointerDown={(e) => {
+        const target = e.target as HTMLElement;
+        const isTextInteraction = target.isContentEditable || target.closest('.markdown-body') || target.closest('[contentEditable="true"]');
+
+        if (showPalette) setShowPalette(false);
+        if (isConnecting) {
+          e.stopPropagation();
+          e.preventDefault();
+          onLink(id);
+        } else {
+          node.onPointerDown(e);
+        }
+      }}
+      ref={el => { if (nodesRef) nodesRef.current[id] = el; }}
+    >
+      {onToggleSelect && (
+        <button 
+          onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); onToggleSelect(); }} 
+          className={`absolute -top-3 -left-3 w-6 h-6 bg-white border ${isSelected ? 'border-[#C2410C] text-[#C2410C] opacity-100' : 'border-[#E6E4DF] text-transparent hover:border-[#C2410C] opacity-0 group-hover:opacity-40'} rounded-full flex items-center justify-center transition-all z-10 shadow-sm ${isEditing ? '!opacity-0' : ''}`}
+          title={t('canvas.select_note')}
+        >
+          <Check className="w-3 h-3" />
+        </button>
+      )}
+      <button 
+        onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); onLink(id); }}
+        className={`absolute top-1/2 -mt-3 -right-3 w-6 h-6 bg-white border border-[#E6E4DF] rounded-full flex items-center justify-center text-[#8c8a84] hover:text-[#C2410C] hover:border-[#C2410C] ${isSelected && !isEditing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-all z-10 shadow-sm`}
+        title={t('canvas.link_note')}
+      >
+        <Plus className="w-4 h-4" />
+      </button>
+      <div className={`absolute -bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 ${isSelected && !isEditing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity z-10`}>
+        {onCycleLayout && (
+          <button 
+            onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); onCycleLayout(); }} 
+            className="w-6 h-6 bg-white border border-[#E6E4DF] rounded-full flex items-center justify-center text-[#8c8a84] hover:text-[#C2410C] hover:border-[#C2410C] transition-all shadow-sm"
+            title={t('canvas.cycle_layout')}
+          >
+            <SlidersHorizontal className="w-3 h-3" />
+          </button>
+        )}
+        {onDelete && (
+          <button 
+            onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); onDelete(); }} 
+            className="w-6 h-6 bg-white border border-[#E6E4DF] rounded-full flex items-center justify-center text-[#8c8a84] hover:text-[#C2410C] hover:border-[#C2410C] transition-all shadow-sm"
+            title={t('canvas.delete_note')}
+          >
+            <Trash2 className="w-3 h-3" />
+          </button>
+        )}
+      </div>
+      {children}
+      
+      {/* Resize Handle */}
+      <div 
+        onPointerDown={onResizePointerDown}
+        className={`absolute -bottom-1 -right-1 w-4 h-4 cursor-nwse-resize flex items-center justify-center ${isSelected && !isEditing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity z-20`}
+      >
+        <div className="w-1.5 h-1.5 border-r border-b border-[#8c8a84]"></div>
+      </div>
+
+      {showPalette && allowPalette && (
+        <div 
+          className="node-palette absolute -bottom-14 left-0 bg-white/90 backdrop-blur-md border border-[#E6E4DF] shadow-xl rounded-lg p-2 z-50 flex items-center gap-4 cursor-default pointer-events-auto"
+          onPointerDown={(e) => e.stopPropagation()} /* Prevent drag when clicking palette */
+        >
+          <div className="flex gap-1.5">
+            {colorPresets.map((color, i) => (
+              <button 
+                key={i} 
+                onClick={() => setStyleOverrides(prev => ({ ...prev, bg: color.bg, text: color.text, border: color.border }))}
+                className="w-5 h-5 rounded-full border border-black/10 transition-transform hover:scale-110 shadow-sm"
+                style={{ backgroundColor: color.bg }}
+                title={t('canvas.change_color')}
+              />
+            ))}
+          </div>
+          <div className="w-[1px] h-4 bg-[#E6E4DF]"></div>
+          <div className="flex gap-2 text-xs">
+            {fontPresets.map((font, i) => (
+              <button
+                key={i}
+                onClick={() => setStyleOverrides(prev => ({ ...prev, font: font.value }))}
+                className="px-2 py-0.5 rounded hover:bg-[#F4F1ED] text-[#5a5a54] hover:text-[#1a1a1a] transition-colors"
+                title={`${t('canvas.change_font')}: ${font.name}`}
+                style={{ fontFamily: font.value }}
+              >
+                Aa
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function App() {
+  const { t, i18n } = useTranslation();
+  const nodesRef = useRef<Record<string, HTMLElement | null>>({});
+  const svgRef = useRef<SVGSVGElement>(null);
+  const edgeLabelsRef = useRef<HTMLDivElement>(null);
+  const mainRef = useRef<HTMLDivElement>(null);
+  const contentContainerRef = useRef<HTMLDivElement>(null);
+  const transformRef = useRef({ x: 0, y: 0, scale: 1 });
+
+  // Local-only UI states
+  const [activeCanvasId, setActiveCanvasId] = useState<string>(() => localStorage.getItem('active_canvas_id') || 'default');
+  const [isCanvasListOpen, setIsCanvasListOpen] = useState(false);
+
+  // Database-backed states
+  const articles = useLiveQuery(() => db.articles.toArray()) || [];
+  const agentConfigs = useLiveQuery(() => db.agents.toArray()) || [];
+  const dynamicNodes = useLiveQuery(() => 
+    db.nodes.filter(node => (node.canvasId === activeCanvasId) || (!node.canvasId && activeCanvasId === 'default')).toArray()
+  , [activeCanvasId]) || [];
+  const edges = useLiveQuery(() => 
+    db.edges.filter(edge => (edge.canvasId === activeCanvasId) || (!edge.canvasId && activeCanvasId === 'default')).toArray()
+  , [activeCanvasId]) || [];
+  const canvases = useLiveQuery(() => db.canvases.toArray()) || [];
+
+  const [selectedNodes, setSelectedNodes] = useState<Set<string>>(new Set());
+  const [activeReferenceId, setActiveReferenceId] = useState<string>('');
+  const [hoveredEdgeId, setHoveredEdgeId] = useState<string | null>(null);
+  const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
+  const [canvasTransform, setCanvasTransform] = useState({ x: 0, y: 0, scale: 1 });
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [activeTab, setActiveTab] = useState('personal');
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
+  const [aiPrompt, setAiPrompt] = useState('');
+
+  // User Profile States
+  const [userName, setUserName] = useState(() => localStorage.getItem('user_name') || 'Main Library');
+  const [userRole, setUserRole] = useState(() => localStorage.getItem('user_role') || 'Focus Mode Active');
+  const [userAvatar, setUserAvatar] = useState(() => localStorage.getItem('user_avatar') || 'https://lh3.googleusercontent.com/aida-public/AB6AXuAJ4QVDvA9fTIQoBUT7DMYuMx4lar18Lu2yQ4F-BA02ETKD3F685obhnMMZ1DTSPgIGtayR6TnhxxI6xPnMhkIfVwIw8pUoiCCKugCt50m261Esqg2-55XI-P4ZSBmpCF6WZeh0zZYF25ixFg1yLaNs5Xysi48cS0GvzZsLD-Z_8zoH7WpKlehQuPAUPWjbyO09MlCOEVrth2zGKWn3MGyHKx3VZmQ2hgrMhzuBmSy6XFRKlRS29CPcZsqDQJ-BLENv8p6ldZ5UsiM');
+
+  useEffect(() => {
+    localStorage.setItem('user_name', userName);
+    localStorage.setItem('user_role', userRole);
+    localStorage.setItem('user_avatar', userAvatar);
+  }, [userName, userRole, userAvatar]);
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+  }, []);
+
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setUserAvatar(event.target.result as string);
+        }
+      };
+      reader.readAsDataURL(e.target.files[0]);
+    }
+  };
+
+  const [aiConfig, setAiConfig] = useState(() => {
+    const saved = localStorage.getItem('ai_config');
+    return saved ? JSON.parse(saved) : {
+      provider: 'gemini',
+      apiKey: '',
+      baseUrl: '',
+      model: 'gemini-1.5-flash'
+    };
+  });
+
+  useEffect(() => {
+    localStorage.setItem('ai_config', JSON.stringify(aiConfig));
+  }, [aiConfig]);
+
+  useEffect(() => {
+    transformRef.current = canvasTransform;
+  }, [canvasTransform]);
+
+  useEffect(() => {
+    localStorage.setItem('active_canvas_id', activeCanvasId);
+  }, [activeCanvasId]);
+
+  // Initialize DB with example data if empty
+  useEffect(() => {
+    const seed = async () => {
+      // Ensure default canvas exists
+      const defaultCanvas = await db.canvases.get('default');
+      if (!defaultCanvas) {
+        await db.canvases.add({
+          id: 'default',
+          name: 'Main Workspace',
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        });
+      }
+
+      const agentIds = ['challenger', 'interviewer', 'synthesizer', 'stylist', 'futurist', 'pragmatist'];
+      const existingAgents = await db.agents.toArray();
+      const existingIds = new Set(existingAgents.map(a => a.id));
+      const missingIds = agentIds.filter(id => !existingIds.has(id));
+
+      if (missingIds.length > 0) {
+        const allSystemAgents = [
+          { id: 'challenger', name: 'The Challenger', role: 'Debater', prompt: 'You are a critical Debater. Do not agree with the user or simply follow orders. Challenge the premise of what is connected to you. Point out logical flaws, demand stronger evidence, and actively try to find holes in the argument to help the user refine their thoughts.', temperature: 0.7, creativity: 0.4 },
+          { id: 'interviewer', name: 'AI Interviewer', role: 'Journalist', prompt: 'You are an AI Interviewer who takes initiative. Do not wait for commands. Based on the provided context, actively start asking probing questions to draw out deeper narratives or follow-up ideas.', temperature: 0.7, creativity: 0.4 },
+          { id: 'synthesizer', name: 'The Synthesizer', role: 'Connector', prompt: 'You are a Connector/Synthesizer. Your goal is to find hidden patterns and non-obvious relationships between the notes and ideas connected to you. Suggest how disparate concepts can be merged into a cohesive whole.', temperature: 0.8, creativity: 0.7 },
+          { id: 'stylist', name: 'The Stylist', role: 'Editor', prompt: 'You are a Master Editor and Stylist. Your role is to take the provided content and elevate its quality. Focus on tone, clarity, and impact. Make the text compelling, professional, or poetic depending on the context.', temperature: 0.6, creativity: 0.5 },
+          { id: 'futurist', name: 'The Futurist', role: 'Visionary', prompt: 'You are a Visionary Futurist. Based on the ideas connected to you, project their evolution 10-20 years into the future. What are the long-term implications, potential disruptors, and wild possibilities?', temperature: 0.9, creativity: 0.9 },
+          { id: 'pragmatist', name: 'The Pragmatist', role: 'Realist', prompt: 'You are a realistic Pragmatist. Your job is to ground the user\'s ideas in reality. Identify practical constraints, missing logistical steps, potential costs, and immediate roadblocks that need to be addressed.', temperature: 0.4, creativity: 0.2 }
+        ];
+        
+        const toAdd = allSystemAgents.filter(a => missingIds.includes(a.id));
+        await db.agents.bulkPut(toAdd);
+      }
+
+      const totalCount = await db.agents.count();
+      if (totalCount <= 6) { // If only system agents exist or it's first run
+        const nodeCount = await db.nodes.count();
+        if (nodeCount === 0) {
+          await db.articles.put({
+          id: 'ref-042',
+          title: 'Spatial Encoding in Reconstructive Memory',
+          content: 'The human mind does not merely store experiences as isolated visual or auditory files. Instead, it constructs architectural spaces where these memories represent structural loads...',
+          date: '1994',
+          type: 'REF-042'
+        });
+ 
+        await db.nodes.bulkPut([
+          { id: 'theme', type: 'theme', content: 'The Memory Architect', x: 200, y: 300 },
+          { id: 'insp1', type: 'note', content: 'Spatial architecture of trauma', x: 500, y: 200 },
+          { id: 'ai', type: 'ai', content: 'Memory is not a storage, but a navigation.', x: 500, y: 400 },
+          { id: 'insp2', type: 'note', content: 'Non-euclidean memory leaks', x: 800, y: 300 }
+        ]);
+ 
+        await db.edges.bulkPut([
+          { id: 'e1', from: 'theme', to: 'insp1' },
+          { id: 'e2', from: 'theme', to: 'ai' },
+          { id: 'e3', from: 'ai', to: 'insp2' },
+          { id: 'e4', from: 'insp1', to: 'insp2' }
+        ]);
+      }
+    }
+  };
+    seed();
+  }, []);
+
+  const toggleNodeSelection = (id: string) => {
+    setSelectedNodes(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handlePublish = async () => {
+    if (selectedNodes.size === 0) return;
+    setIsAiLoading(true);
+    try {
+      let combinedText = '';
+      for (const id of Array.from(selectedNodes)) {
+        const el = nodesRef.current[id];
+        if (el) {
+          combinedText += el.innerText + '\n\n';
+        }
+      }
+
+      const text = await callUniversalAI({
+        config: aiConfig,
+        prompt: `Turn the following concepts, notes, and drafts into a cohesive, well-written article:\n\n${combinedText}`
+      });
+      
+      const newArticle = {
+        id: `gen-${Date.now()}`,
+        title: 'Generated Synthesis',
+        content: text || '',
+        date: new Date().getFullYear().toString(),
+        type: 'GEN-' + Math.floor(Math.random() * 1000)
+      };
+      
+      await db.articles.add(newArticle);
+      setActiveReferenceId(newArticle.id);
+      setActiveTab('reference');
+      setSelectedNodes(new Set());
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
+  const triggerAgentAnalysis = async (agentConfigId: string, agentNodeId: string, contextNodeId: string) => {
+    const agentConfig = agentConfigs.find(a => a.id === agentConfigId);
+    if (!agentConfig) return;
+
+    const contextEl = nodesRef.current[contextNodeId];
+    if (!contextEl) return;
+    
+    const clone = contextEl.cloneNode(true) as HTMLElement;
+    const contextText = clone.innerText || clone.textContent || '';
+    if (!contextText.trim()) return;
+
+    setIsAiLoading(true);
+    try {
+      const text = await callUniversalAI({
+        config: aiConfig,
+        prompt: `Context to analyze:\n${contextText}`,
+        systemInstruction: agentConfig.prompt
+      });
+
+      if (text) {
+        const agentNode = dynamicNodes.find(n => n.id === agentNodeId);
+        const x = agentNode ? agentNode.x + 350 : window.innerWidth / 2;
+        const y = agentNode ? agentNode.y : window.innerHeight / 2;
+        const newNodeId = crypto.randomUUID();
+        
+        await db.nodes.add({ id: newNodeId, canvasId: activeCanvasId, type: 'ai', content: text, x, y });
+        await db.edges.add({ id: crypto.randomUUID(), canvasId: activeCanvasId, from: agentNodeId, to: newNodeId });
+      }
+    } catch(e) {
+      console.error(e);
+      alert('AI generation failed.');
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
+  const [editingCanvasId, setEditingCanvasId] = useState<string | null>(null);
+  const [editingCanvasName, setEditingCanvasName] = useState('');
+
+  const renameCanvas = async (id: string, newName: string) => {
+    if (!newName.trim()) return;
+    await db.canvases.update(id, { name: newName, updatedAt: Date.now() });
+    setEditingCanvasId(null);
+  };
+
+  const createNewCanvas = async () => {
+    const id = crypto.randomUUID();
+    await db.canvases.add({
+      id,
+      name: t('canvas.default_name', { number: canvases.length + 1 }),
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    });
+    setActiveCanvasId(id);
+    setIsCanvasListOpen(false);
+  };
+
+  const handleNodeDragEnd = (draggedId: string, finalPos: {x: number, y: number}) => {
+    // Update position in database
+    db.nodes.update(draggedId, { x: finalPos.x, y: finalPos.y });
+
+    const draggedEl = nodesRef.current[draggedId];
+    if (!draggedEl) return;
+    
+    // Convert to screen coordinates for accurate distance measurement (ignoring scale/pan for now for simplicity, bounding rect includes it)
+    const dRect = draggedEl.getBoundingClientRect();
+    const dCenterX = dRect.left + dRect.width / 2;
+    const dCenterY = dRect.top + dRect.height / 2;
+
+    const SNAP_DISTANCE = 150; // pixels
+
+    const isDraggedAgent = dynamicNodes.find(n => n.id === draggedId)?.type === 'agent';
+
+    let snapped = false;
+
+    Object.keys(nodesRef.current).forEach(otherId => {
+      if (otherId === draggedId || snapped) return;
+      const otherEl = nodesRef.current[otherId];
+      if (!otherEl) return;
+
+      const isOtherAgent = dynamicNodes.find(n => n.id === otherId)?.type === 'agent';
+
+      // One must be agent, other must not be agent ideally (or both are, but whatever)
+      if ((isDraggedAgent && !isOtherAgent) || (!isDraggedAgent && isOtherAgent)) {
+        const oRect = otherEl.getBoundingClientRect();
+        const oCenterX = oRect.left + oRect.width / 2;
+        const oCenterY = oRect.top + oRect.height / 2;
+
+        const dist = Math.hypot(dCenterX - oCenterX, dCenterY - oCenterY);
+        
+        if (dist < SNAP_DISTANCE) {
+          const agentId = isDraggedAgent ? draggedId : otherId;
+          const contextId = isDraggedAgent ? otherId : draggedId;
+          const agentConfigId = dynamicNodes.find(n => n.id === agentId)?.agentConfigId;
+          
+          if (agentConfigId && agentId && contextId) {
+            snapped = true;
+            // Optionally add edge to visualize snap
+            if (!edges.find(e => (e.from === agentId && e.to === contextId) || (e.from === contextId && e.to === agentId))) {
+               db.edges.add({ id: crypto.randomUUID(), canvasId: activeCanvasId, from: agentId, to: contextId });
+            }
+            triggerAgentAnalysis(agentConfigId, agentId, contextId);
+          }
+        }
+      }
+    });
+  };
+
+  const handleLink = (id: string) => {
+    if (connectingFrom) {
+      if (connectingFrom !== id && !edges.find(e => (e.from === connectingFrom && e.to === id) || (e.from === id && e.to === connectingFrom))) {
+        db.edges.add({ id: crypto.randomUUID(), canvasId: activeCanvasId, from: connectingFrom, to: id });
+      }
+      setConnectingFrom(null);
+    } else {
+      setConnectingFrom(id);
+    }
+  };
+
+  const deleteEdge = (id: string) => {
+    db.edges.delete(id);
+  };
+
+  const removeNodeId = (id: string) => {
+    db.nodes.delete(id);
+    db.edges.where('from').equals(id).or('to').equals(id).delete();
+  };
+
+  const mousePosRef = useRef({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      mousePosRef.current = { x: e.clientX, y: e.clientY };
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+
+  useEffect(() => {
+    const main = mainRef.current;
+    if (!main) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      if (e.ctrlKey || e.metaKey) {
+        setCanvasTransform(prev => {
+          const zoomBase = 1.05;
+          const factor = e.deltaY < 0 ? zoomBase : 1 / zoomBase;
+          const newScale = Math.min(Math.max(0.1, prev.scale * factor), 5);
+          
+          const mainRect = main.getBoundingClientRect();
+          const clientX = e.clientX - mainRect.left;
+          const clientY = e.clientY - mainRect.top;
+
+          const mouseXInCanvas = (clientX - prev.x) / prev.scale;
+          const mouseYInCanvas = (clientY - prev.y) / prev.scale;
+
+          const newX = clientX - mouseXInCanvas * newScale;
+          const newY = clientY - mouseYInCanvas * newScale;
+
+          return { x: newX, y: newY, scale: newScale };
+        });
+      } else {
+        setCanvasTransform(prev => ({
+          ...prev,
+          x: prev.x - e.deltaX,
+          y: prev.y - e.deltaY,
+        }));
+      }
+    };
+    main.addEventListener('wheel', onWheel, { passive: false });
+    return () => main.removeEventListener('wheel', onWheel);
+  }, []);
+
+  const handlePanStart = (e: React.PointerEvent) => {
+    if (e.target === e.currentTarget || e.button === 1 || e.button === 0) {
+      if (connectingFrom) setConnectingFrom(null);
+      e.preventDefault();
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const startTransform = transformRef.current;
+
+      const onPointerMove = (moveEv: PointerEvent) => {
+        setCanvasTransform({
+          ...startTransform,
+          x: startTransform.x + (moveEv.clientX - startX),
+          y: startTransform.y + (moveEv.clientY - startY),
+        });
+      };
+      const onPointerUp = () => {
+        window.removeEventListener('pointermove', onPointerMove);
+        window.removeEventListener('pointerup', onPointerUp);
+      };
+      window.addEventListener('pointermove', onPointerMove);
+      window.addEventListener('pointerup', onPointerUp);
+    }
+  };
+
+  useEffect(() => {
+    let animationFrameId: number;
+    const updateLines = () => {
+      const svg = svgRef.current;
+      const container = contentContainerRef.current;
+      const edgeLabelsContainer = edgeLabelsRef.current;
+      if (!svg || !container) return;
+      
+      const containerRect = container.getBoundingClientRect();
+      const currentScale = transformRef.current.scale;
+
+      const edgeGroups = Array.from(svg.querySelectorAll('g[data-edge-id]')) as SVGGElement[];
+      
+      edgeGroups.forEach((g: SVGGElement) => {
+        const fromId = g.getAttribute('data-edge-from');
+        const toId = g.getAttribute('data-edge-to');
+        const edgeId = g.getAttribute('data-edge-id');
+        if (!fromId || !toId || !edgeId) return;
+        
+        const fromNode = nodesRef.current[fromId];
+        const toNode = nodesRef.current[toId];
+        if (fromNode && toNode) {
+          const fromRect = fromNode.getBoundingClientRect();
+          const toRect = toNode.getBoundingClientRect();
+          
+          const x1 = (fromRect.left + fromRect.width / 2 - containerRect.left) / currentScale;
+          const y1 = (fromRect.top + fromRect.height / 2 - containerRect.top) / currentScale;
+          const x2 = (toRect.left + toRect.width / 2 - containerRect.left) / currentScale;
+          const y2 = (toRect.top + toRect.height / 2 - containerRect.top) / currentScale;
+          
+          g.querySelectorAll('line').forEach((line: SVGLineElement) => {
+            line.setAttribute('x1', x1.toString());
+            line.setAttribute('y1', y1.toString());
+            line.setAttribute('x2', x2.toString());
+            line.setAttribute('y2', y2.toString());
+          });
+          
+          if (edgeLabelsContainer) {
+             const btn = edgeLabelsContainer.querySelector(`[data-edge-btn="${edgeId}"]`) as HTMLButtonElement;
+             if (btn) {
+               btn.style.left = `${(x1 + x2) / 2}px`;
+               btn.style.top = `${(y1 + y2) / 2}px`;
+             }
+          }
+        }
+      });
+      
+      const tempEdge = svg.querySelector('#temp-edge') as SVGLineElement;
+      const connFrom = svg.getAttribute('data-connecting-from');
+      if (tempEdge) {
+        if (connFrom && nodesRef.current[connFrom]) {
+          const fromNode = nodesRef.current[connFrom];
+          const fromRect = fromNode.getBoundingClientRect();
+          
+          const x1 = (fromRect.right - containerRect.left) / currentScale;
+          const y1 = (fromRect.top + fromRect.height / 2 - containerRect.top) / currentScale;
+          const x2 = (mousePosRef.current.x - containerRect.left) / currentScale;
+          const y2 = (mousePosRef.current.y - containerRect.top) / currentScale;
+
+          tempEdge.style.display = 'block';
+          tempEdge.setAttribute('x1', x1.toString());
+          tempEdge.setAttribute('y1', y1.toString());
+          tempEdge.setAttribute('x2', x2.toString());
+          tempEdge.setAttribute('y2', y2.toString());
+        } else {
+          tempEdge.style.display = 'none';
+        }
+      }
+
+      animationFrameId = requestAnimationFrame(updateLines);
+    };
+    updateLines();
+    return () => cancelAnimationFrame(animationFrameId);
+  }, []);
+
+  const handleAiSubmit = async () => {
+    if (!aiPrompt.trim() || isAiLoading) return;
+    
+    setIsAiLoading(true);
+    try {
+      // Build context from connected nodes
+      const connectedNodeIds = new Set<string>();
+      edges.forEach(e => {
+        connectedNodeIds.add(e.from);
+        connectedNodeIds.add(e.to);
+      });
+      
+      let contextText = '';
+      connectedNodeIds.forEach(id => {
+        const el = nodesRef.current[id];
+        if (el) {
+          contextText += `\n[Context Fragment]: ` + (el.innerText || '');
+        }
+      });
+
+      const text = await callUniversalAI({
+        config: aiConfig,
+        prompt: `Context from connected notes across the canvas:\n${contextText}\n\nUser request: ${aiPrompt}`
+      });
+      
+      if (text) {
+        const cx = window.innerWidth / 2;
+        const cy = window.innerHeight / 2;
+        const t = transformRef.current;
+        const x = (cx - t.x) / t.scale - 150 + Math.random() * 50;
+        const y = (cy - t.y) / t.scale - 100 + Math.random() * 50;
+        await db.nodes.add({ id: crypto.randomUUID(), canvasId: activeCanvasId, type: 'ai', content: text, x, y });
+        setAiPrompt('');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('AI generation failed. Please check your API key or network.');
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
+  const addTextNode = async () => {
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight / 2;
+    const t = transformRef.current;
+    const x = (cx - t.x) / t.scale - 150 + Math.random() * 50;
+    const y = (cy - t.y) / t.scale - 100 + Math.random() * 50;
+    await db.nodes.add({ id: crypto.randomUUID(), canvasId: activeCanvasId, type: 'text', content: '', x, y });
+  };
+
+  const addFileNode = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      const url = URL.createObjectURL(file);
+      const type = file.type.startsWith('video/') ? 'video' : 'image';
+      const cx = window.innerWidth / 2;
+      const cy = window.innerHeight / 2;
+      const t = transformRef.current;
+      const x = (cx - t.x) / t.scale - 150 + Math.random() * 50;
+      const y = (cy - t.y) / t.scale - 100 + Math.random() * 50;
+      await db.nodes.add({ id: crypto.randomUUID(), canvasId: activeCanvasId, type, content: url, fileType: file.type, x, y });
+      e.target.value = ''; // Reset input
+    }
+  };
+
+  // removeNode is now unused, using removeNodeId instead
+
+  // Remove SVG points
+  return (
+    <div className="bg-[#FAF9F6] font-serif text-[#1a1a1a] min-h-screen overflow-hidden flex flex-col paper-texture">
+      
+      <div className="flex flex-1" onPointerDown={() => { if (connectingFrom) setConnectingFrom(null); }}>
+        {/* SideNavBar */}
+        <aside className={`hidden md:flex flex-col py-6 space-y-2 bg-[#F4F1ED] h-screen border-r border-[#E6E4DF] sticky top-0 transition-all duration-300 overflow-y-auto scrollbar-hide ${isSidebarOpen ? 'w-48' : 'w-20 items-center'}`}>
+
+          <div className="mb-6 px-4">
+            <div className={`flex flex-col ${isSidebarOpen ? 'items-start' : 'items-center'} gap-2`}>
+              <div className="flex items-center gap-3 w-full group relative">
+                <input 
+                  type="file" 
+                  ref={avatarInputRef} 
+                  onChange={handleAvatarChange} 
+                  accept="image/*" 
+                  className="hidden" 
+                />
+                <div 
+                  onClick={() => avatarInputRef.current?.click()}
+                  className={`relative cursor-pointer group/avatar flex-shrink-0 flex items-center justify-center ${isSidebarOpen ? 'w-6' : 'w-10'}`}
+                >
+                  <img 
+                    alt="Curator Profile" 
+                    className={`rounded border-2 border-[#E6E4DF] object-cover shadow-sm transition-all group-hover/avatar:opacity-80 ${isSidebarOpen ? 'w-6 h-6' : 'w-10 h-10'}`} 
+                    src={userAvatar}
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity bg-black/20 rounded">
+                    <Camera className="w-3 h-3 text-white" />
+                  </div>
+                </div>
+                {isSidebarOpen && (
+                  <p 
+                    contentEditable 
+                    suppressContentEditableWarning
+                    onBlur={(e) => setUserName(e.currentTarget.innerText)}
+                    className="text-base font-bold whitespace-nowrap tracking-tight outline-none hover:bg-[#EAE7E2]/50 rounded px-1 -mx-1 transition-colors cursor-text overflow-hidden text-ellipsis"
+                  >
+                    {userName}
+                  </p>
+                )}
+              </div>
+              {isSidebarOpen && (
+                <p 
+                  contentEditable 
+                  suppressContentEditableWarning
+                  onBlur={(e) => setUserRole(e.currentTarget.innerText)}
+                  className="text-[10px] font-sans uppercase tracking-widest text-[#8c8a84] whitespace-nowrap outline-none hover:bg-[#EAE7E2]/50 rounded px-1 -mx-1 transition-colors cursor-text"
+                >
+                  {userRole}
+                </p>
+              )}
+            </div>
+          </div>
+          <nav className="flex flex-col font-sans text-sm w-full">
+            {isSidebarOpen && <div className="px-4 py-2 text-[#8c8a84] text-[11px] uppercase tracking-wider mb-2">{t('sidebar.personal')}</div>}
+            <a onClick={(e) => { e.preventDefault(); setActiveTab('personal'); }} className={`cursor-pointer flex items-center ${isSidebarOpen ? 'gap-3 px-4' : 'justify-center'} py-2 ${activeTab === 'personal' ? 'bg-white border-y border-[#E6E4DF] text-[#C2410C]' : 'text-[#5a5a54] hover:bg-[#EAE7E2] transition-colors'}`}>
+              <BookOpen className="w-4 h-4 flex-shrink-0" />
+              {isSidebarOpen && <span>{t('sidebar.personal')}</span>}
+            </a>
+            <a onClick={(e) => { e.preventDefault(); setActiveTab('reference'); }} className={`cursor-pointer flex items-center ${isSidebarOpen ? 'gap-3 px-4' : 'justify-center'} py-2 ${activeTab === 'reference' ? 'bg-white border-y border-[#E6E4DF] text-[#C2410C]' : 'text-[#5a5a54] hover:bg-[#EAE7E2] transition-colors'}`}>
+              <Library className="w-4 h-4 flex-shrink-0" />
+              {isSidebarOpen && <span>{t('sidebar.reference')}</span>}
+            </a>
+            <a onClick={(e) => { e.preventDefault(); setActiveTab('lab'); }} className={`cursor-pointer flex items-center ${isSidebarOpen ? 'gap-3 px-4' : 'justify-center'} py-2 ${activeTab === 'lab' ? 'bg-white border-y border-[#E6E4DF] text-[#C2410C]' : 'text-[#5a5a54] hover:bg-[#EAE7E2] transition-colors'}`}>
+              <Microscope className="w-4 h-4 flex-shrink-0" />
+              {isSidebarOpen && <span>{t('sidebar.lab')}</span>}
+            </a>
+            <a onClick={(e) => { e.preventDefault(); setActiveTab('agents'); }} className={`cursor-pointer flex items-center ${isSidebarOpen ? 'gap-3 px-4' : 'justify-center'} py-2 ${activeTab === 'agents' ? 'bg-white border-y border-[#E6E4DF] text-[#C2410C]' : 'text-[#5a5a54] hover:bg-[#EAE7E2] transition-colors'}`}>
+              <Bot className="w-4 h-4 flex-shrink-0" />
+              {isSidebarOpen && <span>{t('sidebar.agents')}</span>}
+            </a>
+          </nav>
+          <div className="mt-auto px-4 pb-4 w-full flex flex-col gap-1">
+            <button 
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsSidebarOpen(!isSidebarOpen); }}
+              className={`w-full flex items-center ${isSidebarOpen ? 'gap-3' : 'justify-center'} py-2 text-[#8c8a84] hover:text-[#1a1a1a] hover:bg-[#EAE7E2] transition-colors rounded-lg group/toggle`}
+            >
+              <div className={`flex items-center justify-center ${isSidebarOpen ? 'w-6' : 'w-10'}`}>
+                {isSidebarOpen ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5 transition-transform group-hover/toggle:translate-x-0.5" />}
+              </div>
+            </button>
+            <button 
+              onClick={() => setIsSettingsOpen(true)}
+              className={`w-full flex items-center ${isSidebarOpen ? 'gap-3' : 'justify-center'} py-2 text-[#5a5a54] hover:bg-[#EAE7E2] transition-colors rounded-lg group/settings`}
+              title={t('sidebar.settings')}
+            >
+              <div className={`flex items-center justify-center ${isSidebarOpen ? 'w-6' : 'w-10'}`}>
+                <Settings className={`w-4 h-4 flex-shrink-0 transition-transform group-hover/settings:rotate-45`} />
+              </div>
+            </button>
+          </div>
+        </aside>
+
+        {activeTab === 'personal' && (
+        <main 
+          ref={mainRef} 
+          className="flex-1 relative overflow-hidden bg-[#FAF9F6] paper-texture"
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onDrop={async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+              const t = canvasTransform;
+              const rect = e.currentTarget.getBoundingClientRect();
+              
+              const ox = ((e.clientX - rect.left) - t.x) / t.scale;
+              const oy = ((e.clientY - rect.top) - t.y) / t.scale;
+
+              for (let index = 0; index < Array.from(e.dataTransfer.files).length; index++) {
+                const file = e.dataTransfer.files[index];
+                if (!file.type.startsWith('video/') && !file.type.startsWith('image/')) continue;
+                const type = file.type.startsWith('video/') ? 'video' : 'image';
+                const url = URL.createObjectURL(file);
+                await db.nodes.add({
+                  id: crypto.randomUUID(),
+                  canvasId: activeCanvasId,
+                  type,
+                  content: url,
+                  fileType: file.type,
+                  x: ox + (index * 20) - 100, 
+                  y: oy + (index * 20) - 100
+                });
+              }
+            }
+          }}
+        >
+          {/* Draggable background (pan) */}
+          <div 
+            className="absolute inset-0 cursor-grab active:cursor-grabbing z-0" 
+            onPointerDown={handlePanStart}
+          />
+
+          {/* Symmetrical Controls */}
+          <div className="absolute top-6 left-6 flex items-center z-40 gap-2">
+              <div className="relative">
+                <button 
+                  onClick={() => setIsCanvasListOpen(!isCanvasListOpen)}
+                  className="bg-white text-[#1a1a1a] p-3 rounded-full shadow-md hover:bg-[#F4F1ED] transition-all flex items-center justify-center border border-[#E6E4DF] group"
+                  title={t('canvas.history')}
+                >
+                  <History className="w-5 h-5 transition-transform group-hover:rotate-[-10deg]" />
+                </button>
+                
+                {isCanvasListOpen && (
+                  <div className="absolute top-full left-0 mt-2 w-64 bg-white border border-[#E6E4DF] rounded-xl shadow-2xl p-1 z-50">
+                    <div className="px-3 py-2 text-[10px] font-bold text-[#8c8a84] uppercase tracking-wider font-mono border-b border-[#F4F1ED] mb-1">{t('canvas.history')}</div>
+                    <div className="max-h-60 overflow-y-auto">
+                      {canvases.map(canvas => (
+                        <div 
+                          key={canvas.id}
+                          className={`group w-full text-left px-3 py-2 text-sm rounded-lg mb-1 transition-colors flex flex-col ${activeCanvasId === canvas.id ? 'bg-[#F4F1ED] border border-[#E6E4DF]' : 'hover:bg-[#F4F1ED]'}`}
+                        >
+                          {editingCanvasId === canvas.id ? (
+                            <form 
+                              className="flex items-center gap-2"
+                              onSubmit={(e) => {
+                                e.preventDefault();
+                                renameCanvas(canvas.id, editingCanvasName);
+                              }}
+                            >
+                              <input
+                                autoFocus
+                                value={editingCanvasName}
+                                onChange={(e) => setEditingCanvasName(e.target.value)}
+                                onBlur={() => renameCanvas(canvas.id, editingCanvasName)}
+                                className="flex-1 bg-white border border-[#C2410C] px-2 py-0.5 rounded outline-none text-xs text-[#1a1a1a]"
+                              />
+                            </form>
+                          ) : (
+                            <div className="font-bold flex items-center justify-between">
+                              <button 
+                                onClick={() => {
+                                  setActiveCanvasId(canvas.id);
+                                  setIsCanvasListOpen(false);
+                                }}
+                                className="flex-1 text-left truncate"
+                              >
+                                {canvas.name}
+                              </button>
+                              <div className="flex items-center gap-2">
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingCanvasId(canvas.id);
+                                    setEditingCanvasName(canvas.name);
+                                  }}
+                                  className="p-1 hover:text-[#C2410C] opacity-0 group-hover:opacity-100 transition-opacity"
+                                  title={t('canvas.rename')}
+                                >
+                                  <Edit3 className="w-3 h-3" />
+                                </button>
+                                {activeCanvasId === canvas.id && <div className="w-1.5 h-1.5 rounded-full bg-[#C2410C]" />}
+                              </div>
+                            </div>
+                          )}
+                          <div className="text-[10px] text-[#8c8a84]">{new Date(canvas.createdAt).toLocaleString()}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="p-1 mt-1 border-t border-[#F4F1ED]">
+                      <button 
+                        onClick={createNewCanvas}
+                        className="w-full text-left px-3 py-2 text-sm text-[#C2410C] font-bold hover:bg-[#F4F1ED] rounded-lg flex items-center gap-2 transition-colors"
+                      >
+                        <Plus className="w-4 h-4" />
+                        {t('canvas.new_canvas')}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+          </div>
+
+          {/* Transformed content container */}
+          <div className="absolute top-6 right-6 flex items-center z-40 gap-3">
+              <button 
+                onClick={handlePublish}
+                disabled={selectedNodes.size === 0 || isAiLoading}
+                className="bg-[#C2410C] text-white p-3 rounded-full shadow-md hover:scale-105 transition-all disabled:opacity-50 flex items-center justify-center group border border-[#a0350a]/50"
+                title={isAiLoading ? t('nodes.ai_loading') : `${t('sidebar.publish')} (${selectedNodes.size})`}
+              >
+                {isAiLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <PenLine className="w-5 h-5" />}
+              </button>
+              
+              <button
+                onClick={() => {
+                  if (!document.fullscreenElement) {
+                    mainRef.current?.requestFullscreen();
+                  } else {
+                    document.exitFullscreen();
+                  }
+                }}
+                className="bg-white text-[#1a1a1a] p-3 rounded-full shadow-md hover:scale-105 transition-all border border-[#E6E4DF] flex items-center justify-center hover:border-[#C2410C] hover:text-[#C2410C]"
+                title={isFullscreen ? t('canvas.full_screen') : t('canvas.full_screen')}
+              >
+                {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+              </button>
+          </div>
+
+          <div 
+            ref={contentContainerRef}
+            className="absolute inset-0 origin-top-left z-0 pointer-events-none"
+            style={{ transform: `translate(${canvasTransform.x}px, ${canvasTransform.y}px) scale(${canvasTransform.scale})` }}
+          >
+            {/* Connection Lines (SVG) */}
+            <svg ref={svgRef} data-connecting-from={connectingFrom || ''} className="absolute inset-0 overflow-visible z-10 w-[1px] h-[1px]">
+              {edges.map(edge => (
+                <g 
+                  key={edge.id} 
+                  data-edge-id={edge.id} 
+                  data-edge-from={edge.from} 
+                  data-edge-to={edge.to}
+                  className="group cursor-pointer pointer-events-auto"
+                  onMouseEnter={() => setHoveredEdgeId(edge.id)}
+                  onMouseLeave={() => setHoveredEdgeId(null)}
+                >
+                  {/* Visual Line */}
+                  <line 
+                    className="node-connector transition-colors group-hover:stroke-[#C2410C]" 
+                    style={{ strokeWidth: 2, stroke: '#d1cfca', pointerEvents: 'none' }} 
+                  />
+                  {/* Wider Hit Area */}
+                  <line 
+                    className="hit-area" 
+                    style={{ strokeWidth: 20, stroke: 'transparent', pointerEvents: 'auto' }} 
+                  />
+                </g>
+              ))}
+              <line id="temp-edge" className="node-connector pointer-events-none" style={{ strokeWidth: 2, stroke: '#C2410C', strokeDasharray: '5,5', display: connectingFrom ? 'block' : 'none' }} />
+            </svg>
+
+            <div ref={edgeLabelsRef} className="absolute inset-0 pointer-events-none z-20 w-[1px] h-[1px]">
+              {edges.map(edge => (
+                <button
+                  key={`btn-${edge.id}`}
+                  data-edge-btn={edge.id}
+                  className={`absolute transform -translate-x-1/2 -translate-y-1/2 w-5 h-5 bg-white border border-[#C2410C] text-[#C2410C] hover:bg-[#C2410C] hover:text-white shadow-sm rounded-full flex items-center justify-center transition-all pointer-events-auto z-10 ${hoveredEdgeId === edge.id ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}
+                  onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); deleteEdge(edge.id); }}
+                  onMouseEnter={() => setHoveredEdgeId(edge.id)}
+                  onMouseLeave={() => setHoveredEdgeId(null)}
+                  style={{ top: -100, left: -100 }}
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              ))}
+            </div>
+
+            <div className="absolute inset-0 z-30 w-[1px] h-[1px] pointer-events-none"> 
+              {/* All Nodes from Database */}
+              {dynamicNodes.map((node: any) => {
+                const rotation = 
+                  (node.type === 'note' || node.type === 'text') ? (node.layout === 0 || node.layout === undefined ? 1 : 0) :
+                  (node.type === 'theme') ? (node.layout === 0 || node.layout === undefined ? -1 : 0) :
+                  (node.type === 'image') ? -1 :
+                  (node.type === 'video') ? 1 : 0;
+
+                return (
+                  <DraggableNode 
+                    key={node.id} 
+                    id={node.id} nodesRef={nodesRef} isConnecting={connectingFrom !== null} onLink={handleLink}
+                    initialX={node.x} initialY={node.y} 
+                    initialWidth={node.width} initialHeight={node.height}
+                    onDelete={() => removeNodeId(node.id)} scale={canvasTransform.scale}
+                    rotation={rotation}
+                    onCycleLayout={() => {
+                    const currentLayout = node.layout || 0;
+                    db.nodes.update(node.id, { layout: (currentLayout + 1) % 4 });
+                  }}
+                  isSelected={selectedNodes.has(node.id)}
+                  isEditing={editingNodeId === node.id}
+                  onToggleSelect={() => toggleNodeSelection(node.id)}
+                  allowPalette={true}
+                  onDragEnd={handleNodeDragEnd}
+                  onResizeEnd={(size) => {
+                    db.nodes.update(node.id, size);
+                  }}
+                >
+                  {node.type === 'theme' && (
+                    <div 
+                      className={`w-full h-full shadow-xl border-2 transition-all duration-500 flex flex-col ${
+                        node.layout === 1 ? 'p-8 border-l-4 border-[#C2410C] bg-white border-[#E6E4DF]' :
+                        node.layout === 2 ? 'p-10 bg-[#1a1a1a] text-white border-[#333] shadow-2xl' :
+                        node.layout === 3 ? 'p-6 border-2 border-black bg-white' : 
+                        'p-6 bg-white border-[#E6E4DF]'
+                      }`}
+                      style={{ outline: '1px solid transparent' }}
+                    >
+                      <div className={`flex items-center space-x-2 mb-3 ${node.layout === 3 ? 'hidden' : ''}`}>
+                        <Sparkles className={`w-3 h-3 ${node.layout === 2 ? 'text-[#C2410C]' : 'text-[#C2410C]'}`} />
+                        <span className={`text-[10px] font-sans font-bold uppercase tracking-widest ${node.layout === 2 ? 'text-[#8c8a84]' : 'text-[#C2410C]'}`}>{t('nodes.theme')}</span>
+                        <div className={`h-px flex-1 ${node.layout === 2 ? 'bg-white/10' : 'bg-[#F4F1ED]'}`}></div>
+                      </div>
+
+                      {node.layout === 3 && (
+                        <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-black mb-6 flex justify-between items-center">
+                          <span>Manifesto // 01</span>
+                          <div className="flex gap-1">
+                            <div className="w-1.5 h-1.5 bg-black rounded-full"></div>
+                            <div className="w-1.5 h-1.5 bg-[#C2410C] rounded-full"></div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className={`flex-1 overflow-y-auto min-h-0 pr-2 custom-scrollbar ${editingNodeId === node.id ? 'select-text' : ''}`}>
+                        <h3 
+                          className={`font-bold leading-tight focus:outline-none rounded px-1 -mx-1 transition-all cursor-text ${
+                            node.layout === 1 ? 'text-3xl font-serif mb-4' :
+                            node.layout === 2 ? 'text-4xl tracking-tighter mb-4' :
+                            node.layout === 3 ? 'text-xl font-mono uppercase mb-4' :
+                            'text-2xl text-[#1a1a1a] mb-2'
+                          }`} 
+                          contentEditable 
+                          suppressContentEditableWarning
+                          onBlur={(e) => db.nodes.update(node.id, { content: e.currentTarget.innerText })}
+                        >
+                          {node.content}
+                        </h3>
+
+                        <p className={`focus:outline-none rounded px-1 -mx-1 transition-all cursor-text ${
+                          node.layout === 1 ? 'text-base font-serif leading-relaxed italic text-[#5a5a54]' :
+                          node.layout === 2 ? 'text-sm font-sans opacity-60 leading-relaxed' :
+                          node.layout === 3 ? 'text-xs font-mono leading-5 bg-[#F4F1ED] p-4 text-[#1a1a1a] border-l-2 border-black' :
+                          'text-sm font-serif leading-relaxed text-[#4a4a44]'
+                        }`} contentEditable suppressContentEditableWarning>
+                          {node.description || 'Central research objective for the current workspace.'}
+                        </p>
+                      </div>
+
+                      <div className={`mt-6 pt-4 flex justify-between items-center ${node.layout === 2 ? 'text-white/30 border-t border-white/10' : 'text-[#8c8a84] border-t border-[#F4F1ED]'}`}>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-1 h-1 rounded-full ${node.layout === 2 ? 'bg-[#C2410C]' : 'bg-[#C2410C]'}`}></div>
+                          <span className="text-[10px] font-sans font-medium uppercase tracking-widest">{node.layout === 3 ? 'LATENT_SPACE' : 'Spatial Encoding'}</span>
+                        </div>
+                        <button className={`${node.layout === 2 ? 'text-white/40 hover:text-white' : 'text-[#C2410C]'} hover:scale-110 transition-transform`}><Maximize2 className="w-3 h-3" /></button>
+                      </div>
+                    </div>
+                  )}
+                  {(node.type === 'note' || node.type === 'text') && (
+                    <div 
+                      className={`w-full h-full shadow-lg transition-all duration-500 border-2 flex flex-col ${
+                        node.layout === 1 ? 'p-8 font-serif text-lg leading-8 bg-white border-[#E6E4DF]' :
+                        node.layout === 2 ? 'p-4 bg-[#F4F1ED] border-transparent shadow-sm' :
+                        node.layout === 3 ? 'p-10 border-2 border-[#1a1a1a] shadow-[8px_8px_0px_0px_rgba(0,0,0,0.05)] bg-white' :
+                        'p-5 bg-white border-[#E6E4DF]'
+                      }`}
+                      style={{ outline: '1px solid transparent' }}
+                    >
+                      <div className={`flex items-center space-x-2 mb-2 ${node.layout === 3 ? 'mb-6' : ''}`}>
+                        <span className={`text-[10px] font-sans font-bold uppercase tracking-wider ${
+                          node.layout === 3 ? 'bg-[#1a1a1a] text-white px-2 py-0.5' : 'text-[#8c8a84]'
+                        }`}>
+                          {node.type === 'note' ? t('nodes.observation') : t('nodes.note')}
+                        </span>
+                        {node.layout === 1 && <div className="h-px flex-1 bg-[#C2410C]/20"></div>}
+                      </div>
+                      
+                      <div className="flex-1 overflow-y-auto min-h-0 pr-1 custom-scrollbar">
+                        {editingNodeId === node.id ? (
+                          <div 
+                            autoFocus
+                            className={`focus:outline-none rounded px-1 -mx-1 transition-all cursor-text min-h-[50px] select-text empty:before:content-['${t('nodes.type_something')}'] empty:before:text-gray-300 ${
+                              node.layout === 1 ? 'text-xl text-[#1a1a1a] font-serif' :
+                              node.layout === 2 ? 'text-xs font-mono leading-5 text-[#5a5a54]' :
+                              node.layout === 3 ? 'text-2xl font-bold tracking-tight text-[#1a1a1a]' :
+                              'text-sm font-serif leading-relaxed text-[#4a4a44]'
+                            }`} 
+                            contentEditable 
+                            suppressContentEditableWarning
+                            onBlur={(e) => {
+                              db.nodes.update(node.id, { content: e.currentTarget.innerText });
+                              setEditingNodeId(null);
+                            }}
+                          >
+                            {node.content}
+                          </div>
+                        ) : (
+                          <div 
+                            onClick={() => setEditingNodeId(node.id)}
+                            className={`markdown-body cursor-text min-h-[50px] ${
+                              node.layout === 1 ? 'text-xl text-[#1a1a1a] font-serif' :
+                              node.layout === 2 ? 'text-xs font-mono leading-5 text-[#5a5a54]' :
+                              node.layout === 3 ? 'text-2xl font-bold tracking-tight text-[#1a1a1a]' :
+                              'text-sm font-serif leading-relaxed text-[#4a4a44]'
+                            }`}
+                          >
+                            <Markdown>{node.content || `_${t('nodes.empty_note')}_`}</Markdown>
+                          </div>
+                        )}
+                      </div>
+
+                      {node.layout === 3 && (
+                        <div className="mt-4 flex justify-end">
+                          <Bot className="w-4 h-4 text-[#1a1a1a] opacity-10" />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {node.type === 'ai' && (
+                    <div 
+                      className="w-full h-full bg-[#F4F1ED] p-6 shadow-lg border border-[#E6E4DF] flex flex-col"
+                    >
+                      <div className="flex justify-between items-start mb-3 sticky top-0 bg-[#F4F1ED]">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-5 h-5 bg-[#C2410C] rounded-full flex items-center justify-center text-white text-[10px]"><Bot className="w-3 h-3" /></div>
+                          <span className="text-[10px] font-sans font-bold uppercase tracking-widest text-[#1a1a1a]">{t('nodes.ai_refinement')}</span>
+                        </div>
+                      </div>
+                      <div className="flex-1 overflow-y-auto min-h-0 pr-1 custom-scrollbar">
+                        {editingNodeId === node.id ? (
+                          <div 
+                            autoFocus
+                            className="whitespace-pre-wrap text-sm text-[#4a4a44] font-serif leading-relaxed focus:outline-none bg-[#EAE7E2]/50 rounded px-1 -mx-1 transition-colors cursor-text min-h-[40px]" 
+                            contentEditable 
+                            suppressContentEditableWarning
+                            onBlur={(e) => {
+                              db.nodes.update(node.id, { content: e.currentTarget.innerText });
+                              setEditingNodeId(null);
+                            }}
+                          >
+                            {node.content}
+                          </div>
+                        ) : (
+                          <div 
+                            onClick={() => setEditingNodeId(node.id)}
+                            className="markdown-body text-sm text-[#4a4a44] font-serif leading-relaxed cursor-text min-h-[40px]"
+                          >
+                            <Markdown>{node.content}</Markdown>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {node.type === 'image' && (
+                    <div 
+                      className="w-full h-full bg-white p-2 shadow-lg border-2 border-[#E6E4DF] flex flex-col"
+                      style={{ outline: '1px solid transparent' }}
+                    >
+                      <div className="w-full bg-[#EAE7E2] rounded flex items-center justify-center border border-dashed border-[#d1cfca] overflow-hidden pointer-events-none flex-1">
+                        <img alt="Atmospheric Library" className="w-full h-full object-cover shadow-inner pointer-events-none" src={node.content}/>
+                      </div>
+                    </div>
+                  )}
+                  {node.type === 'video' && (
+                    <div 
+                      className="w-full h-full bg-white p-2 shadow-lg border-2 border-[#E6E4DF] flex flex-col"
+                      style={{ outline: '1px solid transparent' }}
+                    >
+                      <div className="w-full bg-[#1a1a1a] rounded flex items-center justify-center border border-dashed border-[#d1cfca] overflow-hidden flex-1">
+                        <video className="w-full h-full object-cover pointer-events-auto" controls src={node.content}/>
+                      </div>
+                    </div>
+                  )}
+                  {node.type === 'agent' && (
+                    <div className="w-full h-full bg-[#1a1a1a] text-[#FAF9F6] p-4 shadow-2xl border border-[#333] rounded-lg relative overflow-hidden group flex flex-col">
+                      <div className="absolute inset-0 bg-gradient-to-br from-[#C2410C]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                      <div className="flex items-center gap-3 mb-2 relative z-10">
+                        <div className="w-8 h-8 rounded bg-[#333] flex items-center justify-center text-[#C2410C]">
+                          <Bot className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold leading-tight">{agentConfigs.find(a => a.id === node.agentConfigId)?.name || 'Agent'}</div>
+                          <div className="text-[10px] text-[#8c8a84] font-mono uppercase tracking-wider">{agentConfigs.find(a => a.id === node.agentConfigId)?.role || 'Assistant'}</div>
+                        </div>
+                      </div>
+                      <div className="text-xs text-[#a09f9c] mt-2 border-t border-[#333] pt-2 relative z-10">
+                        {t('nodes.connect_notes')}
+                      </div>
+                    </div>
+                  )}
+                </DraggableNode>
+              );
+            })}
+            </div>
+
+          </div>
+
+        {/* AI Prompt Bar & Toolbar */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-40">
+            <div className={`bg-white rounded-2xl shadow-2xl border border-[#E6E4DF] p-2 flex items-center space-x-2 ring-4 ring-[#F4F1ED]/50 transition-all ${isAiLoading ? 'opacity-80' : ''}`}>
+              <div className="flex items-center gap-1 pl-2 border-r border-[#E6E4DF] pr-3 mr-1 relative group">
+                <button onClick={addTextNode} title={t('sidebar.new_note')} className="w-8 h-8 flex items-center justify-center text-[#5a5a54] hover:text-[#1a1a1a] hover:bg-[#F4F1ED] rounded-lg cursor-pointer transition-colors">
+                  <Plus className="w-4 h-4" />
+                </button>
+                <div className="relative group/agent">
+                  <button title={t('sidebar.agents')} className="w-8 h-8 flex items-center justify-center text-[#5a5a54] hover:text-[#1a1a1a] hover:bg-[#F4F1ED] rounded-lg cursor-pointer transition-colors">
+                    <Bot className="w-4 h-4" />
+                  </button>
+                  {/* Dropdown for agents */}
+                  <div className="absolute bottom-full left-0 mb-2 w-48 bg-white border border-[#E6E4DF] rounded-xl shadow-xl opacity-0 invisible group-hover/agent:opacity-100 group-hover/agent:visible transition-all flex flex-col p-1">
+                    <div className="px-3 py-2 text-[10px] font-bold text-[#8c8a84] uppercase tracking-wider font-mono">{t('sidebar.agents')}</div>
+                    {agentConfigs.map(agent => (
+                      <button key={agent.id} onClick={async () => {
+                        const cx = window.innerWidth / 2;
+                        const cy = window.innerHeight / 2;
+                        const t = transformRef.current;
+                        const x = (cx - t.x) / t.scale - 150 + (Math.random() * 50);
+                        const y = (cy - t.y) / t.scale - 100 + (Math.random() * 50);
+                        await db.nodes.add({ id: crypto.randomUUID(), canvasId: activeCanvasId, type: 'agent', agentConfigId: agent.id, x, y });
+                      }} className="text-left px-3 py-2 text-sm text-[#1a1a1a] hover:bg-[#F4F1ED] rounded-lg mb-1 flex items-center gap-2">
+                         <div className="w-2 h-2 rounded-full bg-[#C2410C]"></div>
+                         <div>
+                           <div className="font-bold">{agent.name}</div>
+                           <div className="text-[10px] text-[#5a5a54] leading-tight">{agent.role}</div>
+                         </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <label title="Upload Media" className="w-8 h-8 flex items-center justify-center text-[#5a5a54] hover:text-[#1a1a1a] hover:bg-[#F4F1ED] rounded-lg cursor-pointer transition-colors m-0">
+                  <ImageIcon className="w-4 h-4" />
+                  <input type="file" accept="image/*,video/*" className="hidden" onChange={addFileNode} />
+                </label>
+              </div>
+              <div className="pl-1 text-[#C2410C]">
+                 <Wand2 className={`w-5 h-5 ${isAiLoading ? 'animate-pulse' : ''}`} />
+              </div>
+              <input 
+                className="flex-1 bg-transparent border-none focus:outline-none focus:ring-0 font-sans text-sm py-3 text-[#1a1a1a] placeholder-[#8c8a84] disabled:opacity-50" 
+                placeholder={t('ai.input_placeholder')} 
+                type="text"
+                value={aiPrompt}
+                onChange={e => setAiPrompt(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleAiSubmit()}
+                disabled={isAiLoading}
+              />
+              <button 
+                onClick={handleAiSubmit}
+                disabled={isAiLoading}
+                className="bg-[#C2410C] text-white p-2.5 rounded-xl font-sans text-sm font-bold shadow-md flex items-center justify-center hover:bg-[#a0350a] transition-colors disabled:opacity-75 shrink-0"
+              >
+                {isAiLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Zoom Controls */}
+          <div className="absolute bottom-8 right-6 flex items-center bg-white/80 backdrop-blur-sm border border-[#E6E4DF] rounded-md px-3 py-1.5 shadow-sm font-sans text-[10px] font-bold text-[#8c8a84] space-x-3 z-40">
+            <button 
+              className="hover:text-[#1a1a1a] transition-colors"
+              onClick={() => setCanvasTransform(p => ({ ...p, scale: Math.max(0.1, p.scale / 1.1) }))}
+            >{t('canvas.zoom')} -</button>
+            <span className="flex items-center gap-1 w-12 justify-center"><ZoomIn className="w-3 h-3" /> {Math.round(canvasTransform.scale * 100)}%</span>
+            <button 
+              className="hover:text-[#1a1a1a] transition-colors"
+              onClick={() => setCanvasTransform(p => ({ ...p, scale: Math.min(5, p.scale * 1.1) }))}
+            >{t('canvas.zoom')} +</button>
+          </div>
+        </main>
+        )}
+
+        {activeTab === 'reference' && <Reference articles={articles} activeReferenceId={activeReferenceId} setActiveReferenceId={setActiveReferenceId} />}
+        {activeTab === 'lab' && <ResearchLab aiConfig={aiConfig} />}
+        {/* Agents in Agents Studio need consistent write access */}
+        {activeTab === 'agents' && <AgentsStudio agentConfigs={agentConfigs} setAgentConfigs={async (newConfigs: any) => {
+          // This ensures updates to agents from studio are saved to DB
+          for (const config of newConfigs) {
+            await db.agents.put(config);
+          }
+        }} aiConfig={aiConfig} />}
+        <AISettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} config={aiConfig} setConfig={setAiConfig} />
+      </div>
+    </div>
+  );
+}
+
+
+function Reference({ articles, activeReferenceId, setActiveReferenceId }: { articles: any[], activeReferenceId: string, setActiveReferenceId: (id: string) => void }) {
+  const { t } = useTranslation();
+  const activeArticle = articles.find(a => a.id === activeReferenceId) || articles[0];
+  const [isFullScreen, setIsFullScreen] = useState(false);
+  const [noteStatus, setNoteStatus] = useState('');
+  const noteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleNoteChange = () => {
+    setNoteStatus('Saving...');
+    if (noteTimeoutRef.current) clearTimeout(noteTimeoutRef.current);
+    noteTimeoutRef.current = setTimeout(() => {
+      setNoteStatus('Saved');
+      setTimeout(() => setNoteStatus(''), 2000);
+    }, 1000);
+  };
+
+  return (
+    <div className="flex-1 flex bg-[#FAF9F6] paper-texture overflow-hidden">
+      {/* Search Sidebar */}
+      {!isFullScreen && (
+      <div className="w-64 border-r border-[#E6E4DF] bg-white flex flex-col z-10 shadow-sm relative shrink-0">
+        <div className="p-4 border-b border-[#E6E4DF] bg-[#F4F1ED]/50 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <h2 className="font-bold text-sm font-sans text-[#1a1a1a] flex items-center gap-2">
+              <Library className="w-4 h-4" />
+              {t('reference.index_title')}
+            </h2>
+            <button className="text-[#8c8a84] hover:text-[#1a1a1a] transition-colors p-1 rounded hover:bg-[#EAE7E2]" title={t('sidebar.new_note')}>
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="mt-4 relative">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#8c8a84]" />
+            <input type="text" placeholder={t('reference.search_refs')} className="w-full text-xs font-sans bg-white border border-[#E6E4DF] pl-9 pr-3 py-2 rounded-md focus:outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C] transition-all shadow-sm" />
+          </div>
+          <div className="flex gap-2 mt-3 overflow-x-auto pb-1 scrollbar-hide">
+             <span className="text-[9px] uppercase tracking-wider bg-[#EAE7E2] px-2 py-0.5 rounded text-[#5a5a54] whitespace-nowrap cursor-pointer hover:bg-[#d1cfca]">Journal</span>
+             <span className="text-[9px] uppercase tracking-wider bg-[#EAE7E2] px-2 py-0.5 rounded text-[#5a5a54] whitespace-nowrap cursor-pointer hover:bg-[#d1cfca]">Images</span>
+             <span className="text-[9px] uppercase tracking-wider bg-[#EAE7E2] px-2 py-0.5 rounded text-[#5a5a54] whitespace-nowrap cursor-pointer hover:bg-[#d1cfca]">Maps</span>
+          </div>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+          {articles.map(article => (
+            <div 
+              key={article.id}
+              onClick={() => setActiveReferenceId(article.id)}
+              className={`p-3 border rounded-md cursor-pointer transition-all relative overflow-hidden group ${activeReferenceId === article.id ? 'bg-[#F4F1ED] border-[#C2410C]/30' : 'bg-white border-transparent hover:border-[#E6E4DF] hover:bg-[#FAF9F6] hover:shadow-sm'}`}
+            >
+              <div className="flex justify-between items-start mb-1.5">
+                <span className={`${activeReferenceId === article.id ? 'text-[#C2410C]' : 'text-[#8c8a84]'} text-[10px] uppercase tracking-wider font-mono font-bold`}>{article.type}</span>
+                <span className="text-[#8c8a84] text-[10px]">{article.date}</span>
+              </div>
+              <h3 className={`font-bold text-sm leading-tight mb-1 font-serif pr-2 ${activeReferenceId === article.id ? 'text-[#1a1a1a]' : 'text-[#1a1a1a]'}`}>{article.title}</h3>
+              <p className="text-[#5a5a54] text-xs font-sans truncate">{article.content.slice(0, 50)}...</p>
+            </div>
+          ))}
+
+          {/* Static image item */}
+          <div className="p-3 bg-white border border-transparent hover:border-[#E6E4DF] hover:bg-[#FAF9F6] hover:shadow-sm rounded-md cursor-pointer transition-all">
+             <div className="flex justify-between items-start mb-1.5">
+               <span className="text-[#8c8a84] text-[10px] uppercase tracking-wider font-mono">IMG-018</span>
+               <span className="text-[#8c8a84] text-[10px]">1924</span>
+             </div>
+             <h3 className="font-bold text-[#1a1a1a] text-sm leading-tight mb-1 font-serif">Floorplan_Asylum.tiff</h3>
+             <p className="text-[#5a5a54] text-xs font-sans truncate">Scanned blueprint with annotations</p>
+          </div>
+        </div>
+      </div>
+      )}
+
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-y-auto relative bg-[#FAF9F6] border-r border-[#E6E4DF]">
+         {/* Top action bar */}
+         <div className="sticky top-0 w-full h-14 bg-white/80 backdrop-blur-md border-b border-[#E6E4DF] flex items-center justify-between px-6 z-10">
+            <div className="flex items-center gap-4 text-[#5a5a54]">
+               {!isFullScreen && <button className="hover:text-[#1a1a1a] transition-colors"><ChevronLeft className="w-5 h-5"/></button>}
+               <button onClick={() => setIsFullScreen(!isFullScreen)} className="hover:text-[#1a1a1a] transition-colors p-1 bg-white hover:bg-[#EAE7E2] rounded border border-[#E6E4DF] shadow-sm ml-[-4px]" title={isFullScreen ? "Exit Fullscreen" : "Immersive Reading"}>
+                 {isFullScreen ? <Minimize2 className="w-4 h-4"/> : <Maximize2 className="w-4 h-4"/>}
+               </button>
+               <button className="text-xs font-sans font-medium hover:text-[#1a1a1a]">Contents</button>
+            </div>
+            <div className="flex items-center gap-3">
+               <button className="text-xs font-sans font-medium text-[#5a5a54] hover:text-[#1a1a1a] bg-white border border-[#E6E4DF] px-3 py-1.5 rounded shadow-sm flex items-center gap-2">
+                 <Link2 className="w-3.5 h-3.5"/> {t('reference.citation')}
+               </button>
+            </div>
+         </div>
+
+         {/* Document Paper */}
+         <div className="max-w-2xl mx-auto my-12 bg-white border border-[#E6E4DF] shadow-md relative">
+            <div className="absolute -top-px -left-px -right-px h-1 bg-[#C2410C]"></div>
+            
+            <div className="p-16">
+              {/* Meta Header */}
+              <div className="flex justify-between items-end border-b-2 border-[#1a1a1a] pb-6 mb-10">
+                 <div>
+                    <div 
+                      className="text-[#8c8a84] font-mono text-xs uppercase tracking-widest mb-3 focus:outline-none hover:bg-[#EAE7E2]/50 focus:bg-[#EAE7E2]/50 rounded px-1 -mx-1 transition-colors cursor-text w-max" 
+                      contentEditable 
+                      suppressContentEditableWarning
+                      onBlur={(e) => {
+                        if (activeArticle) db.articles.update(activeArticle.id, { type: e.currentTarget.innerText });
+                      }}
+                    >
+                      Document // {activeArticle?.type}
+                    </div>
+                    <h1 
+                      className="font-serif text-4xl font-bold text-[#1a1a1a] leading-tight max-w-xl focus:outline-none hover:bg-[#EAE7E2]/50 focus:bg-[#EAE7E2]/50 rounded px-2 -mx-2 transition-colors cursor-text" 
+                      contentEditable 
+                      suppressContentEditableWarning
+                      onBlur={(e) => {
+                        if (activeArticle) db.articles.update(activeArticle.id, { title: e.currentTarget.innerText });
+                      }}
+                    >
+                      {activeArticle?.title}
+                    </h1>
+                 </div>
+                 <div className="text-right text-xs font-sans text-[#5a5a54] space-y-1">
+                    <p><strong>Author:</strong> <span className="focus:outline-none hover:bg-[#EAE7E2]/50 focus:bg-[#EAE7E2]/50 rounded px-1 -mx-1 transition-colors cursor-text" contentEditable suppressContentEditableWarning>Scribe AI</span></p>
+                    <p><strong>Published:</strong> <span className="focus:outline-none hover:bg-[#EAE7E2]/50 focus:bg-[#EAE7E2]/50 rounded px-1 -mx-1 transition-colors cursor-text" contentEditable suppressContentEditableWarning>{activeArticle?.date}</span></p>
+                 </div>
+              </div>
+
+              {/* Content */}
+              <div className="font-serif text-lg leading-relaxed text-[#1a1a1a] space-y-6">
+                {activeArticle?.content.split('\n\n').map((paragraph: string, i: number) => (
+                  <p 
+                    key={i} 
+                    className="focus:outline-none hover:bg-[#EAE7E2]/50 focus:bg-[#EAE7E2]/50 rounded px-2 -mx-2 transition-colors cursor-text" 
+                    contentEditable 
+                    suppressContentEditableWarning
+                    onBlur={(e) => {
+                      if (!activeArticle) return;
+                      const paragraphs = activeArticle.content.split('\n\n');
+                      paragraphs[i] = e.currentTarget.innerText;
+                      db.articles.update(activeArticle.id, { content: paragraphs.join('\n\n') });
+                    }}
+                  >
+                    {paragraph}
+                  </p>
+                ))}
+              </div>
+            </div>
+         </div>
+      </div>
+
+      {/* Meta Sidebar (Right) */}
+      {!isFullScreen && (
+      <div className="w-72 bg-white flex-shrink-0 flex flex-col font-sans text-xs">
+         <div className="p-4 border-b border-[#E6E4DF] font-bold text-[#1a1a1a] h-14 flex items-center bg-[#F4F1ED]/50">{t('reference.metadata_notes')}</div>
+         <div className="p-6 space-y-8 overflow-y-auto">
+            <div>
+               <div className="flex items-center justify-between mb-3">
+                 <h4 className="text-[#8c8a84] font-semibold uppercase tracking-wider text-[10px] flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-[#C2410C]"></div>{t('reference.tags')}</h4>
+                 <button className="text-[#8c8a84] hover:text-[#1a1a1a] transition-colors p-0.5 rounded hover:bg-[#EAE7E2]" title={t('sidebar.new_note')}><Plus className="w-3.5 h-3.5" /></button>
+               </div>
+               <div className="flex flex-wrap gap-2">
+                 <span className="bg-[#EAE7E2] hover:bg-[#d1cfca] cursor-pointer transition-colors text-[#5a5a54] px-2 py-1 rounded">psychology</span>
+                 <span className="bg-[#EAE7E2] hover:bg-[#d1cfca] cursor-pointer transition-colors text-[#5a5a54] px-2 py-1 rounded">architecture</span>
+                 <span className="bg-[#EAE7E2] hover:bg-[#d1cfca] cursor-pointer transition-colors text-[#5a5a54] px-2 py-1 rounded">theory</span>
+               </div>
+            </div>
+
+            <div>
+               <div className="flex items-center justify-between mb-3">
+                 <h4 className="text-[#8c8a84] font-semibold uppercase tracking-wider text-[10px] flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-[#1a1a1a]"></div>{t('reference.linked_drafts')}</h4>
+                 <button className="text-[#8c8a84] hover:text-[#1a1a1a] transition-colors p-0.5 rounded hover:bg-[#EAE7E2]" title={t('canvas.link_note')}><Plus className="w-3.5 h-3.5" /></button>
+               </div>
+               <div className="space-y-2">
+                  <div className="flex items-start gap-3 p-3 bg-[#FAF9F6] border border-[#E6E4DF] hover:border-[#C2410C]/50 rounded cursor-pointer transition-colors">
+                     <BookOpen className="w-4 h-4 text-[#C2410C] mt-0.5 shrink-0" />
+                     <div>
+                       <div className="font-semibold text-[#1a1a1a] text-[11px] mb-0.5">The Architect's Dilemma</div>
+                       <div className="text-[#8c8a84] text-[10px]">Referenced in Ch. 2</div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+
+            <div>
+               <div className="flex items-center justify-between mb-3">
+                 <h4 className="text-[#8c8a84] font-semibold uppercase tracking-wider text-[10px] flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-[#5a5a54]"></div>{t('reference.private_notes')}</h4>
+                 {noteStatus && <span className={`text-[10px] ${noteStatus === 'Saved' ? 'text-green-600' : 'text-[#8c8a84]'}`}>{noteStatus}</span>}
+               </div>
+               <textarea onChange={handleNoteChange} className="w-full h-40 bg-[#FAF9F6] border border-[#E6E4DF] rounded-md p-3 text-[#5a5a54] resize-none focus:outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C] shadow-sm" placeholder={t('reference.notes_placeholder')}></textarea>
+            </div>
+         </div>
+      </div>
+      )}
+    </div>
+  );
+}
+
+function ResearchLab({ aiConfig }: { aiConfig: any }) {
+  const { t } = useTranslation();
+  const [phase, setPhase] = useState<'idle' | 'planning' | 'plan_ready' | 'researching' | 'completed'>('idle');
+  const [query, setQuery] = useState('');
+  const [activeStep, setActiveStep] = useState(0);
+  const [researchPlan, setResearchPlan] = useState<{title: string, desc: string}[]>([]);
+  const [researchReport, setResearchReport] = useState<{intro: string, points: {title: string, text: string}[], conclusion: string}>({
+    intro: '', points: [], conclusion: ''
+  });
+
+  const generatePlan = async () => {
+    setPhase('planning');
+    try {
+      const text = await callUniversalAI({
+        config: aiConfig,
+        prompt: `You are a research agent. The user is writing a specific manuscript and wants to investigate: "${query}". 
+Create a 3-step research plan that analyzes this topic within their work. 
+Respond ONLY in valid JSON format like: [{"title": "Step 1 Title", "desc": "Step 1 Description"}, {"title": "Step 2 Title", "desc": "Step 2 Description"}]`
+      });
+      const jsonStr = text?.replace(/```json|```/g, '').trim() || '[]';
+      const plan = JSON.parse(jsonStr);
+      setResearchPlan(plan);
+      setPhase('plan_ready');
+    } catch (e) {
+      console.error(e);
+      setResearchPlan([
+         { title: "Archive Extraction", desc: "Scan personal drafts and reference library for direct mentions." },
+         { title: "Thematic Networking", desc: "Cross-reference dialogue with established metaphors." },
+         { title: "Synthesis & Drafting", desc: "Generate a comprehensive deep-dive report." }
+      ]);
+      setPhase('plan_ready');
+    }
+  };
+
+  const handleStart = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!query.trim()) return;
+    generatePlan();
+  };
+
+  const executeResearch = async () => {
+    setPhase('researching');
+    setActiveStep(0);
+    const timer1 = setTimeout(() => setActiveStep(1), 2000);
+    const timer2 = setTimeout(() => setActiveStep(2), 4000);
+    
+    try {
+      const text = await callUniversalAI({
+        config: aiConfig,
+        prompt: `You are a research synthesizing agent. Based on the user's query: "${query}", generate a detailed research report.
+Respond ONLY in valid JSON format matching this structure:
+{
+  "intro": "Introduction paragraph",
+  "points": [
+    {"title": "Point 1 Title", "text": "Detailed analysis of this point"}
+  ],
+  "conclusion": "Conclusion paragraph with actionable next steps"
+}`
+      });
+      const jsonStr = text?.replace(/```json|```/g, '').trim() || '{}';
+      const report = JSON.parse(jsonStr);
+      setResearchReport(report);
+    } catch (e) {
+      console.error(e);
+      setResearchReport({
+        intro: "Based on the analysis of your interconnected drafts and referenced literature, there are interesting narrative connections.",
+        points: [
+          { title: "The Metaphor of the Blueprint", text: "The protagonist is not just losing memories, but losing the 'blueprint' of their own mind." }
+        ],
+        conclusion: "Actionable Next Steps: Rewrite chapter 4 to emphasize the architectural distortion."
+      });
+    } finally {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      setActiveStep(3);
+      setPhase('completed');
+    }
+  };
+
+  return (
+    <div className="flex-1 flex bg-[#FAF9F6] paper-texture text-[#1a1a1a] overflow-hidden">
+      {/* Side Panel: History & Status */}
+      <div className="w-64 border-r border-[#E6E4DF] flex flex-col bg-[#F4F1ED]/50 z-10 shrink-0">
+        <div className="p-4 border-b border-[#E6E4DF]">
+          <div className="flex items-center gap-2 text-[#C2410C] font-mono text-xs uppercase tracking-widest font-bold">
+            <Cpu className="w-4 h-4" />
+            {t('lab.agent_title')}
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4">
+           {phase === 'idle' ? (
+             <>
+               <h3 className="font-sans text-xs font-bold text-[#8c8a84] uppercase tracking-wider mb-4">{t('lab.past_sessions')}</h3>
+               <div className="space-y-2">
+                  <div className="p-3 bg-white border border-[#E6E4DF] rounded cursor-pointer hover:border-[#C2410C]/50 transition-colors shadow-sm">
+                     <div className="text-[#8c8a84] text-[10px] mb-1">Yesterday</div>
+                     <div className="text-sm font-sans font-medium text-[#1a1a1a]">Architectural motifs in 20th-century asylums</div>
+                  </div>
+                  <div className="p-3 bg-white border border-[#E6E4DF] rounded cursor-pointer hover:border-[#C2410C]/50 transition-colors shadow-sm">
+                     <div className="text-[#8c8a84] text-[10px] mb-1">Oct 12</div>
+                     <div className="text-sm font-sans font-medium text-[#1a1a1a]">Evolution of memory palace techniques</div>
+                  </div>
+               </div>
+             </>
+           ) : (
+             <>
+               <div className="flex justify-between items-center mb-4">
+                 <span className="font-mono text-xs text-[#8c8a84] uppercase font-bold tracking-wider">Sources Utilized</span>
+                 {phase === 'completed' && <button onClick={() => {setPhase('idle'); setQuery('');}} className="text-[#C2410C] text-xs hover:underline font-bold">{t('lab.new_research')}</button>}
+               </div>
+               <div className="space-y-3">
+                  <div className={`bg-white border border-[#E6E4DF] p-3 rounded text-sm relative shadow-sm transition-all ${activeStep >= 1 ? 'opacity-100' : 'opacity-0 translate-y-4'}`}>
+                     <div className="text-[10px] text-[#4ade80] mb-1 font-mono flex items-center gap-1 font-bold"><Check className="w-3 h-3"/> Processed</div>
+                     <div className="text-[#1a1a1a] font-serif font-bold">Ch 4: The Archive</div>
+                     <div className="text-[#5a5a54] text-xs mt-1 font-sans">Found 3 metaphors for 'decay'.</div>
+                  </div>
+                  <div className={`bg-white border border-[#E6E4DF] p-3 rounded text-sm relative shadow-sm transition-all ${activeStep >= 2 ? 'opacity-100' : 'opacity-0 translate-y-4'}`}>
+                     <div className="text-[10px] text-[#4ade80] mb-1 font-mono flex items-center gap-1 font-bold"><Check className="w-3 h-3"/> Processed</div>
+                     <div className="text-[#1a1a1a] font-serif font-bold">REF-042: Spatial Encoding</div>
+                     <div className="text-[#5a5a54] text-xs mt-1 font-sans">Linked theory of trauma and blueprints.</div>
+                  </div>
+               </div>
+             </>
+           )}
+        </div>
+      </div>
+
+      {/* Main Workspace */}
+      <div className="flex-1 relative overflow-hidden flex flex-col">
+         {phase === 'idle' && (
+           <div className="flex-1 flex flex-col items-center justify-center p-8 max-w-3xl mx-auto w-full">
+               <div className="w-16 h-16 bg-white border border-[#E6E4DF] shadow-sm rounded-2xl flex items-center justify-center mb-8">
+                <Microscope className="w-8 h-8 text-[#C2410C]" />
+              </div>
+              <h1 className="text-4xl font-serif font-bold mb-4 text-center text-[#1a1a1a]">{t('lab.investigate')}</h1>
+              <p className="text-[#5a5a54] text-center mb-8 font-sans text-lg">
+                 Enter a broad topic or specific thesis. The agent will formulate a research plan, cross-reference archives, and generate a synthesized report.
+              </p>
+              
+              <form onSubmit={handleStart} className="w-full relative group">
+                 <div className="absolute -inset-1 bg-gradient-to-r from-[#C2410C]/20 to-[#C2410C]/0 rounded-xl blur opacity-0 group-hover:opacity-100 transition duration-1000 group-hover:duration-200"></div>
+                 <input 
+                   type="text" 
+                   value={query}
+                   onChange={e => setQuery(e.target.value)}
+                   placeholder={t('lab.placeholder')}
+                   className="relative w-full bg-white border border-[#E6E4DF] text-[#1a1a1a] pl-6 pr-16 py-4 rounded-xl font-sans focus:outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C] shadow-lg text-lg placeholder-[#8c8a84]"
+                   autoFocus
+                 />
+                 <button 
+                   type="submit"
+                   className={`absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-lg flex items-center justify-center transition-all ${query.trim() ? 'bg-[#C2410C] text-white hover:bg-[#a0350a] shadow-md' : 'bg-[#F4F1ED] text-[#8c8a84] cursor-not-allowed border border-[#E6E4DF]'}`}
+                 >
+                   <ArrowRight className="w-5 h-5" />
+                 </button>
+              </form>
+              
+              <div className="mt-8 flex gap-3 text-xs font-mono text-[#5a5a54]">
+                 <span className="bg-white px-3 py-1 rounded-full border border-[#E6E4DF] shadow-sm"># spatial-encoding</span>
+                 <span className="bg-white px-3 py-1 rounded-full border border-[#E6E4DF] shadow-sm"># character-arcs</span>
+              </div>
+           </div>
+         )}
+
+         {(phase === 'planning' || phase === 'plan_ready') && (
+           <div className="flex-1 p-12 overflow-y-auto w-full max-w-4xl mx-auto">
+              <div className="mb-8 border-b border-[#E6E4DF] pb-8">
+                 <div className="text-[#C2410C] font-mono text-xs mb-2">TARGET INQUIRY</div>
+                 <h2 className="text-3xl font-serif font-bold text-[#1a1a1a]">{query}</h2>
+              </div>
+
+              <div className="bg-white border border-[#E6E4DF] shadow-md rounded-xl p-8 relative overflow-hidden">
+                {phase === 'planning' && (
+                  <div className="flex flex-col items-center justify-center py-12">
+                     <Loader2 className="w-8 h-8 text-[#C2410C] animate-spin mb-4" />
+                     <div className="font-mono text-sm text-[#8c8a84]">{t('nodes.ai_loading')}</div>
+                  </div>
+                )}
+
+                {phase === 'plan_ready' && (
+                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+                     <div className="flex items-center gap-3 mb-6">
+                        <ListChecks className="w-6 h-6 text-[#4ade80]" />
+                        <h3 className="text-xl font-sans font-bold text-[#1a1a1a]">Recommended Research Plan</h3>
+                     </div>
+                     
+                     <div className="space-y-6 mb-8">
+                        {researchPlan.length > 0 ? researchPlan.map((plan, idx) => (
+                           <div key={idx} className="flex gap-4">
+                              <div className="w-6 h-6 rounded-full bg-[#F4F1ED] border border-[#E6E4DF] flex items-center justify-center font-mono text-xs text-[#5a5a54] shrink-0 font-bold">{idx + 1}</div>
+                              <div>
+                                 <h4 className="font-bold text-[#1a1a1a] mb-1">{plan.title}</h4>
+                                 <p className="text-[#5a5a54] text-sm">{plan.desc}</p>
+                              </div>
+                           </div>
+                        )) : (
+                           <div className="text-center text-[#5a5a54]">Generating plan...</div>
+                        )}
+                     </div>
+
+                     <div className="flex justify-end pt-6 border-t border-[#E6E4DF]">
+                        <button 
+                          onClick={executeResearch}
+                          className="bg-[#C2410C] hover:bg-[#a0350a] text-white px-6 py-3 rounded-lg font-sans font-bold transition-all shadow-md flex items-center gap-2"
+                        >
+                          {t('lab.approve')} <ArrowRight className="w-4 h-4" />
+                        </button>
+                     </div>
+                  </div>
+                )}
+              </div>
+           </div>
+         )}
+
+         {phase === 'researching' && (
+           <div className="flex-1 flex items-center justify-center p-8 w-full max-w-2xl mx-auto">
+              <div className="w-full bg-white border border-[#E6E4DF] shadow-md rounded-xl p-6 font-mono text-sm">
+                 <div className="flex items-center gap-2 mb-6 text-[#C2410C] font-bold">
+                   <Terminal className="w-4 h-4" />
+                   <span>{t('lab.executing')}</span>
+                 </div>
+                 
+                 <div className="space-y-4 text-[#8c8a84]">
+                   <div className="flex items-center gap-3">
+                     <CheckCircle2 className="w-4 h-4 text-[#4ade80]" />
+                     <span className="text-[#1a1a1a]">Persistence Layer Active (Dexie/IndexedDB).</span>
+                   </div>
+                   <div className="flex items-center gap-3">
+                     <CheckCircle2 className="w-4 h-4 text-[#4ade80]" />
+                     <span className="text-[#1a1a1a]">Initialized research environment.</span>
+                   </div>
+                   
+                   <div className="flex items-center gap-3">
+                     {activeStep >= 1 ? <CheckCircle2 className="w-4 h-4 text-[#4ade80]" /> : <Loader2 className="w-4 h-4 animate-spin text-[#C2410C]" />}
+                     <span className={activeStep >= 1 ? "text-[#1a1a1a]" : "text-[#5a5a54]"}>Scanning internal drafts (4/4 complete)...</span>
+                   </div>
+
+                   {activeStep >= 1 && (
+                     <div className="flex items-center gap-3">
+                       {activeStep >= 2 ? <CheckCircle2 className="w-4 h-4 text-[#4ade80]" /> : <Loader2 className="w-4 h-4 animate-spin text-[#C2410C]" />}
+                       <span className={activeStep >= 2 ? "text-[#1a1a1a]" : "text-[#5a5a54]"}>Cross-referencing "Spatial Encoding" index (REF-042)...</span>
+                     </div>
+                   )}
+
+                   {activeStep >= 2 && (
+                     <div className="flex items-center gap-3">
+                       <Loader2 className="w-4 h-4 animate-spin text-[#C2410C]" />
+                       <span className="text-[#5a5a54]">Synthesizing final analytical report...</span>
+                     </div>
+                   )}
+                 </div>
+              </div>
+           </div>
+         )}
+
+         {phase === 'completed' && (
+            <div className="flex-1 flex overflow-hidden">
+               {/* Final Report */}
+               <div className="flex-1 bg-[#FAF9F6] text-[#1a1a1a] overflow-y-auto relative paper-texture">
+                  <div className="max-w-3xl mx-auto p-12">
+                     <div className="mb-10 text-center">
+                        <div className="text-[#C2410C] font-mono text-xs uppercase tracking-widest mb-4 flex items-center justify-center gap-2 font-bold">
+                          <FileText className="w-4 h-4" /> {t('lab.report')}
+                        </div>
+                        <h1 className="font-serif text-4xl font-bold leading-tight mb-4">{query || t('lab.report')}</h1>
+                        <div className="h-0.5 w-16 bg-[#1a1a1a] mx-auto"></div>
+                     </div>
+
+                     <div className="font-serif text-lg leading-relaxed text-[#1a1a1a] space-y-6">
+                        <p>{researchReport.intro}</p>
+                        
+                        {researchReport.points?.map((pt, idx) => (
+                           <React.Fragment key={idx}>
+                              <h3 className="font-sans font-bold text-xl mt-8 mb-4">{idx + 1}. {pt.title}</h3>
+                              <p>{pt.text}</p>
+                           </React.Fragment>
+                        ))}
+                        
+                        <div className="bg-[#fff9e6] border-l-4 border-[#C2410C] p-4 text-[#5a5a54] font-sans text-sm my-6 shadow-sm">
+                           <strong className="text-[#1a1a1a]">Agent Recommendation & Conclusion:</strong> {researchReport.conclusion}
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         )}
+      </div>
+    </div>
+  );
+}
+
+function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig }: { agentConfigs: any[], setAgentConfigs: any, aiConfig: any }) {
+  const { t } = useTranslation();
+  const [activeAgentId, setActiveAgentId] = useState<string | null>(agentConfigs[0]?.id || null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [saveStatus, setSaveStatus] = useState('');
+  const [isEnhancing, setIsEnhancing] = useState(false);
+  const [isSandboxOpen, setIsSandboxOpen] = useState(false);
+  const [sandboxMessages, setSandboxMessages] = useState<{role: 'user' | 'model'; text: string}[]>([]);
+  const [sandboxInput, setSandboxInput] = useState('');
+  const [isSandboxLoading, setIsSandboxLoading] = useState(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  const activeAgent = agentConfigs.find((a: any) => a.id === activeAgentId) || agentConfigs[0];
+
+  useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [sandboxMessages]);
+
+  const handleAddAgent = () => {
+    const newId = "agent-" + Math.random().toString(36).substr(2, 9);
+    setAgentConfigs([...agentConfigs, {
+      id: newId,
+      name: t('agents.new_persona'),
+      role: 'Assistant',
+      prompt: '',
+      temperature: 0.7,
+      creativity: 0.4
+    }]);
+    setActiveAgentId(newId);
+  };
+
+  const handleUpdateActiveAgent = (field: string, value: string | number) => {
+    if (!activeAgentId) return;
+    setAgentConfigs(agentConfigs.map((a: any) => a.id === activeAgentId ? { ...a, [field]: value } : a));
+    
+    setSaveStatus('Saving...');
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      setSaveStatus('Saved');
+      setTimeout(() => setSaveStatus(''), 2000);
+    }, 800);
+  };
+
+  const handleEnhancePrompt = async () => {
+    if (!activeAgent || !activeAgent.prompt) return;
+    setIsEnhancing(true);
+    try {
+      const newPrompt = await callUniversalAI({
+        config: aiConfig,
+        prompt: `
+          Expand and enhance the following AI System Prompt for an agent called "${activeAgent.name}" with the role "${activeAgent.role}".
+          Make it more structured, detailed, and include emotional intelligence or specific behavioral guidelines if applicable.
+          Use a professional and clear format.
+
+          Original Prompt:
+          ${activeAgent.prompt}
+
+          New Enhanced Prompt:
+        `
+      });
+      
+      handleUpdateActiveAgent('prompt', newPrompt.trim());
+    } catch (error) {
+      console.error("Enhance error:", error);
+      alert("Failed to enhance prompt. Check console.");
+    } finally {
+      setIsEnhancing(false);
+    }
+  };
+
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!sandboxInput.trim() || isSandboxLoading || !activeAgent) return;
+
+    const userMsg = sandboxInput.trim();
+    setSandboxMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+    setSandboxInput('');
+    setIsSandboxLoading(true);
+
+    try {
+      const responseText = await callUniversalAI({
+        config: aiConfig,
+        prompt: userMsg,
+        systemInstruction: activeAgent.prompt || "You are a helpful assistant.",
+        temperature: activeAgent.temperature || 0.7,
+        topP: activeAgent.creativity || 0.4
+      });
+      setSandboxMessages(prev => [...prev, { role: 'model', text: responseText }]);
+    } catch (error) {
+      console.error("Sandbox chat error:", error);
+      setSandboxMessages(prev => [...prev, { role: 'model', text: "Error: Failed to get response from persona." }]);
+    } finally {
+      setIsSandboxLoading(false);
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    if (!window.confirm(t('agents.delete_confirm'))) return;
+    const newConfigs = agentConfigs.filter((a: any) => a.id !== id);
+    setAgentConfigs(newConfigs);
+    if (activeAgentId === id) {
+      setActiveAgentId(newConfigs[0]?.id || null);
+    }
+  };
+
+  const filteredAgents = agentConfigs.filter((a: any) => a.name.toLowerCase().includes(searchQuery.toLowerCase()));
+
+  return (
+    <div className="flex-1 flex bg-[#FAF9F6] overflow-hidden relative">
+      {/* Pane 1: Persona List */}
+      <section className="w-64 flex flex-col border-r border-[#E6E4DF] bg-white z-10">
+        <div className="p-6 border-b border-[#E6E4DF] flex items-center justify-between">
+          <h3 className="font-serif text-xl font-bold text-[#1a1a1a]">{t('agents.personas')}</h3>
+          <button onClick={handleAddAgent} className="text-[#C2410C] hover:bg-[#F4F1ED] p-1 rounded-full transition-colors flex items-center justify-center">
+            <Plus className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <div className="divide-y divide-[#E6E4DF]">
+            {filteredAgents.map((agent: any) => (
+              <div 
+                key={agent.id}
+                onClick={() => {
+                  setActiveAgentId(agent.id);
+                  setSandboxMessages([]); // Clear sandbox messages when switching agent
+                }}
+                className={`p-4 cursor-pointer transition-colors border-l-4 ${activeAgentId === agent.id ? 'bg-[#F4F1ED] border-[#C2410C]' : 'hover:bg-[#F4F1ED]/50 border-transparent'}`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-[#EAE7E2] flex items-center justify-center">
+                    <Bot className={`w-5 h-5 ${activeAgentId === agent.id ? 'text-[#C2410C]' : 'text-[#8c8a84]'}`} />
+                  </div>
+                  <div>
+                    <h4 className={`font-bold ${activeAgentId === agent.id ? 'text-[#1a1a1a]' : 'text-[#5a5a54]'}`}>{agent.name}</h4>
+                    <span className="text-[10px] bg-[#E6E4DF] text-[#5a5a54] px-1.5 py-0.5 rounded uppercase tracking-wider font-mono">{agent.role}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="p-4 border-t border-[#E6E4DF] bg-[#F4F1ED]/30">
+          <div className="relative">
+            <input 
+              className="w-full pl-9 pr-4 py-2 text-xs font-sans bg-white border border-[#E6E4DF] rounded-lg focus:ring-1 focus:ring-[#C2410C] focus:border-[#C2410C] outline-none" 
+              placeholder={t('agents.search_personas')} 
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              type="text"
+            />
+            <Search className="w-4 h-4 absolute left-3 top-2 text-[#8c8a84]" />
+          </div>
+        </div>
+      </section>
+
+      {/* Pane 2: Workspace/Editor */}
+      <section className="flex-1 flex flex-col overflow-y-auto relative">
+        {activeAgent ? (
+          <>
+            <div className="sticky top-0 bg-[#FAF9F6]/80 backdrop-blur-md px-10 py-6 border-b border-[#E6E4DF] flex flex-col sm:flex-row justify-between items-start sm:items-end z-10 gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] font-mono font-bold text-[#C2410C] uppercase tracking-widest">{t('agents.active_config')}</span>
+                  <span className={`w-1.5 h-1.5 rounded-full ${saveStatus === 'Saved' ? 'bg-green-500' : saveStatus === 'Saving...' ? 'bg-yellow-400 animate-pulse' : 'bg-[#C2410C]'}`}></span>
+                  {saveStatus && <span className={`text-[10px] font-mono ${saveStatus === 'Saved' ? 'text-green-600' : 'text-yellow-600'}`}>{saveStatus}</span>}
+                </div>
+                <h1 className="font-serif text-3xl font-bold text-[#1a1a1a]">{activeAgent.name || t('agents.new_persona')}</h1>
+              </div>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setIsSandboxOpen(!isSandboxOpen)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-sans font-bold transition-all text-sm shadow-sm ${isSandboxOpen ? 'bg-[#C2410C] text-white shadow-[#C2410C]/20' : 'bg-white border border-[#E6E4DF] text-[#5a5a54] hover:bg-[#F4F1ED]'}`}
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  {isSandboxOpen ? t('agents.close_sandbox') : t('agents.test_sandbox')}
+                </button>
+                <button onClick={() => handleDelete(activeAgent.id)} className="px-6 py-2 text-[#ef4444] rounded-lg font-sans font-bold hover:bg-[#ef4444]/10 transition-all text-sm">
+                  {t('canvas.delete_note')}
+                </button>
+              </div>
+            </div>
+
+            <div className="p-10 max-w-4xl w-full mx-auto md:mx-0">
+              <div className="grid grid-cols-1 gap-12 pb-32">
+                {/* Identity Section */}
+                <div className="space-y-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-1 h-8 bg-[#C2410C] rounded-full"></div>
+                    <h3 className="text-xl font-serif font-bold text-[#1a1a1a]">{t('agents.identity_tone')}</h3>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-mono font-bold text-[#8c8a84] uppercase tracking-wider">{t('agents.persona_name')}</label>
+                      <input 
+                        className="w-full p-3 font-sans text-sm bg-white border border-[#E6E4DF] rounded-lg focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C] outline-none transition-colors" 
+                        type="text" 
+                        value={activeAgent.name}
+                        onChange={e => handleUpdateActiveAgent('name', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-mono font-bold text-[#8c8a84] uppercase tracking-wider">{t('agents.role_specialty')}</label>
+                      <input 
+                        className="w-full p-3 font-sans text-sm bg-white border border-[#E6E4DF] rounded-lg focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C] outline-none transition-colors" 
+                        type="text" 
+                        value={activeAgent.role}
+                        onChange={e => handleUpdateActiveAgent('role', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-end">
+                      <label className="text-[10px] font-mono font-bold text-[#8c8a84] uppercase tracking-wider">{t('agents.system_prompt')}</label>
+                      <div className="flex items-center gap-3">
+                        <span className={`${(activeAgent.prompt?.length || 0) > 2000 ? 'text-red-500' : 'text-[#a09f9c]'} text-[10px] font-mono`}>{(activeAgent.prompt?.length || 0)} / 2000</span>
+                        <button 
+                          onClick={handleEnhancePrompt}
+                          disabled={isEnhancing || !activeAgent.prompt}
+                          className="flex items-center gap-1.5 text-[10px] font-bold text-[#C2410C] hover:text-[#9a3412] px-2 py-1 bg-[#C2410C]/5 rounded border border-[#C2410C]/20 transition-all disabled:opacity-50"
+                        >
+                          {isEnhancing ? <Loader2 className="w-3 h-3 animate-spin"/> : <Wand2 className="w-3 h-3" />}
+                          {t('agents.enhance_prompt')}
+                        </button>
+                      </div>
+                    </div>
+                    <textarea 
+                      className={`w-full p-4 font-mono text-sm text-[#5a5a54] bg-white border ${(activeAgent.prompt?.length || 0) > 2000 ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-[#E6E4DF] focus:border-[#C2410C] focus:ring-[#C2410C]'} rounded-lg outline-none transition-colors overflow-y-auto resize-y min-h-[160px]`} 
+                      style={{ height: Math.max(160, (activeAgent.prompt?.split('\n').length || 1) * 24 + 40) + 'px' }}
+                      value={activeAgent.prompt}
+                      onChange={e => handleUpdateActiveAgent('prompt', e.target.value)}
+                      placeholder="You are a specialized agent. Your goal is to..."
+                    />
+                  </div>
+                </div>
+
+                {/* Knowledge Section */}
+                <div className="space-y-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-1 h-8 bg-[#C2410C] rounded-full"></div>
+                    <h3 className="text-xl font-serif font-bold text-[#1a1a1a]">{t('agents.knowledge_base')}</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="md:col-span-2 p-6 bg-white border border-[#E6E4DF] rounded-xl space-y-4 shadow-sm">
+                      <div className="flex justify-between items-center">
+                        <h4 className="font-sans font-bold text-[#1a1a1a]">Custom Knowledge Base</h4>
+                        <button className="text-xs text-[#C2410C] font-bold hover:underline">Manage Files</button>
+                      </div>
+                  <div className="space-y-2 opacity-50 pointer-events-none">
+                    <div className="flex items-center justify-between p-3 bg-[#F4F1ED] rounded-lg border border-[#E6E4DF]">
+                      <div className="flex items-center gap-3">
+                        <FileText className="w-4 h-4 text-[#8c8a84]" />
+                        <span className="text-sm font-sans font-medium text-[#1a1a1a]">knowledge_base_concept.pdf</span>
+                      </div>
+                      <span className="text-[10px] text-[#8c8a84] font-mono">1.2 MB</span>
+                    </div>
+                  </div>
+                  <div className="pt-4 border-t border-[#E6E4DF] flex items-center justify-center">
+                    <button className="flex items-center gap-2 text-[#C2410C] hover:text-[#9a3412] font-sans text-sm font-bold transition-colors">
+                      <Plus className="w-4 h-4" /> {t('agents.knowledge_base').split(' (')[0]}
+                    </button>
+                  </div>
+                    </div>
+                    <div className="p-6 bg-white text-[#1a1a1a] border border-[#E6E4DF] rounded-xl flex flex-col justify-between shadow-sm">
+                      <div>
+                        <h4 className="font-sans font-bold mb-2">{t('agents.model_params')}</h4>
+                        <div className="space-y-4 mt-6">
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-[10px] uppercase font-mono tracking-widest text-[#8c8a84] mb-2">
+                              <span>{t('agents.temp')}</span>
+                              <span>{activeAgent.temperature ?? 0.7}</span>
+                            </div>
+                            <input 
+                              type="range" 
+                              min="0" max="2" step="0.1" 
+                              value={activeAgent.temperature ?? 0.7}
+                              onChange={(e) => handleUpdateActiveAgent('temperature', parseFloat(e.target.value))}
+                              className="w-full accent-[#C2410C] h-1 bg-[#F4F1ED] rounded-lg appearance-none cursor-pointer"
+                            />
+                          </div>
+                          <div className="space-y-1 mt-4">
+                            <div className="flex justify-between text-[10px] uppercase font-mono tracking-widest text-[#8c8a84] mb-2">
+                              <span>{t('agents.creativity')}</span>
+                              <span>{activeAgent.creativity ?? 0.4}</span>
+                            </div>
+                            <input 
+                              type="range" 
+                              min="0" max="1" step="0.1" 
+                              value={activeAgent.creativity ?? 0.4}
+                              onChange={(e) => handleUpdateActiveAgent('creativity', parseFloat(e.target.value))}
+                              className="w-full accent-[#C2410C] h-1 bg-[#F4F1ED] rounded-lg appearance-none cursor-pointer"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-[10px] font-mono text-[#8c8a84] mt-6">
+                          Optimized for specific personas
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Test Sandbox Panel */}
+            {isSandboxOpen && (
+              <div className="absolute right-0 bottom-0 top-0 w-[400px] bg-white border-l border-[#E6E4DF] shadow-[0_-20px_50px_rgba(0,0,0,0.1)] flex flex-col z-20 animate-in slide-in-from-right duration-300">
+                <div className="p-4 border-b border-[#E6E4DF] flex items-center justify-between bg-[#F4F1ED]/50">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4 text-[#C2410C]" />
+                    <span className="font-serif font-bold text-[#1a1a1a]">{t('agents.sandbox_title', { name: activeAgent.name })}</span>
+                  </div>
+                  <button onClick={() => setIsSandboxOpen(false)} className="text-[#8c8a84] hover:text-[#1a1a1a]">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#FAF9F6]">
+                  {sandboxMessages.length === 0 && (
+                    <div className="text-center py-10 px-4">
+                      <Bot className="w-10 h-10 text-[#E6E4DF] mx-auto mb-3" />
+                      <p className="text-xs text-[#8c8a84] font-sans">
+                        {t('agents.sandbox_empty', { name: activeAgent.name })}
+                      </p>
+                    </div>
+                  )}
+                  {sandboxMessages.map((msg, idx) => (
+                    <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-sm font-sans shadow-sm ${
+                        msg.role === 'user' 
+                          ? 'bg-[#EAE7E2] text-[#1a1a1a] rounded-tr-none border border-[#D9D6D1]' 
+                          : 'bg-white border border-[#E6E4DF] text-[#1a1a1a] rounded-tl-none'
+                      }`}>
+                        {msg.text}
+                      </div>
+                    </div>
+                  ))}
+                  {isSandboxLoading && (
+                    <div className="flex justify-start">
+                      <div className="bg-white border border-[#E6E4DF] px-4 py-2.5 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-2">
+                        <Loader2 className="w-4 h-4 text-[#C2410C] animate-spin" />
+                        <span className="text-xs text-[#8c8a84] italic">{t('agents.ai_thinking')}</span>
+                      </div>
+                    </div>
+                  )}
+                  <div ref={chatEndRef} />
+                </div>
+
+                <div className="p-4 bg-white border-t border-[#E6E4DF]">
+                  <form onSubmit={handleSendMessage} className="relative">
+                    <input 
+                      type="text"
+                      className="w-full pl-4 pr-12 py-3 bg-[#FAF9F6] border border-[#E6E4DF] rounded-xl text-sm font-sans focus:outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C] transition-all"
+                      placeholder={t('agents.message_placeholder', { name: activeAgent.name })}
+                      value={sandboxInput}
+                      onChange={e => setSandboxInput(e.target.value)}
+                    />
+                    <button 
+                      type="submit"
+                      disabled={!sandboxInput.trim() || isSandboxLoading}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-[#C2410C] text-white flex items-center justify-center hover:bg-[#9a3412] transition-colors disabled:opacity-50"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </form>
+                  <p className="text-[10px] text-center text-[#8c8a84] mt-2 font-mono">
+                    {t('agents.sandbox_note')}
+                  </p>
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center p-12 text-center opacity-50">
+            <Bot className="w-16 h-16 text-[#8c8a84] mb-4" />
+            <h2 className="font-serif text-2xl font-bold text-[#1a1a1a]">{t('agents.select_persona')}</h2>
+            <p className="font-sans text-[#5a5a54] mt-2">{t('agents.select_subtitle')}</p>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function AISettingsModal({ isOpen, onClose, config, setConfig }: { isOpen: boolean, onClose: () => void, config: any, setConfig: any }) {
+  const { t, i18n } = useTranslation();
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl w-full max-w-lg overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+        <div className="p-6 border-b border-[#E6E4DF] flex items-center justify-between bg-[#F4F1ED]/50">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#1a1a1a] flex items-center justify-center text-[#C2410C]">
+              <Settings className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="font-serif text-xl font-bold text-[#1a1a1a]">{t('settings.title')}</h2>
+              <p className="text-[10px] text-[#8c8a84] uppercase tracking-widest font-mono">{t('settings.ai_config')}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-[#EAE7E2] rounded-full transition-colors">
+            <X className="w-5 h-5 text-[#8c8a84]" />
+          </button>
+        </div>
+
+        <div className="p-8 space-y-6 overflow-y-auto max-h-[70vh]">
+          {/* Language selection */}
+          <div className="space-y-3">
+            <label className="text-[10px] font-mono font-bold text-[#8c8a84] uppercase tracking-wider">{t('settings.language')}</label>
+            <div className="grid grid-cols-2 gap-3">
+              <button 
+                onClick={() => { i18n.changeLanguage('en'); localStorage.setItem('app_language', 'en'); }}
+                className={`flex items-center justify-center gap-2 h-10 px-4 rounded-lg border transition-all text-sm font-bold ${i18n.language === 'en' ? 'border-[#C2410C] bg-[#C2410C]/5 text-[#C2410C]' : 'border-[#E6E4DF] text-[#5a5a54] hover:border-[#C2410C]/30'}`}
+              >
+                English
+              </button>
+              <button 
+                onClick={() => { i18n.changeLanguage('zh'); localStorage.setItem('app_language', 'zh'); }}
+                className={`flex items-center justify-center gap-2 h-10 px-4 rounded-lg border transition-all text-sm font-bold ${i18n.language === 'zh' ? 'border-[#C2410C] bg-[#C2410C]/5 text-[#C2410C]' : 'border-[#E6E4DF] text-[#5a5a54] hover:border-[#C2410C]/30'}`}
+              >
+                中文
+              </button>
+            </div>
+          </div>
+
+          <div className="h-px bg-[#F4F1ED]"></div>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+               <div className="space-y-2">
+                 <label className="text-[10px] font-mono font-bold text-[#8c8a84] uppercase tracking-wider">{t('settings.provider')}</label>
+                 <select 
+                   className="w-full h-10 px-3 bg-[#FAF9F6] border border-[#E6E4DF] rounded-lg text-sm outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C] transition-all"
+                   value={config.provider}
+                   onChange={e => setConfig({ ...config, provider: e.target.value })}
+                 >
+                   <option value="gemini">Google Gemini</option>
+                   <option value="openai">OpenAI (GPT)</option>
+                   <option value="anthropic">Anthropic (Claude)</option>
+                   <option value="custom">Custom Endpoint</option>
+                 </select>
+               </div>
+               <div className="space-y-2">
+                 <label className="text-[10px] font-mono font-bold text-[#8c8a84] uppercase tracking-wider">{t('settings.model')}</label>
+                 <input 
+                   type="text"
+                   className="w-full h-10 px-3 bg-[#FAF9F6] border border-[#E6E4DF] rounded-lg text-sm outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C] transition-all"
+                   placeholder={config.provider === 'gemini' ? 'gemini-1.5-flash' : 'gpt-4o'}
+                   value={config.model}
+                   onChange={e => setConfig({ ...config, model: e.target.value })}
+                 />
+               </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-mono font-bold text-[#8c8a84] uppercase tracking-wider">{t('settings.api_key')}</label>
+              <input 
+                type="password"
+                className="w-full h-10 px-3 bg-[#FAF9F6] border border-[#E6E4DF] rounded-lg text-sm outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C] transition-all"
+                placeholder="sk-..."
+                value={config.apiKey}
+                onChange={e => setConfig({ ...config, apiKey: e.target.value })}
+              />
+            </div>
+
+            {(config.provider === 'custom' || config.provider === 'openai') && (
+              <div className="space-y-2">
+                <label className="text-[10px] font-mono font-bold text-[#8c8a84] uppercase tracking-wider">{t('settings.base_url')}</label>
+                <input 
+                  type="text"
+                  className="w-full h-10 px-3 bg-[#FAF9F6] border border-[#E6E4DF] rounded-lg text-sm outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C] transition-all"
+                  placeholder="https://api.openai.com/v1"
+                  value={config.baseUrl}
+                  onChange={e => setConfig({ ...config, baseUrl: e.target.value })}
+                />
+              </div>
+            )}
+          </div>
+          
+          <div className="p-4 bg-[#F4F1ED] rounded-xl border border-[#E6E4DF] border-dashed">
+            <div className="flex gap-3">
+              <Sparkles className="w-4 h-4 text-[#C2410C] flex-shrink-0 mt-0.5" />
+              <div className="text-[11px] leading-relaxed text-[#5a5a54]">
+                {t('settings.save_success')}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-6 border-t border-[#E6E4DF] bg-white flex justify-end">
+          <button 
+            onClick={onClose}
+            className="px-8 py-2.5 bg-[#1a1a1a] text-white rounded-xl font-sans font-bold hover:bg-[#333] transition-all text-sm shadow-md"
+          >
+            {t('settings.close')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+async function callUniversalAI({ 
+  config, 
+  prompt, 
+  systemInstruction, 
+  temperature = 0.7, 
+  topP = 0.4 
+}: { 
+  config: any, 
+  prompt: string, 
+  systemInstruction?: string, 
+  temperature?: number, 
+  topP?: number 
+}) {
+  const useUserConfig = config?.apiKey && config.apiKey.trim() !== '';
+
+  if (!useUserConfig || config.provider === 'gemini') {
+    const apiKey = useUserConfig ? config.apiKey : (process.env.GEMINI_API_KEY);
+    if (!apiKey) throw new Error("API Key missing");
+    
+    const ai = new GoogleGenAI({ apiKey });
+    const modelId = useUserConfig ? config.model : "gemini-3-flash-preview";
+
+    const response = await ai.models.generateContent({
+      model: modelId,
+      contents: prompt,
+      config: {
+        systemInstruction,
+        temperature,
+        topP
+      }
+    });
+
+    return response.text;
+  }
+
+  if (config.provider === 'openai' || config.provider === 'custom') {
+    const baseUrl = config.baseUrl || 'https://api.openai.com/v1';
+    const response = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.apiKey}`
+      },
+      body: JSON.stringify({
+        model: config.model || 'gpt-4o',
+        messages: [
+          ...(systemInstruction ? [{ role: 'system', content: systemInstruction }] : []),
+          { role: 'user', content: prompt }
+        ],
+        temperature,
+        top_p: topP
+      })
+    });
+
+    if (!response.ok) {
+       const err = await response.json().catch(() => ({}));
+       throw new Error(err.error?.message || `API Error: ${response.status}`);
+    }
+    const data = await response.json();
+    return data.choices[0].message.content;
+  }
+
+  if (config.provider === 'anthropic') {
+    const response = await fetch(`https://api.anthropic.com/v1/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': config.apiKey,
+        'anthropic-version': '2023-06-01',
+        'dangerouslyAllowBrowser': 'true'
+      },
+      body: JSON.stringify({
+        model: config.model || 'claude-3-5-sonnet-20240620',
+        system: systemInstruction,
+        max_tokens: 1024,
+        messages: [{ role: 'user', content: prompt }],
+        temperature
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error?.message || `Anthropic error: ${response.status}`);
+    }
+    const data = await response.json();
+    return data.content[0].text;
+  }
+
+  throw new Error("Provider not supported");
+}

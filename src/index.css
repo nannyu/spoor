@@ -1,0 +1,53 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+}
+
+@layer utilities {
+  .paper-texture {
+    background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBeFUe1Z_LYXcdCYLvjT4ouawVQVL-V44Q0SMo_g3m0iP3sb14qgm5KqL8D5fd6kuWSWK_UvHWGk5y6Db6_h_CKdqaRTMt41n9H_LXcZxA7k06ELWjOfB9ywZ7TUx7IG5Avy4ZPmyo5W0WDoTluv9KFzK1vs4fW6UTiSgbk6O_WIeMi74RWOEqDLr9_P_sAIOUR-KShB8ZpGNPpv2-Y5Z_hWMxVpF5Z1QkqRGXQtM8EFeEUq3S00rn18UXLIO5dNbnrdBvvfGWP5rQ');
+    background-blend-mode: soft-light;
+  }
+  .canvas-grid {
+    background-size: 24px 24px;
+    background-image: radial-gradient(#d1cfca 1px, transparent 1px);
+  }
+  .node-connector {
+    stroke: #d1cfca;
+    opacity: 1;
+    stroke-width: 2;
+  }
+  
+  /* Style the node itself if it has background or allow children to override */
+  [style*="--node-bg"], [style*="--node-bg"] .bg-white, [style*="--node-bg"] .bg-\[\#F4F1ED\], [style*="--node-bg"] .bg-\[\#EAE7E2\] {
+    background-color: var(--node-bg) !important;
+    border-color: var(--node-border, currentColor) !important;
+  }
+  [style*="--node-text"], [style*="--node-text"] *:not(.node-palette):not(.node-palette *) {
+    color: var(--node-text) !important;
+  }
+  [style*="--node-font"], [style*="--node-font"] *:not(.node-palette):not(.node-palette *) {
+    font-family: var(--node-font) !important;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .markdown-body h1 { @apply text-2xl font-bold mb-4 mt-6; }
+  .markdown-body h2 { @apply text-xl font-bold mb-3 mt-5; }
+  .markdown-body h3 { @apply text-lg font-bold mb-2 mt-4; }
+  .markdown-body p { @apply mb-3 leading-relaxed; }
+  .markdown-body ul { @apply list-disc pl-5 mb-3; }
+  .markdown-body ol { @apply list-decimal pl-5 mb-3; }
+  .markdown-body li { @apply mb-1; }
+  .markdown-body code { @apply bg-black/5 rounded px-1 font-mono text-[0.9em]; }
+  .markdown-body pre { @apply bg-black/5 rounded p-3 mb-3 overflow-x-auto; }
+  .markdown-body blockquote { @apply border-l-4 border-black/10 pl-4 italic mb-3; }
+}
