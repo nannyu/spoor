@@ -8,6 +8,9 @@ dist/
 # Tauri build
 src-tauri/target/
 
+# Temp scripts
+generate-icons.cjs
+
 # Test & coverage
 coverage/
 
