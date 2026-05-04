@@ -1,0 +1,79 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { renderHook, act } from '@testing-library/react';
+import { createRef } from 'react';
+import { useCanvasInteraction } from '../../src/hooks/useCanvasInteraction';
+
+describe('useCanvasInteraction', () => {
+  let mainEl: HTMLDivElement;
+
+  beforeEach(() => {
+    mainEl = document.createElement('div');
+    vi.spyOn(mainEl, 'getBoundingClientRect').mockReturnValue({
+      top: 0, left: 0, right: 800, bottom: 600, width: 800, height: 600, x: 0, y: 0, toJSON: () => {},
+    });
+    vi.spyOn(mainEl, 'addEventListener');
+    vi.spyOn(mainEl, 'removeEventListener');
+  });
+
+  const setupHook = () => {
+    const mainRef = { current: mainEl } as React.RefObject<HTMLDivElement | null>;
+    const contentContainerRef = createRef<HTMLDivElement>() as React.RefObject<HTMLDivElement | null>;
+    const svgRef = createRef<SVGSVGElement>() as React.RefObject<SVGSVGElement | null>;
+    const edgeLabelsRef = createRef<HTMLDivElement>() as React.RefObject<HTMLDivElement | null>;
+    const nodesRef = { current: {} } as React.RefObject<Record<string, HTMLElement | null>>;
+    const setConnectingFrom = vi.fn();
+
+    return renderHook(() =>
+      useCanvasInteraction(mainRef, contentContainerRef, svgRef, edgeLabelsRef, nodesRef, null, setConnectingFrom)
+    );
+  };
+
+  it('初始 transform 为 {x:0, y:0, scale:1}', () => {
+    const { result } = setupHook();
+    expect(result.current.canvasTransform).toEqual({ x: 0, y: 0, scale: 1 });
+  });
+
+  it('setCanvasTransform 更新 transform', () => {
+    const { result } = setupHook();
+    act(() => {
+      result.current.setCanvasTransform({ x: 100, y: 200, scale: 1.5 });
+    });
+    expect(result.current.canvasTransform).toEqual({ x: 100, y: 200, scale: 1.5 });
+  });
+
+  it('transformRef 同步更新', () => {
+    const { result } = setupHook();
+    act(() => {
+      result.current.setCanvasTransform({ x: 50, y: 60, scale: 2 });
+    });
+    expect(result.current.transformRef.current).toEqual({ x: 50, y: 60, scale: 2 });
+  });
+
+  it('wheel 事件注册到 mainRef 元素', () => {
+    setupHook();
+    expect(mainEl.addEventListener).toHaveBeenCalledWith('wheel', expect.any(Function), { passive: false });
+  });
+
+  it('handlePanStart 消费 pointerdown 事件后注册 pointermove/pointerup', () => {
+    const { result } = setupHook();
+    const addSpy = vi.spyOn(window, 'addEventListener');
+    const removeSpy = vi.spyOn(window, 'removeEventListener');
+
+    const mockPointerDown = {
+      target: mainEl,
+      currentTarget: mainEl,
+      button: 0,
+      clientX: 100,
+      clientY: 100,
+      preventDefault: vi.fn(),
+    } as unknown as React.PointerEvent;
+
+    act(() => {
+      result.current.handlePanStart(mockPointerDown);
+    });
+
+    expect(mockPointerDown.preventDefault).toHaveBeenCalled();
+    expect(addSpy).toHaveBeenCalledWith('pointermove', expect.any(Function));
+    expect(addSpy).toHaveBeenCalledWith('pointerup', expect.any(Function));
+  });
+});
