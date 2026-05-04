@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useTranslation } from 'react-i18next';
 import { db } from './db';
-import { GoogleGenAI } from '@google/genai';
 import Markdown from 'react-markdown';
 import {
   Settings,
@@ -19,7 +18,6 @@ import {
   History,
   ZoomIn,
   Image as ImageIcon,
-  Link2,
   X,
   Camera,
   ChevronLeft,
@@ -35,6 +33,7 @@ import type { AIConfig } from './components/AISettingsModal';
 import { Reference } from './components/Reference';
 import { ResearchLab } from './components/ResearchLab';
 import { AgentsStudio } from './components/AgentsStudio';
+import { callUniversalAI } from './services/ai';
 
 export default function App() {
   const { t, i18n } = useTranslation();
@@ -1184,95 +1183,4 @@ export default function App() {
       </div>
     </div>
   );
-}
-
-async function callUniversalAI({ 
-  config, 
-  prompt, 
-  systemInstruction, 
-  temperature = 0.7, 
-  topP = 0.4 
-}: { 
-  config: any, 
-  prompt: string, 
-  systemInstruction?: string, 
-  temperature?: number, 
-  topP?: number 
-}) {
-  const useUserConfig = config?.apiKey && config.apiKey.trim() !== '';
-
-  if (!useUserConfig || config.provider === 'gemini') {
-    const apiKey = useUserConfig ? config.apiKey : (process.env.GEMINI_API_KEY);
-    if (!apiKey) throw new Error("API Key missing");
-    
-    const ai = new GoogleGenAI({ apiKey });
-    const modelId = useUserConfig ? config.model : "gemini-3-flash-preview";
-
-    const response = await ai.models.generateContent({
-      model: modelId,
-      contents: prompt,
-      config: {
-        systemInstruction,
-        temperature,
-        topP
-      }
-    });
-
-    return response.text;
-  }
-
-  if (config.provider === 'openai' || config.provider === 'custom') {
-    const baseUrl = config.baseUrl || 'https://api.openai.com/v1';
-    const response = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${config.apiKey}`
-      },
-      body: JSON.stringify({
-        model: config.model || 'gpt-4o',
-        messages: [
-          ...(systemInstruction ? [{ role: 'system', content: systemInstruction }] : []),
-          { role: 'user', content: prompt }
-        ],
-        temperature,
-        top_p: topP
-      })
-    });
-
-    if (!response.ok) {
-       const err = await response.json().catch(() => ({}));
-       throw new Error(err.error?.message || `API Error: ${response.status}`);
-    }
-    const data = await response.json();
-    return data.choices[0].message.content;
-  }
-
-  if (config.provider === 'anthropic') {
-    const response = await fetch(`https://api.anthropic.com/v1/messages`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': config.apiKey,
-        'anthropic-version': '2023-06-01',
-        'dangerouslyAllowBrowser': 'true'
-      },
-      body: JSON.stringify({
-        model: config.model || 'claude-3-5-sonnet-20240620',
-        system: systemInstruction,
-        max_tokens: 1024,
-        messages: [{ role: 'user', content: prompt }],
-        temperature
-      })
-    });
-
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(err.error?.message || `Anthropic error: ${response.status}`);
-    }
-    const data = await response.json();
-    return data.content[0].text;
-  }
-
-  throw new Error("Provider not supported");
 }
