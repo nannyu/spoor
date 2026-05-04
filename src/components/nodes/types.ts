@@ -1,7 +1,7 @@
-import type { AgentConfig } from '../../db';
+import type { AgentConfig, CanvasNode } from '../../db';
 
 export interface NodeContentProps {
-  node: any;
+  node: CanvasNode;
   editingNodeId: string | null;
   setEditingNodeId: (id: string | null) => void;
 }

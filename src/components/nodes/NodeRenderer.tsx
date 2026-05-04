@@ -1,5 +1,5 @@
 import React from 'react';
-import type { AgentConfig } from '../../db';
+import type { AgentConfig, CanvasNode } from '../../db';
 import { ThemeNode } from './ThemeNode';
 import { NoteNode } from './NoteNode';
 import { AiNode } from './AiNode';
@@ -8,7 +8,7 @@ import { VideoNode } from './VideoNode';
 import { AgentNode } from './AgentNode';
 
 interface NodeRendererProps {
-  node: any;
+  node: CanvasNode;
   editingNodeId: string | null;
   setEditingNodeId: (id: string | null) => void;
   agentConfigs: AgentConfig[];

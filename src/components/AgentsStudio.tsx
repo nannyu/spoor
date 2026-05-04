@@ -11,12 +11,12 @@ import {
   FileText,
   Loader2,
 } from 'lucide-react';
-
-type CallAIFn = (params: { config: any; prompt: string; systemInstruction?: string; temperature?: number; topP?: number }) => Promise<string | undefined>;
+import type { AgentConfig } from '../db';
+import type { CallAIFn } from '../types';
 
 export interface AgentsStudioProps {
-  agentConfigs: any[];
-  setAgentConfigs: (configs: any[]) => Promise<void>;
+  agentConfigs: AgentConfig[];
+  setAgentConfigs: (configs: AgentConfig[]) => Promise<void>;
   aiConfig: {
     provider: string;
     apiKey: string;
@@ -39,7 +39,7 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const activeAgent = agentConfigs.find((a: any) => a.id === activeAgentId) || agentConfigs[0];
+  const activeAgent = agentConfigs.find((a) => a.id === activeAgentId) || agentConfigs[0];
 
   useEffect(() => {
     if (chatEndRef.current) {
@@ -62,7 +62,7 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
 
   const handleUpdateActiveAgent = (field: string, value: string | number) => {
     if (!activeAgentId) return;
-    setAgentConfigs(agentConfigs.map((a: any) => a.id === activeAgentId ? { ...a, [field]: value } : a));
+    setAgentConfigs(agentConfigs.map((a) => a.id === activeAgentId ? { ...a, [field]: value } : a));
     
     setSaveStatus('Saving...');
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -127,14 +127,14 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
 
   const handleDelete = (id: string) => {
     if (!window.confirm(t('agents.delete_confirm'))) return;
-    const newConfigs = agentConfigs.filter((a: any) => a.id !== id);
+    const newConfigs = agentConfigs.filter((a) => a.id !== id);
     setAgentConfigs(newConfigs);
     if (activeAgentId === id) {
       setActiveAgentId(newConfigs[0]?.id || null);
     }
   };
 
-  const filteredAgents = agentConfigs.filter((a: any) => a.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredAgents = agentConfigs.filter((a) => a.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
     <div className="flex-1 flex bg-[#FAF9F6] overflow-hidden relative">
@@ -148,7 +148,7 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
         </div>
         <div className="flex-1 overflow-y-auto">
           <div className="divide-y divide-[#E6E4DF]">
-            {filteredAgents.map((agent: any) => (
+            {filteredAgents.map((agent) => (
               <div 
                 key={agent.id}
                 onClick={() => {

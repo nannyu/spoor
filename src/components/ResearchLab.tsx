@@ -11,14 +11,7 @@ import {
   Loader2,
   FileText,
 } from 'lucide-react';
-
-type CallAIFn = (params: {
-  config: any;
-  prompt: string;
-  systemInstruction?: string;
-  temperature?: number;
-  topP?: number;
-}) => Promise<string | undefined>;
+import type { CallAIFn } from '../types';
 
 export interface ResearchLabProps {
   aiConfig: {

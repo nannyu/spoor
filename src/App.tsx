@@ -244,7 +244,7 @@ export default function App() {
 
             <div className="absolute inset-0 z-30 w-[1px] h-[1px] pointer-events-none"> 
               {/* All Nodes from Database */}
-              {dynamicNodes.map((node: any) => {
+              {dynamicNodes.map((node) => {
                 const rotation = 
                   (node.type === 'note' || node.type === 'text') ? (node.layout === 0 || node.layout === undefined ? 1 : 0) :
                   (node.type === 'theme') ? (node.layout === 0 || node.layout === undefined ? -1 : 0) :
@@ -294,7 +294,7 @@ export default function App() {
         {activeTab === 'reference' && <Reference articles={articles} activeReferenceId={activeReferenceId} setActiveReferenceId={setActiveReferenceId} />}
         {activeTab === 'lab' && <ResearchLab aiConfig={aiConfig} callAI={callUniversalAI} />}
         {/* Agents in Agents Studio need consistent write access */}
-        {activeTab === 'agents' && <AgentsStudio agentConfigs={agentConfigs} setAgentConfigs={async (newConfigs: any) => {
+        {activeTab === 'agents' && <AgentsStudio agentConfigs={agentConfigs} setAgentConfigs={async (newConfigs) => {
           // This ensures updates to agents from studio are saved to DB
           for (const config of newConfigs) {
             await db.agents.put(config);
