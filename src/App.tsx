@@ -3,11 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useTranslation } from 'react-i18next';
 import { db } from './db';
 import {
-  Settings,
   Plus,
-  BookOpen,
-  Library,
-  Microscope,
   Maximize2,
   Minimize2,
   Bot,
@@ -17,15 +13,13 @@ import {
   ZoomIn,
   Image as ImageIcon,
   X,
-  Camera,
-  ChevronLeft,
-  ChevronRight,
   Loader2,
   PenLine,
   Edit3,
 } from 'lucide-react';
 import { DraggableNode } from './components/canvas/DraggableNode';
 import { AISettingsModal } from './components/AISettingsModal';
+import { Sidebar } from './components/Sidebar';
 import type { AIConfig } from './components/AISettingsModal';
 import { Reference } from './components/Reference';
 import { ResearchLab } from './components/ResearchLab';
@@ -90,20 +84,6 @@ export default function App() {
     document.addEventListener('fullscreenchange', handleFsChange);
     return () => document.removeEventListener('fullscreenchange', handleFsChange);
   }, []);
-
-  const avatarInputRef = useRef<HTMLInputElement>(null);
-
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setUserAvatar(event.target.result as string);
-        }
-      };
-      reader.readAsDataURL(e.target.files[0]);
-    }
-  };
 
   const [aiConfig, setAiConfig] = useState(() => {
     const saved = localStorage.getItem('ai_config');
@@ -508,93 +488,14 @@ export default function App() {
       
       <div className="flex flex-1" onPointerDown={() => { if (connectingFrom) setConnectingFrom(null); }}>
         {/* SideNavBar */}
-        <aside className={`hidden md:flex flex-col py-6 space-y-2 bg-[#F4F1ED] h-screen border-r border-[#E6E4DF] sticky top-0 transition-all duration-300 overflow-y-auto scrollbar-hide ${isSidebarOpen ? 'w-48' : 'w-20 items-center'}`}>
-
-          <div className="mb-6 px-4">
-            <div className={`flex flex-col ${isSidebarOpen ? 'items-start' : 'items-center'} gap-2`}>
-              <div className="flex items-center gap-3 w-full group relative">
-                <input 
-                  type="file" 
-                  ref={avatarInputRef} 
-                  onChange={handleAvatarChange} 
-                  accept="image/*" 
-                  className="hidden" 
-                />
-                <div 
-                  onClick={() => avatarInputRef.current?.click()}
-                  className={`relative cursor-pointer group/avatar flex-shrink-0 flex items-center justify-center ${isSidebarOpen ? 'w-6' : 'w-10'}`}
-                >
-                  <img 
-                    alt="Curator Profile" 
-                    className={`rounded border-2 border-[#E6E4DF] object-cover shadow-sm transition-all group-hover/avatar:opacity-80 ${isSidebarOpen ? 'w-6 h-6' : 'w-10 h-10'}`} 
-                    src={userAvatar}
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity bg-black/20 rounded">
-                    <Camera className="w-3 h-3 text-white" />
-                  </div>
-                </div>
-                {isSidebarOpen && (
-                  <p 
-                    contentEditable 
-                    suppressContentEditableWarning
-                    onBlur={(e) => setUserName(e.currentTarget.innerText)}
-                    className="text-base font-bold whitespace-nowrap tracking-tight outline-none hover:bg-[#EAE7E2]/50 rounded px-1 -mx-1 transition-colors cursor-text overflow-hidden text-ellipsis"
-                  >
-                    {userName}
-                  </p>
-                )}
-              </div>
-              {isSidebarOpen && (
-                <p 
-                  contentEditable 
-                  suppressContentEditableWarning
-                  onBlur={(e) => setUserRole(e.currentTarget.innerText)}
-                  className="text-[10px] font-sans uppercase tracking-widest text-[#8c8a84] whitespace-nowrap outline-none hover:bg-[#EAE7E2]/50 rounded px-1 -mx-1 transition-colors cursor-text"
-                >
-                  {userRole}
-                </p>
-              )}
-            </div>
-          </div>
-          <nav className="flex flex-col font-sans text-sm w-full">
-            {isSidebarOpen && <div className="px-4 py-2 text-[#8c8a84] text-[11px] uppercase tracking-wider mb-2">{t('sidebar.personal')}</div>}
-            <a onClick={(e) => { e.preventDefault(); setActiveTab('personal'); }} className={`cursor-pointer flex items-center ${isSidebarOpen ? 'gap-3 px-4' : 'justify-center'} py-2 ${activeTab === 'personal' ? 'bg-white border-y border-[#E6E4DF] text-[#C2410C]' : 'text-[#5a5a54] hover:bg-[#EAE7E2] transition-colors'}`}>
-              <BookOpen className="w-4 h-4 flex-shrink-0" />
-              {isSidebarOpen && <span>{t('sidebar.personal')}</span>}
-            </a>
-            <a onClick={(e) => { e.preventDefault(); setActiveTab('reference'); }} className={`cursor-pointer flex items-center ${isSidebarOpen ? 'gap-3 px-4' : 'justify-center'} py-2 ${activeTab === 'reference' ? 'bg-white border-y border-[#E6E4DF] text-[#C2410C]' : 'text-[#5a5a54] hover:bg-[#EAE7E2] transition-colors'}`}>
-              <Library className="w-4 h-4 flex-shrink-0" />
-              {isSidebarOpen && <span>{t('sidebar.reference')}</span>}
-            </a>
-            <a onClick={(e) => { e.preventDefault(); setActiveTab('lab'); }} className={`cursor-pointer flex items-center ${isSidebarOpen ? 'gap-3 px-4' : 'justify-center'} py-2 ${activeTab === 'lab' ? 'bg-white border-y border-[#E6E4DF] text-[#C2410C]' : 'text-[#5a5a54] hover:bg-[#EAE7E2] transition-colors'}`}>
-              <Microscope className="w-4 h-4 flex-shrink-0" />
-              {isSidebarOpen && <span>{t('sidebar.lab')}</span>}
-            </a>
-            <a onClick={(e) => { e.preventDefault(); setActiveTab('agents'); }} className={`cursor-pointer flex items-center ${isSidebarOpen ? 'gap-3 px-4' : 'justify-center'} py-2 ${activeTab === 'agents' ? 'bg-white border-y border-[#E6E4DF] text-[#C2410C]' : 'text-[#5a5a54] hover:bg-[#EAE7E2] transition-colors'}`}>
-              <Bot className="w-4 h-4 flex-shrink-0" />
-              {isSidebarOpen && <span>{t('sidebar.agents')}</span>}
-            </a>
-          </nav>
-          <div className="mt-auto px-4 pb-4 w-full flex flex-col gap-1">
-            <button 
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsSidebarOpen(!isSidebarOpen); }}
-              className={`w-full flex items-center ${isSidebarOpen ? 'gap-3' : 'justify-center'} py-2 text-[#8c8a84] hover:text-[#1a1a1a] hover:bg-[#EAE7E2] transition-colors rounded-lg group/toggle`}
-            >
-              <div className={`flex items-center justify-center ${isSidebarOpen ? 'w-6' : 'w-10'}`}>
-                {isSidebarOpen ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5 transition-transform group-hover/toggle:translate-x-0.5" />}
-              </div>
-            </button>
-            <button 
-              onClick={() => setIsSettingsOpen(true)}
-              className={`w-full flex items-center ${isSidebarOpen ? 'gap-3' : 'justify-center'} py-2 text-[#5a5a54] hover:bg-[#EAE7E2] transition-colors rounded-lg group/settings`}
-              title={t('sidebar.settings')}
-            >
-              <div className={`flex items-center justify-center ${isSidebarOpen ? 'w-6' : 'w-10'}`}>
-                <Settings className={`w-4 h-4 flex-shrink-0 transition-transform group-hover/settings:rotate-45`} />
-              </div>
-            </button>
-          </div>
-        </aside>
+        <Sidebar 
+          isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen}
+          activeTab={activeTab} setActiveTab={setActiveTab}
+          userAvatar={userAvatar} setUserAvatar={setUserAvatar}
+          userName={userName} setUserName={setUserName}
+          userRole={userRole} setUserRole={setUserRole}
+          setIsSettingsOpen={setIsSettingsOpen}
+        />
 
         {activeTab === 'personal' && (
         <main 
