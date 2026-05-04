@@ -1,0 +1,73 @@
+import type { RefObject } from 'react';
+import type { CanvasTransform } from './useCanvasInteraction';
+import { db } from '../db';
+import { getCanvasCenterPosition } from '../utils/canvas';
+
+interface UseNodeActionsParams {
+  activeCanvasId: string;
+  nodesRef: RefObject<Record<string, HTMLElement | null>>;
+  connectingFrom: string | null;
+  setConnectingFrom: (v: string | null) => void;
+  edges: { from: string; to: string }[];
+  selectedNodes: Set<string>;
+  setSelectedNodes: React.Dispatch<React.SetStateAction<Set<string>>>;
+  transformRef: RefObject<CanvasTransform>;
+}
+
+export function useNodeActions({
+  activeCanvasId,
+  nodesRef,
+  connectingFrom,
+  setConnectingFrom,
+  edges,
+  selectedNodes,
+  setSelectedNodes,
+  transformRef,
+}: UseNodeActionsParams) {
+  const toggleNodeSelection = (id: string) => {
+    setSelectedNodes(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleLink = (id: string) => {
+    if (connectingFrom) {
+      if (connectingFrom !== id && !edges.find(e => (e.from === connectingFrom && e.to === id) || (e.from === id && e.to === connectingFrom))) {
+        db.edges.add({ id: crypto.randomUUID(), canvasId: activeCanvasId, from: connectingFrom, to: id });
+      }
+      setConnectingFrom(null);
+    } else {
+      setConnectingFrom(id);
+    }
+  };
+
+  const deleteEdge = (id: string) => {
+    db.edges.delete(id);
+  };
+
+  const removeNodeId = (id: string) => {
+    db.nodes.delete(id);
+    db.edges.where('from').equals(id).or('to').equals(id).delete();
+  };
+
+  const addTextNode = async () => {
+    const { x, y } = getCanvasCenterPosition(transformRef.current);
+    await db.nodes.add({ id: crypto.randomUUID(), canvasId: activeCanvasId, type: 'text', content: '', x, y });
+  };
+
+  const addFileNode = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      const url = URL.createObjectURL(file);
+      const type = file.type.startsWith('video/') ? 'video' : 'image';
+      const { x, y } = getCanvasCenterPosition(transformRef.current);
+      await db.nodes.add({ id: crypto.randomUUID(), canvasId: activeCanvasId, type, content: url, fileType: file.type, x, y });
+      e.target.value = '';
+    }
+  };
+
+  return { toggleNodeSelection, handleLink, deleteEdge, removeNodeId, addTextNode, addFileNode };
+}
