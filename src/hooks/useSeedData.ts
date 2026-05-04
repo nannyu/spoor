@@ -1,17 +1,19 @@
 import { useEffect } from 'react';
+import i18n from '../i18n';
 import { db } from '../db';
-import { LEGACY_AGENT_PROMPTS, SYSTEM_AGENT_DEFINITIONS } from '../constants/defaultAgents';
+import type { AgentConfig } from '../db';
+import { LEGACY_AGENT_PROMPTS, SYSTEM_AGENT_IDS, SYSTEM_AGENT_TUNING, type SystemAgentId } from '../constants/defaultAgents';
 
-/** 仍在使用旧版种子文案时，写入新版提示词（不覆盖用户自定义）。 */
+/** 仍在使用旧版种子文案时，写入当前语言的默认提示词（不覆盖用户自定义）。 */
 async function migrateLegacyAgentPrompts() {
-  for (const def of SYSTEM_AGENT_DEFINITIONS) {
-    const legacies = LEGACY_AGENT_PROMPTS[def.id];
+  for (const id of SYSTEM_AGENT_IDS) {
+    const legacies = LEGACY_AGENT_PROMPTS[id];
     if (!legacies?.length) continue;
-    const row = await db.agents.get(def.id);
+    const row = await db.agents.get(id);
     if (!row) continue;
     const current = (row.prompt ?? '').trim();
     if (legacies.includes(current)) {
-      await db.agents.update(def.id, { prompt: def.prompt });
+      await db.agents.update(id, { prompt: i18n.t(`agents.defaults.${id}.prompt`) });
     }
   }
 }
@@ -30,13 +32,22 @@ export function useSeedData() {
         });
       }
 
-      const agentIds = SYSTEM_AGENT_DEFINITIONS.map(a => a.id);
+      const agentIds = [...SYSTEM_AGENT_IDS];
       const existingAgents = await db.agents.toArray();
       const existingIds = new Set(existingAgents.map(a => a.id));
       const missingIds = agentIds.filter(id => !existingIds.has(id));
 
       if (missingIds.length > 0) {
-        const toAdd = SYSTEM_AGENT_DEFINITIONS.filter(a => missingIds.includes(a.id));
+        const toAdd: AgentConfig[] = missingIds.map((id) => {
+          const sid = id as SystemAgentId;
+          return {
+            id: sid,
+            name: i18n.t(`agents.defaults.${sid}.name`),
+            role: i18n.t(`agents.defaults.${sid}.role`),
+            prompt: i18n.t(`agents.defaults.${sid}.prompt`),
+            ...SYSTEM_AGENT_TUNING[sid],
+          };
+        });
         await db.agents.bulkPut(toAdd);
       }
 

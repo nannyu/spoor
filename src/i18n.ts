@@ -1,5 +1,6 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
+import { agentDefaultsEn, agentDefaultsZh } from './i18n/agentDefaultsContent';
 
 const resources = {
   en: {
@@ -61,7 +62,15 @@ const resources = {
       },
       "ai": {
         "input_placeholder": "Ask AI to draft some ideas or paragraphs...",
-        "loading": "AI is thinking..."
+        "loading": "AI is thinking...",
+        "generated_article_title": "Generated Synthesis",
+        "prompts": {
+          "localeDirective": "Always reply entirely in English for this session, unless the user explicitly asks for another language.",
+          "publish": "Turn the following concepts, notes, and drafts into a cohesive, well-written article:\n\n{{content}}",
+          "agentContext": "Context to analyze:\n{{content}}",
+          "toolbar": "Context from connected notes across the canvas:\n{{context}}\n\nUser request: {{request}}",
+          "context_fragment_label": "\n[Context Fragment]: "
+        }
       },
       "lab": {
         "investigate": "What would you like to investigate?",
@@ -71,7 +80,9 @@ const resources = {
         "report": "Synthesized Report",
         "new_research": "New Research",
         "past_sessions": "Past Sessions",
-        "agent_title": "Deep Research Agent"
+        "agent_title": "Deep Research Agent",
+        "ai_generate_plan": "You are a senior research strategist helping an author who is writing a manuscript.\nTheir research question is: \"{{query}}\".\n\nDesign a logically connected 3‑step research plan that will help the author deeply investigate this topic and integrate the findings into their manuscript.\n\nFor each step, return a JSON object with:\n- \"title\": a short, descriptive title (5–7 words),\n- \"desc\": a 2–3 sentence description that clearly states:\n  - the specific goal of this step,\n  - the key methods, sources, or analytical techniques to be used,\n  - how the output of this step directly feeds into the manuscript.\n\nThe three steps should follow a natural research progression, such as:\n(1) scoping & literature foundation, (2) core analysis or evidence gathering, (3) synthesis, implications, or argument construction.\nTailor the progression to the nature of the query (e.g., empirical paper, review, theoretical essay, policy report).\n\nRespond ONLY with a valid JSON array in the following format (no additional text):\n[\n  {\"title\": \"Step 1 Title\", \"desc\": \"Step 1 Description\"},\n  {\"title\": \"Step 2 Title\", \"desc\": \"Step 2 Description\"},\n  {\"title\": \"Step 3 Title\", \"desc\": \"Step 3 Description\"}\n]",
+        "ai_research_report": "You are a research synthesizing agent. Based on the user's query: \"{{query}}\", generate a detailed research report.\nRespond ONLY in valid JSON format matching this structure:\n{\n  \"intro\": \"Introduction paragraph\",\n  \"points\": [\n    {\"title\": \"Point 1 Title\", \"text\": \"Detailed analysis of this point\"}\n  ],\n  \"conclusion\": \"Conclusion paragraph with actionable next steps\"\n}"
       },
       "reference": {
         "index_title": "Archive Index",
@@ -106,7 +117,12 @@ const resources = {
         "message_placeholder": "Message {{name}}...",
         "sandbox_note": "Sandbox uses current prompt & params",
         "select_persona": "Select a Persona",
-        "select_subtitle": "Choose an agent from the sidebar or create a new one."
+        "select_subtitle": "Choose an agent from the sidebar or create a new one.",
+        "defaults": agentDefaultsEn,
+        "studio": {
+          "fallback_assistant": "You are a helpful assistant.",
+          "enhance_user": "You are an expert in prompt engineering and AI system design. Your task is to enhance the system prompt for an AI agent.\n\nAgent Name: {{name}}\nAgent Role: {{role}}\nOriginal System Prompt:\n\"\"\"\n{{prompt}}\n\"\"\"\n\nCreate a significantly improved version of this system prompt. The enhanced prompt must:\n\n1. **Structure** – Use clear sections (e.g., Role & Persona, Core Capabilities, Behavioral Guidelines, Communication Style, Emotional Intelligence, Boundaries & Constraints, Workflow).\n2. **Role Elaboration** – Deeply flesh out the agent’s identity, leveraging its name and role to build a coherent persona.\n3. **Operational Detail** – Add step‑by‑step thinking or process guidelines where appropriate; specify tools, tone, and fallback behaviours.\n4. **Emotional Intelligence** – Integrate empathy, active listening, tone matching, de‑escalation techniques, and rules for asking clarifying questions or handling frustration.\n5. **Do’s & Don’ts** – Include explicit behavioural rules: what the agent should always do and what it must never do.\n6. **Fidelity** – Preserve the original intent and core responsibilities; do not add capabilities unrelated to the original prompt.\n7. **Formatting** – Use a clean, professional layout with markdown headings, bullet points, and short paragraphs. The final prompt should be self-contained and ready to use.\n\nOutput only the enhanced system prompt. Start your response with the line \"New Enhanced Prompt:\" and then provide the prompt – no explanations, no commentary.\nNew Enhanced Prompt:"
+        }
       }
     }
   },
@@ -169,7 +185,15 @@ const resources = {
       },
       "ai": {
         "input_placeholder": "让 AI 构思一些想法或段落...",
-        "loading": "AI 思考中..."
+        "loading": "AI 思考中...",
+        "generated_article_title": "生成的合成稿",
+        "prompts": {
+          "localeDirective": "请始终使用简体中文回复，除非用户明确要求使用其他语言。",
+          "publish": "请将以下概念、笔记与草稿整合为一篇连贯、文笔流畅的文章：\n\n{{content}}",
+          "agentContext": "待分析上下文：\n{{content}}",
+          "toolbar": "画布上已连接笔记的上下文：\n{{context}}\n\n用户需求：{{request}}",
+          "context_fragment_label": "\n【上下文片段】："
+        }
       },
       "lab": {
         "investigate": "您想调查什么？",
@@ -179,7 +203,9 @@ const resources = {
         "report": "综合报告",
         "new_research": "新研究",
         "past_sessions": "历史会话",
-        "agent_title": "深度研究智能体"
+        "agent_title": "深度研究智能体",
+        "ai_generate_plan": "你是一位资深研究策略顾问，正在辅助作者完成书稿写作。\n作者的研究问题是：「{{query}}」。\n\n请设计一个逻辑连贯的三步研究计划，帮助作者深入调研该主题，并把成果融入书稿。\n\n每一步请返回一个 JSON 对象，字段为：\n- \"title\"：简短有概括力的标题（约 5–7 个词）；\n- \"desc\"：2–3 句话，清楚说明：\n  - 该步的具体目标；\n  - 关键方法、文献来源或分析手段；\n  - 该步产出如何直接进入书稿。\n\n三步应形成自然递进，例如：\n（1）界定范围与文献基础；（2）核心分析或证据收集；（3）综合、推论或论点构建。\n请根据问题性质（如实证论文、综述、理论散文、政策报告等）调整递进。\n\n仅回复合法 JSON 数组，不要任何额外文字，格式如下：\n[\n  {\"title\": \"第一步标题\", \"desc\": \"第一步描述\"},\n  {\"title\": \"第二步标题\", \"desc\": \"第二步描述\"},\n  {\"title\": \"第三步标题\", \"desc\": \"第三步描述\"}\n]",
+        "ai_research_report": "你是研究综合智能体。请基于用户问题「{{query}}」生成一份详细研究报告。\n仅使用合法 JSON，结构必须符合：\n{\n  \"intro\": \"引言段落\",\n  \"points\": [\n    {\"title\": \"要点一标题\", \"text\": \"该要点的详细分析\"}\n  ],\n  \"conclusion\": \"结论文段，含可执行的后续步骤\"\n}"
       },
       "reference": {
         "index_title": "档案索引",
@@ -214,7 +240,12 @@ const resources = {
         "message_placeholder": "给 {{name}} 发送消息...",
         "sandbox_note": "沙盒使用当前的提示词和参数",
         "select_persona": "请选择一个人格",
-        "select_subtitle": "从侧边栏选择一个人格或创建一个新人格。"
+        "select_subtitle": "从侧边栏选择一个人格或创建一个新人格。",
+        "defaults": agentDefaultsZh,
+        "studio": {
+          "fallback_assistant": "你是一个乐于助人的助手。",
+          "enhance_user": "你是提示词工程与 AI 系统设计专家。请优化以下 AI 智能体的系统提示词。\n\n智能体名称：{{name}}\n角色：{{role}}\n原始系统提示词：\n\"\"\"\n{{prompt}}\n\"\"\"\n\n请给出显著改进后的系统提示词，必须满足：\n\n1. **结构**——分节清晰（如：角色与人格、核心能力、行为准则、沟通风格、情绪智能、边界与约束、工作流）。\n2. **角色展开**——结合名称与角色，把人格写透。\n3. **可执行细节**——在合适处补充分步思考或流程；说明语气、工具与兜底行为。\n4. **情绪智能**——融入共情、倾听、语气匹配、降温与澄清提问等规则。\n5. **要与不要**——明确行为红线与必须坚持的做法。\n6. **忠实原意**——保留原任务与职责，不凭空增加无关能力。\n7. **排版**——使用 Markdown 标题、列表与短段落，成稿可直接使用。\n\n只输出增强后的系统提示词。先单独一行写「新增强提示词：」，随后给出正文，不要解释或评论。\n新增强提示词:"
+        }
       }
     }
   }

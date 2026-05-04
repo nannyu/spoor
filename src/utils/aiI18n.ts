@@ -1,0 +1,42 @@
+import i18n from '../i18n';
+import type { AgentConfig } from '../db';
+import { LEGACY_AGENT_PROMPTS, SYSTEM_AGENT_IDS, type SystemAgentId } from '../constants/defaultAgents';
+
+function norm(s: string): string {
+  return s.replace(/\s+/g, ' ').trim();
+}
+
+/** Global system line so model matches app language (e.g. 简体中文 when UI is zh). */
+export function getLocaleDirective(): string {
+  return i18n.t('ai.prompts.localeDirective');
+}
+
+export function combineSystemParts(...parts: (string | undefined | null)[]): string {
+  return parts.map(p => p?.trim()).filter(Boolean).join('\n\n');
+}
+
+function isBuiltinAgentId(id: string): id is SystemAgentId {
+  return (SYSTEM_AGENT_IDS as readonly string[]).includes(id);
+}
+
+/**
+ * If the saved prompt is still a stock / legacy built-in, use the string for the **current** UI language.
+ * Custom user edits are left as-is (locale directive still applies separately).
+ */
+export function resolveAgentSystemPrompt(agent: AgentConfig): string {
+  const id = agent.id;
+  if (!isBuiltinAgentId(id)) return agent.prompt ?? '';
+
+  const current = norm(agent.prompt ?? '');
+  const candidates = new Set<string>();
+  for (const lng of ['en', 'zh'] as const) {
+    candidates.add(norm(i18n.getFixedT(lng)(`agents.defaults.${id}.prompt`)));
+  }
+  for (const leg of LEGACY_AGENT_PROMPTS[id as SystemAgentId] ?? []) {
+    candidates.add(norm(leg));
+  }
+  if (candidates.has(current)) {
+    return i18n.t(`agents.defaults.${id}.prompt`);
+  }
+  return agent.prompt ?? '';
+}

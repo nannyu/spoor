@@ -1,9 +1,11 @@
 import { useState, type RefObject } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { AgentConfig, CanvasNode, Edge as DbEdge } from '../db';
 import type { AIConfig } from '../components/AISettingsModal';
 import type { CanvasTransform } from './useCanvasInteraction';
 import { callUniversalAI, formatAiError, maskApiKeyForLog } from '../services/ai';
 import { getCanvasCenterPosition } from '../utils/canvas';
+import { combineSystemParts, getLocaleDirective, resolveAgentSystemPrompt } from '../utils/aiI18n';
 import { db } from '../db';
 
 interface UseAiActionsParams {
@@ -33,6 +35,7 @@ export function useAiActions({
   setActiveReferenceId,
   setActiveTab,
 }: UseAiActionsParams) {
+  const { t } = useTranslation();
   const [isPublishing, setIsPublishing] = useState(false);
   const [isToolbarAiLoading, setIsToolbarAiLoading] = useState(false);
   const [analyzingAgentNodeId, setAnalyzingAgentNodeId] = useState<string | null>(null);
@@ -54,12 +57,13 @@ export function useAiActions({
 
       const text = await callUniversalAI({
         config: aiConfig,
-        prompt: `Turn the following concepts, notes, and drafts into a cohesive, well-written article:\n\n${combinedText}`
+        systemInstruction: getLocaleDirective(),
+        prompt: t('ai.prompts.publish', { content: combinedText }),
       });
 
       const newArticle = {
         id: `gen-${Date.now()}`,
-        title: 'Generated Synthesis',
+        title: t('ai.generated_article_title'),
         content: text || '',
         date: new Date().getFullYear().toString(),
         type: 'GEN-' + Math.floor(Math.random() * 1000)
@@ -93,8 +97,11 @@ export function useAiActions({
     try {
       const text = await callUniversalAI({
         config: aiConfig,
-        prompt: `Context to analyze:\n${contextText}`,
-        systemInstruction: agentConfig.prompt
+        prompt: t('ai.prompts.agentContext', { content: contextText }),
+        systemInstruction: combineSystemParts(
+          getLocaleDirective(),
+          resolveAgentSystemPrompt(agentConfig),
+        ),
       });
 
       if (text) {
@@ -127,16 +134,18 @@ export function useAiActions({
       });
 
       let contextText = '';
+      const fragmentLabel = t('ai.prompts.context_fragment_label');
       connectedNodeIds.forEach(id => {
         const el = nodesRef.current[id];
         if (el) {
-          contextText += `\n[Context Fragment]: ` + (el.innerText || '');
+          contextText += fragmentLabel + (el.innerText || '');
         }
       });
 
       const text = await callUniversalAI({
         config: aiConfig,
-        prompt: `Context from connected notes across the canvas:\n${contextText}\n\nUser request: ${aiPrompt}`
+        systemInstruction: getLocaleDirective(),
+        prompt: t('ai.prompts.toolbar', { context: contextText, request: aiPrompt }),
       });
 
       if (text) {

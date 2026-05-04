@@ -99,6 +99,12 @@ describe('i18n 国际化模块', () => {
 
     it('ai 翻译完整', () => {
       expect(i18n.t('ai.loading')).toBe('AI is thinking...');
+      expect(i18n.t('ai.prompts.localeDirective')).toContain('English');
+    });
+
+    it('内置 Agent 系统提示词有英文文案', () => {
+      expect(i18n.t('agents.defaults.interviewer.name')).toBe('AI Interviewer');
+      expect(i18n.t('agents.defaults.challenger.prompt')).toContain('Challenger');
     });
   });
 
@@ -144,6 +150,16 @@ describe('i18n 国际化模块', () => {
       expect(i18n.t('agents.personas')).toBe('人格设定');
       expect(i18n.t('agents.new_persona')).toBe('新建人格');
       expect(i18n.t('agents.delete_confirm')).toBe('您确定要删除此人格设定吗？');
+    });
+
+    it('ai 翻译完整', () => {
+      expect(i18n.t('ai.loading')).toBe('AI 思考中...');
+      expect(i18n.t('ai.prompts.localeDirective')).toContain('简体中文');
+    });
+
+    it('内置 Agent 系统提示词有中文文案', () => {
+      expect(i18n.t('agents.defaults.interviewer.name')).toBe('AI 采访者');
+      expect(i18n.t('agents.defaults.challenger.prompt')).toContain('挑战者');
     });
 
     it('lab 翻译完整', () => {

@@ -14,6 +14,7 @@ import {
 import type { AgentConfig } from '../db';
 import type { CallAIFn } from '../types';
 import { formatAiError } from '../services/ai';
+import { combineSystemParts, getLocaleDirective } from '../utils/aiI18n';
 
 export interface AgentsStudioProps {
   agentConfigs: AgentConfig[];
@@ -79,31 +80,16 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
     try {
       const newPrompt = await callAI({
         config: aiConfig,
-        prompt: `You are an expert in prompt engineering and AI system design. Your task is to enhance the system prompt for an AI agent.
-
-Agent Name: ${activeAgent.name}
-Agent Role: ${activeAgent.role}
-Original System Prompt:
-"""
-${activeAgent.prompt}
-"""
-
-Create a significantly improved version of this system prompt. The enhanced prompt must:
-
-1. **Structure** – Use clear sections (e.g., Role & Persona, Core Capabilities, Behavioral Guidelines, Communication Style, Emotional Intelligence, Boundaries & Constraints, Workflow).
-2. **Role Elaboration** – Deeply flesh out the agent’s identity, leveraging its name and role to build a coherent persona.
-3. **Operational Detail** – Add step‑by‑step thinking or process guidelines where appropriate; specify tools, tone, and fallback behaviours.
-4. **Emotional Intelligence** – Integrate empathy, active listening, tone matching, de‑escalation techniques, and rules for asking clarifying questions or handling frustration.
-5. **Do’s & Don’ts** – Include explicit behavioural rules: what the agent should always do and what it must never do.
-6. **Fidelity** – Preserve the original intent and core responsibilities; do not add capabilities unrelated to the original prompt.
-7. **Formatting** – Use a clean, professional layout with markdown headings, bullet points, and short paragraphs. The final prompt should be self-contained and ready to use.
-
-Output only the enhanced system prompt. Start your response with the line "New Enhanced Prompt:" and then provide the prompt – no explanations, no commentary.
-New Enhanced Prompt:`
+        systemInstruction: getLocaleDirective(),
+        prompt: t('agents.studio.enhance_user', {
+          name: activeAgent.name,
+          role: activeAgent.role,
+          prompt: activeAgent.prompt,
+        }),
       });
       
       let enhanced = newPrompt.trim();
-      enhanced = enhanced.replace(/^New Enhanced Prompt:\s*/i, '').trim();
+      enhanced = enhanced.replace(/^(New Enhanced Prompt:|新增强提示词[:：])\s*/i, '').trim();
       handleUpdateActiveAgent('prompt', enhanced);
     } catch (error) {
       const msg = formatAiError(error);
@@ -127,7 +113,10 @@ New Enhanced Prompt:`
       const responseText = await callAI({
         config: aiConfig,
         prompt: userMsg,
-        systemInstruction: activeAgent.prompt || "You are a helpful assistant.",
+        systemInstruction: combineSystemParts(
+          getLocaleDirective(),
+          activeAgent.prompt || t('agents.studio.fallback_assistant'),
+        ),
         temperature: activeAgent.temperature || 0.7,
         topP: activeAgent.creativity || 0.4
       });
