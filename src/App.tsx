@@ -22,6 +22,8 @@ import { callUniversalAI } from './services/ai';
 import { getCanvasCenterPosition } from './utils/canvas';
 import { NodeRenderer } from './components/nodes/NodeRenderer';
 import { useSeedData } from './hooks/useSeedData';
+import { useUserProfile } from './hooks/useUserProfile';
+import { useFullscreen } from './hooks/useFullscreen';
 
 export default function App() {
   const { t, i18n } = useTranslation();
@@ -55,28 +57,14 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('personal');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAiLoading, setIsAiLoading] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [aiPrompt, setAiPrompt] = useState('');
 
-  // User Profile States
-  const [userName, setUserName] = useState(() => localStorage.getItem('user_name') || 'Main Library');
-  const [userRole, setUserRole] = useState(() => localStorage.getItem('user_role') || 'Focus Mode Active');
-  const [userAvatar, setUserAvatar] = useState(() => localStorage.getItem('user_avatar') || 'https://lh3.googleusercontent.com/aida-public/AB6AXuAJ4QVDvA9fTIQoBUT7DMYuMx4lar18Lu2yQ4F-BA02ETKD3F685obhnMMZ1DTSPgIGtayR6TnhxxI6xPnMhkIfVwIw8pUoiCCKugCt50m261Esqg2-55XI-P4ZSBmpCF6WZeh0zZYF25ixFg1yLaNs5Xysi48cS0GvzZsLD-Z_8zoH7WpKlehQuPAUPWjbyO09MlCOEVrth2zGKWn3MGyHKx3VZmQ2hgrMhzuBmSy6XFRKlRS29CPcZsqDQJ-BLENv8p6ldZ5UsiM');
+  // User Profile
+  const { userName, setUserName, userRole, setUserRole, userAvatar, setUserAvatar } = useUserProfile();
 
-  useEffect(() => {
-    localStorage.setItem('user_name', userName);
-    localStorage.setItem('user_role', userRole);
-    localStorage.setItem('user_avatar', userAvatar);
-  }, [userName, userRole, userAvatar]);
-
-  useEffect(() => {
-    const handleFsChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-    document.addEventListener('fullscreenchange', handleFsChange);
-    return () => document.removeEventListener('fullscreenchange', handleFsChange);
-  }, []);
+  // Fullscreen
+  const { isFullscreen, toggleFullscreen } = useFullscreen(mainRef);
 
   const [aiConfig, setAiConfig] = useState(() => {
     const saved = localStorage.getItem('ai_config');
@@ -527,13 +515,7 @@ export default function App() {
               </button>
               
               <button
-                onClick={() => {
-                  if (!document.fullscreenElement) {
-                    mainRef.current?.requestFullscreen();
-                  } else {
-                    document.exitFullscreen();
-                  }
-                }}
+                onClick={toggleFullscreen}
                 className="bg-white text-[#1a1a1a] p-3 rounded-full shadow-md hover:scale-105 transition-all border border-[#E6E4DF] flex items-center justify-center hover:border-[#C2410C] hover:text-[#C2410C]"
                 title={isFullscreen ? t('canvas.full_screen') : t('canvas.full_screen')}
               >
