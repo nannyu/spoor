@@ -19,13 +19,13 @@ import { Reference } from './components/Reference';
 import { ResearchLab } from './components/ResearchLab';
 import { AgentsStudio } from './components/AgentsStudio';
 import { callUniversalAI } from './services/ai';
-import { getCanvasCenterPosition } from './utils/canvas';
 import { NodeRenderer } from './components/nodes/NodeRenderer';
 import { useSeedData } from './hooks/useSeedData';
 import { useUserProfile } from './hooks/useUserProfile';
 import { useFullscreen } from './hooks/useFullscreen';
 import { useCanvasInteraction } from './hooks/useCanvasInteraction';
 import { useNodeActions } from './hooks/useNodeActions';
+import { useAiActions } from './hooks/useAiActions';
 
 export default function App() {
   const { t, i18n } = useTranslation();
@@ -56,9 +56,7 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('personal');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isAiLoading, setIsAiLoading] = useState(false);
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
-  const [aiPrompt, setAiPrompt] = useState('');
 
   // User Profile
   const { userName, setUserName, userRole, setUserRole, userAvatar, setUserAvatar } = useUserProfile();
@@ -96,78 +94,11 @@ export default function App() {
     activeCanvasId, nodesRef, connectingFrom, setConnectingFrom, edges, selectedNodes, setSelectedNodes, transformRef,
   });
 
-  const handlePublish = async () => {
-    if (selectedNodes.size === 0) return;
-    setIsAiLoading(true);
-    try {
-      let combinedText = '';
-      for (const id of Array.from(selectedNodes)) {
-        const el = nodesRef.current[id];
-        if (el) {
-          combinedText += el.innerText + '\n\n';
-        }
-      }
-
-      const text = await callUniversalAI({
-        config: aiConfig,
-        prompt: `Turn the following concepts, notes, and drafts into a cohesive, well-written article:\n\n${combinedText}`
-      });
-      
-      const newArticle = {
-        id: `gen-${Date.now()}`,
-        title: 'Generated Synthesis',
-        content: text || '',
-        date: new Date().getFullYear().toString(),
-        type: 'GEN-' + Math.floor(Math.random() * 1000)
-      };
-      
-      await db.articles.add(newArticle);
-      setActiveReferenceId(newArticle.id);
-      setActiveTab('reference');
-      setSelectedNodes(new Set());
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsAiLoading(false);
-    }
-  };
-
-  const triggerAgentAnalysis = async (agentConfigId: string, agentNodeId: string, contextNodeId: string) => {
-    const agentConfig = agentConfigs.find(a => a.id === agentConfigId);
-    if (!agentConfig) return;
-
-    const contextEl = nodesRef.current[contextNodeId];
-    if (!contextEl) return;
-    
-    const clone = contextEl.cloneNode(true) as HTMLElement;
-    const contextText = clone.innerText || clone.textContent || '';
-    if (!contextText.trim()) return;
-
-    setIsAiLoading(true);
-    try {
-      const text = await callUniversalAI({
-        config: aiConfig,
-        prompt: `Context to analyze:\n${contextText}`,
-        systemInstruction: agentConfig.prompt
-      });
-
-      if (text) {
-        const agentNode = dynamicNodes.find(n => n.id === agentNodeId);
-        const x = agentNode ? agentNode.x + 350 : window.innerWidth / 2;
-        const y = agentNode ? agentNode.y : window.innerHeight / 2;
-        const newNodeId = crypto.randomUUID();
-        
-        await db.nodes.add({ id: newNodeId, canvasId: activeCanvasId, type: 'ai', content: text, x, y });
-        await db.edges.add({ id: crypto.randomUUID(), canvasId: activeCanvasId, from: agentNodeId, to: newNodeId });
-      }
-    } catch(e) {
-      console.error(e);
-      alert('AI generation failed.');
-    } finally {
-      setIsAiLoading(false);
-    }
-  };
-
+  // AI actions (publish, agent analysis, AI submit)
+  const { isAiLoading, setIsAiLoading, aiPrompt, setAiPrompt, handlePublish, triggerAgentAnalysis, handleAiSubmit } = useAiActions({
+    aiConfig, agentConfigs, activeCanvasId, nodesRef, transformRef,
+    dynamicNodes, edges, selectedNodes, setSelectedNodes, setActiveReferenceId, setActiveTab,
+  });
 
   const handleNodeDragEnd = (draggedId: string, finalPos: {x: number, y: number}) => {
     // Update position in database
@@ -218,44 +149,6 @@ export default function App() {
         }
       }
     });
-  };
-
-  const handleAiSubmit = async () => {
-    if (!aiPrompt.trim() || isAiLoading) return;
-    
-    setIsAiLoading(true);
-    try {
-      // Build context from connected nodes
-      const connectedNodeIds = new Set<string>();
-      edges.forEach(e => {
-        connectedNodeIds.add(e.from);
-        connectedNodeIds.add(e.to);
-      });
-      
-      let contextText = '';
-      connectedNodeIds.forEach(id => {
-        const el = nodesRef.current[id];
-        if (el) {
-          contextText += `\n[Context Fragment]: ` + (el.innerText || '');
-        }
-      });
-
-      const text = await callUniversalAI({
-        config: aiConfig,
-        prompt: `Context from connected notes across the canvas:\n${contextText}\n\nUser request: ${aiPrompt}`
-      });
-      
-      if (text) {
-        const { x, y } = getCanvasCenterPosition(transformRef.current);
-        await db.nodes.add({ id: crypto.randomUUID(), canvasId: activeCanvasId, type: 'ai', content: text, x, y });
-        setAiPrompt('');
-      }
-    } catch (error) {
-      console.error(error);
-      alert('AI generation failed. Please check your API key or network.');
-    } finally {
-      setIsAiLoading(false);
-    }
   };
 
   return (
