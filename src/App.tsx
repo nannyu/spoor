@@ -46,6 +46,7 @@ import {
   Edit3,
   FileText
 } from 'lucide-react';
+import { colorPresets, fontPresets } from './constants/presets';
 
 let maxZIndex = 10;
 
@@ -165,21 +166,6 @@ function useResizable(initialWidth: number, initialHeight: number, scaleRef: Rea
 
   return { size, onPointerDown };
 }
-
-const colorPresets = [
-  { bg: '#ffffff', text: '#1a1a1a', border: '#E6E4DF' },
-  { bg: '#F4F1ED', text: '#1a1a1a', border: '#d1cfca' },
-  { bg: '#fef3c7', text: '#92400e', border: '#fde68a' }, // Amber overlay
-  { bg: '#1a1a1a', text: '#ffffff', border: '#333333' }, // Pitch black
-  { bg: '#1e293b', text: '#f8fafc', border: '#334155' }, // Slate dark
-  { bg: '#C2410C', text: '#ffffff', border: '#a0350a' }, // Accent Ochre
-];
-
-const fontPresets = [
-  { name: 'Serif', value: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif' },
-  { name: 'Sans', value: 'ui-sans-serif, system-ui, sans-serif' },
-  { name: 'Mono', value: 'ui-monospace, Consolas, monospace' },
-];
 
 const DraggableNode: React.FC<DraggableNodeProps> = ({ 
   id, nodesRef, isConnecting, onLink, children, 
