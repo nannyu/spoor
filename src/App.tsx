@@ -6,7 +6,6 @@ import { GoogleGenAI } from '@google/genai';
 import Markdown from 'react-markdown';
 import {
   MessageSquare,
-  Terminal,
   Search,
   Settings,
   Plus,
@@ -28,14 +27,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Check,
-  Cpu,
-  ArrowRight,
-  ListChecks,
-  CheckCircle2,
   Loader2,
   PenLine,
   Edit3,
-  FileText
+  FileText,
 } from 'lucide-react';
 import { DraggableNode } from './components/canvas/DraggableNode';
 import { AISettingsModal } from './components/AISettingsModal';
