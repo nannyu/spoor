@@ -12,9 +12,10 @@ interface NodeRendererProps {
   editingNodeId: string | null;
   setEditingNodeId: (id: string | null) => void;
   agentConfigs: AgentConfig[];
+  analyzingAgentNodeId: string | null;
 }
 
-export function NodeRenderer({ node, editingNodeId, setEditingNodeId, agentConfigs }: NodeRendererProps) {
+export function NodeRenderer({ node, editingNodeId, setEditingNodeId, agentConfigs, analyzingAgentNodeId }: NodeRendererProps) {
   switch (node.type) {
     case 'theme':
       return <ThemeNode node={node} editingNodeId={editingNodeId} setEditingNodeId={setEditingNodeId} />;
@@ -28,7 +29,7 @@ export function NodeRenderer({ node, editingNodeId, setEditingNodeId, agentConfi
     case 'video':
       return <VideoNode node={node} editingNodeId={editingNodeId} setEditingNodeId={setEditingNodeId} />;
     case 'agent':
-      return <AgentNode node={node} editingNodeId={editingNodeId} setEditingNodeId={setEditingNodeId} agentConfigs={agentConfigs} />;
+      return <AgentNode node={node} editingNodeId={editingNodeId} setEditingNodeId={setEditingNodeId} agentConfigs={agentConfigs} isAnalyzing={analyzingAgentNodeId === node.id} />;
     default:
       return null;
   }

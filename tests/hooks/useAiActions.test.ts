@@ -7,6 +7,8 @@ import type { AgentConfig } from '../../src/db';
 
 vi.mock('../../src/services/ai', () => ({
   callUniversalAI: vi.fn().mockResolvedValue('AI generated text'),
+  formatAiError: (e: unknown) => (e instanceof Error ? e.message : String(e)),
+  maskApiKeyForLog: (k: string) => (k ? `${k.slice(0, 2)}…` : ''),
 }));
 
 import { callUniversalAI } from '../../src/services/ai';
@@ -132,11 +134,13 @@ describe('useAiActions', () => {
     });
   });
 
-  // --- isAiLoading ---
-  describe('isAiLoading', () => {
-    it('初始状态为 false', () => {
+  describe('加载状态标志', () => {
+    it('初始均为空闲', () => {
       const { result } = renderHook(() => useTestAiActions());
-      expect(result.current.isAiLoading).toBe(false);
+      expect(result.current.isPublishing).toBe(false);
+      expect(result.current.isToolbarAiLoading).toBe(false);
+      expect(result.current.analyzingAgentNodeId).toBe(null);
+      expect(result.current.isAnyAiBusy).toBe(false);
     });
   });
 });

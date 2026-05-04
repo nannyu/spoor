@@ -5,6 +5,7 @@ export interface CanvasNode {
   canvasId?: string;
   type: string;
   content?: string;
+  description?: string;
   agentConfigId?: string;
   fileType?: string;
   x: number;

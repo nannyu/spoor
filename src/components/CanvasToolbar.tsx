@@ -14,7 +14,8 @@ import { db } from '../db';
 import { getCanvasCenterPosition } from '../utils/canvas';
 
 export interface CanvasToolbarProps {
-  isAiLoading: boolean;
+  isToolbarAiLoading: boolean;
+  isInputDisabled: boolean;
   aiPrompt: string;
   setAiPrompt: (prompt: string) => void;
   handleAiSubmit: () => void;
@@ -28,7 +29,8 @@ export interface CanvasToolbarProps {
 }
 
 export function CanvasToolbar({
-  isAiLoading,
+  isToolbarAiLoading,
+  isInputDisabled,
   aiPrompt,
   setAiPrompt,
   handleAiSubmit,
@@ -46,7 +48,7 @@ export function CanvasToolbar({
     <>
       {/* AI Prompt Bar */}
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-40">
-        <div className={`bg-white rounded-2xl shadow-2xl border border-[#E6E4DF] p-2 flex items-center space-x-2 ring-4 ring-[#F4F1ED]/50 transition-all ${isAiLoading ? 'opacity-80' : ''}`}>
+        <div className={`bg-white rounded-2xl shadow-2xl border border-[#E6E4DF] p-2 flex items-center space-x-2 ring-4 ring-[#F4F1ED]/50 transition-all ${isToolbarAiLoading ? 'opacity-80' : ''}`}>
           <div className="flex items-center gap-1 pl-2 border-r border-[#E6E4DF] pr-3 mr-1 relative group">
             <button onClick={addTextNode} title={t('sidebar.new_note')} className="w-8 h-8 flex items-center justify-center text-[#5a5a54] hover:text-[#1a1a1a] hover:bg-[#F4F1ED] rounded-lg cursor-pointer transition-colors">
               <Plus className="w-4 h-4" />
@@ -78,7 +80,7 @@ export function CanvasToolbar({
             </label>
           </div>
           <div className="pl-1 text-[#C2410C]">
-            <Wand2 className={`w-5 h-5 ${isAiLoading ? 'animate-pulse' : ''}`} />
+            <Wand2 className={`w-5 h-5 ${isToolbarAiLoading ? 'animate-pulse' : ''}`} />
           </div>
           <input 
             className="flex-1 bg-transparent border-none focus:outline-none focus:ring-0 font-sans text-sm py-3 text-[#1a1a1a] placeholder-[#8c8a84] disabled:opacity-50" 
@@ -87,14 +89,14 @@ export function CanvasToolbar({
             value={aiPrompt}
             onChange={e => setAiPrompt(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleAiSubmit()}
-            disabled={isAiLoading}
+            disabled={isInputDisabled}
           />
           <button 
             onClick={handleAiSubmit}
-            disabled={isAiLoading}
+            disabled={isInputDisabled}
             className="bg-[#C2410C] text-white p-2.5 rounded-xl font-sans text-sm font-bold shadow-md flex items-center justify-center hover:bg-[#a0350a] transition-colors disabled:opacity-75 shrink-0"
           >
-            {isAiLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+            {isToolbarAiLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
           </button>
         </div>
       </div>

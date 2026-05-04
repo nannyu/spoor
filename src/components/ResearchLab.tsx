@@ -39,9 +39,28 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
     try {
       const text = await callAI({
         config: aiConfig,
-        prompt: `You are a research agent. The user is writing a specific manuscript and wants to investigate: "${query}". 
-Create a 3-step research plan that analyzes this topic within their work. 
-Respond ONLY in valid JSON format like: [{"title": "Step 1 Title", "desc": "Step 1 Description"}, {"title": "Step 2 Title", "desc": "Step 2 Description"}]`
+        prompt: `You are a senior research strategist helping an author who is writing a manuscript.  
+Their research question is: "${query}".
+
+Design a logically connected 3‑step research plan that will help the author deeply investigate this topic and integrate the findings into their manuscript.  
+
+For each step, return a JSON object with:
+- "title": a short, descriptive title (5–7 words),
+- "desc": a 2–3 sentence description that clearly states:
+  - the specific goal of this step,
+  - the key methods, sources, or analytical techniques to be used,
+  - how the output of this step directly feeds into the manuscript.
+
+The three steps should follow a natural research progression, such as:  
+(1) scoping & literature foundation, (2) core analysis or evidence gathering, (3) synthesis, implications, or argument construction.  
+Tailor the progression to the nature of the query (e.g., empirical paper, review, theoretical essay, policy report).
+
+Respond ONLY with a valid JSON array in the following format (no additional text):
+[
+  {"title": "Step 1 Title", "desc": "Step 1 Description"},
+  {"title": "Step 2 Title", "desc": "Step 2 Description"},
+  {"title": "Step 3 Title", "desc": "Step 3 Description"}
+]`
       });
       const jsonStr = text?.replace(/```json|```/g, '').trim() || '[]';
       const plan = JSON.parse(jsonStr);

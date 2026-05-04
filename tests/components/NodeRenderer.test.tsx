@@ -67,6 +67,7 @@ describe('NodeRenderer', () => {
         editingNodeId={null}
         setEditingNodeId={vi.fn()}
         agentConfigs={mockAgentConfigs}
+        analyzingAgentNodeId={null}
       />
     );
     expect(getByText('Test content')).toBeInTheDocument();
@@ -79,6 +80,7 @@ describe('NodeRenderer', () => {
         editingNodeId={null}
         setEditingNodeId={vi.fn()}
         agentConfigs={mockAgentConfigs}
+        analyzingAgentNodeId={null}
       />
     );
     expect(getByText('Test content')).toBeInTheDocument();
@@ -91,6 +93,7 @@ describe('NodeRenderer', () => {
         editingNodeId={null}
         setEditingNodeId={vi.fn()}
         agentConfigs={mockAgentConfigs}
+        analyzingAgentNodeId={null}
       />
     );
     expect(getByText('Test content')).toBeInTheDocument();
@@ -103,6 +106,7 @@ describe('NodeRenderer', () => {
         editingNodeId={null}
         setEditingNodeId={vi.fn()}
         agentConfigs={mockAgentConfigs}
+        analyzingAgentNodeId={null}
       />
     );
     expect(getByTestId('markdown')).toBeInTheDocument();
@@ -115,6 +119,7 @@ describe('NodeRenderer', () => {
         editingNodeId={null}
         setEditingNodeId={vi.fn()}
         agentConfigs={mockAgentConfigs}
+        analyzingAgentNodeId={null}
       />
     );
     const img = container.querySelector('img');
@@ -129,6 +134,7 @@ describe('NodeRenderer', () => {
         editingNodeId={null}
         setEditingNodeId={vi.fn()}
         agentConfigs={mockAgentConfigs}
+        analyzingAgentNodeId={null}
       />
     );
     const video = container.querySelector('video');
@@ -136,15 +142,30 @@ describe('NodeRenderer', () => {
   });
 
   it('type="agent" 渲染 AgentNode', () => {
-    const { getByText } = render(
+    const { getByText, queryByTestId } = render(
       <NodeRenderer
         node={makeNode('agent', { agentConfigId: 'a1' })}
         editingNodeId={null}
         setEditingNodeId={vi.fn()}
         agentConfigs={mockAgentConfigs}
+        analyzingAgentNodeId={null}
       />
     );
     expect(getByText('Test Agent')).toBeInTheDocument();
+    expect(queryByTestId('agent-analyzing-overlay')).not.toBeInTheDocument();
+  });
+
+  it('type="agent" 且 analyzingAgentNodeId 匹配时显示分析遮罩', () => {
+    const { getByTestId } = render(
+      <NodeRenderer
+        node={makeNode('agent', { id: 'agent-1', agentConfigId: 'a1' })}
+        editingNodeId={null}
+        setEditingNodeId={vi.fn()}
+        agentConfigs={mockAgentConfigs}
+        analyzingAgentNodeId="agent-1"
+      />
+    );
+    expect(getByTestId('agent-analyzing-overlay')).toBeInTheDocument();
   });
 
   it('未知 type 返回 null', () => {
@@ -154,6 +175,7 @@ describe('NodeRenderer', () => {
         editingNodeId={null}
         setEditingNodeId={vi.fn()}
         agentConfigs={mockAgentConfigs}
+        analyzingAgentNodeId={null}
       />
     );
     // 容器内不应有内容

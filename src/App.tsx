@@ -112,7 +112,7 @@ export default function App() {
   });
 
   // AI actions (publish, agent analysis, AI submit)
-  const { isAiLoading, setIsAiLoading, aiPrompt, setAiPrompt, handlePublish, triggerAgentAnalysis, handleAiSubmit } = useAiActions({
+  const { isPublishing, isToolbarAiLoading, analyzingAgentNodeId, isAnyAiBusy, aiPrompt, setAiPrompt, handlePublish, triggerAgentAnalysis, handleAiSubmit } = useAiActions({
     aiConfig, agentConfigs, activeCanvasId, nodesRef, transformRef,
     dynamicNodes, edges, selectedNodes, setSelectedNodes, setActiveReferenceId, setActiveTab,
   });
@@ -231,11 +231,11 @@ export default function App() {
           <div className="absolute top-6 right-6 flex items-center z-40 gap-3">
               <button 
                 onClick={handlePublish}
-                disabled={selectedNodes.size === 0 || isAiLoading}
+                disabled={selectedNodes.size === 0 || isAnyAiBusy}
                 className="bg-[#C2410C] text-white p-3 rounded-full shadow-md hover:scale-105 transition-all disabled:opacity-50 flex items-center justify-center group border border-[#a0350a]/50"
-                title={isAiLoading ? t('nodes.ai_loading') : `${t('sidebar.publish')} (${selectedNodes.size})`}
+                title={isPublishing ? t('nodes.ai_loading') : `${t('sidebar.publish')} (${selectedNodes.size})`}
               >
-                {isAiLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <PenLine className="w-5 h-5" />}
+                {isPublishing ? <Loader2 className="w-5 h-5 animate-spin" /> : <PenLine className="w-5 h-5" />}
               </button>
               
               <button
@@ -289,7 +289,7 @@ export default function App() {
                     db.nodes.update(node.id, size);
                   }}
                 >
-                  <NodeRenderer node={node} editingNodeId={editingNodeId} setEditingNodeId={setEditingNodeId} agentConfigs={agentConfigs} />
+                  <NodeRenderer node={node} editingNodeId={editingNodeId} setEditingNodeId={setEditingNodeId} agentConfigs={agentConfigs} analyzingAgentNodeId={analyzingAgentNodeId} />
                 </DraggableNode>
               );
             })}
@@ -299,7 +299,9 @@ export default function App() {
 
         {/* AI Prompt Bar & Toolbar */}
         <CanvasToolbar 
-          isAiLoading={isAiLoading} aiPrompt={aiPrompt} setAiPrompt={setAiPrompt}
+          isToolbarAiLoading={isToolbarAiLoading}
+          isInputDisabled={isAnyAiBusy}
+          aiPrompt={aiPrompt} setAiPrompt={setAiPrompt}
           handleAiSubmit={handleAiSubmit} addTextNode={addTextNode} addFileNode={addFileNode}
           agentConfigs={agentConfigs} canvasTransform={canvasTransform}
           setCanvasTransform={setCanvasTransform} transformRef={transformRef}

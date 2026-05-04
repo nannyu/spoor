@@ -79,19 +79,32 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
     try {
       const newPrompt = await callAI({
         config: aiConfig,
-        prompt: `
-          Expand and enhance the following AI System Prompt for an agent called "${activeAgent.name}" with the role "${activeAgent.role}".
-          Make it more structured, detailed, and include emotional intelligence or specific behavioral guidelines if applicable.
-          Use a professional and clear format.
+        prompt: `You are an expert in prompt engineering and AI system design. Your task is to enhance the system prompt for an AI agent.
 
-          Original Prompt:
-          ${activeAgent.prompt}
+Agent Name: ${activeAgent.name}
+Agent Role: ${activeAgent.role}
+Original System Prompt:
+"""
+${activeAgent.prompt}
+"""
 
-          New Enhanced Prompt:
-        `
+Create a significantly improved version of this system prompt. The enhanced prompt must:
+
+1. **Structure** – Use clear sections (e.g., Role & Persona, Core Capabilities, Behavioral Guidelines, Communication Style, Emotional Intelligence, Boundaries & Constraints, Workflow).
+2. **Role Elaboration** – Deeply flesh out the agent’s identity, leveraging its name and role to build a coherent persona.
+3. **Operational Detail** – Add step‑by‑step thinking or process guidelines where appropriate; specify tools, tone, and fallback behaviours.
+4. **Emotional Intelligence** – Integrate empathy, active listening, tone matching, de‑escalation techniques, and rules for asking clarifying questions or handling frustration.
+5. **Do’s & Don’ts** – Include explicit behavioural rules: what the agent should always do and what it must never do.
+6. **Fidelity** – Preserve the original intent and core responsibilities; do not add capabilities unrelated to the original prompt.
+7. **Formatting** – Use a clean, professional layout with markdown headings, bullet points, and short paragraphs. The final prompt should be self-contained and ready to use.
+
+Output only the enhanced system prompt. Start your response with the line "New Enhanced Prompt:" and then provide the prompt – no explanations, no commentary.
+New Enhanced Prompt:`
       });
       
-      handleUpdateActiveAgent('prompt', newPrompt.trim());
+      let enhanced = newPrompt.trim();
+      enhanced = enhanced.replace(/^New Enhanced Prompt:\s*/i, '').trim();
+      handleUpdateActiveAgent('prompt', enhanced);
     } catch (error) {
       const msg = formatAiError(error);
       console.error('[Scribe AI] enhance prompt failed', msg);

@@ -1,5 +1,20 @@
 import { useEffect } from 'react';
 import { db } from '../db';
+import { LEGACY_AGENT_PROMPTS, SYSTEM_AGENT_DEFINITIONS } from '../constants/defaultAgents';
+
+/** 仍在使用旧版种子文案时，写入新版提示词（不覆盖用户自定义）。 */
+async function migrateLegacyAgentPrompts() {
+  for (const def of SYSTEM_AGENT_DEFINITIONS) {
+    const legacies = LEGACY_AGENT_PROMPTS[def.id];
+    if (!legacies?.length) continue;
+    const row = await db.agents.get(def.id);
+    if (!row) continue;
+    const current = (row.prompt ?? '').trim();
+    if (legacies.includes(current)) {
+      await db.agents.update(def.id, { prompt: def.prompt });
+    }
+  }
+}
 
 /** Seed the database with default agents, nodes, and articles on first run. */
 export function useSeedData() {
@@ -15,24 +30,17 @@ export function useSeedData() {
         });
       }
 
-      const agentIds = ['challenger', 'interviewer', 'synthesizer', 'stylist', 'futurist', 'pragmatist'];
+      const agentIds = SYSTEM_AGENT_DEFINITIONS.map(a => a.id);
       const existingAgents = await db.agents.toArray();
       const existingIds = new Set(existingAgents.map(a => a.id));
       const missingIds = agentIds.filter(id => !existingIds.has(id));
 
       if (missingIds.length > 0) {
-        const allSystemAgents = [
-          { id: 'challenger', name: 'The Challenger', role: 'Debater', prompt: 'You are a critical Debater. Do not agree with the user or simply follow orders. Challenge the premise of what is connected to you. Point out logical flaws, demand stronger evidence, and actively try to find holes in the argument to help the user refine their thoughts.', temperature: 0.7, creativity: 0.4 },
-          { id: 'interviewer', name: 'AI Interviewer', role: 'Journalist', prompt: 'You are an AI Interviewer who takes initiative. Do not wait for commands. Based on the provided context, actively start asking probing questions to draw out deeper narratives or follow-up ideas.', temperature: 0.7, creativity: 0.4 },
-          { id: 'synthesizer', name: 'The Synthesizer', role: 'Connector', prompt: 'You are a Connector/Synthesizer. Your goal is to find hidden patterns and non-obvious relationships between the notes and ideas connected to you. Suggest how disparate concepts can be merged into a cohesive whole.', temperature: 0.8, creativity: 0.7 },
-          { id: 'stylist', name: 'The Stylist', role: 'Editor', prompt: 'You are a Master Editor and Stylist. Your role is to take the provided content and elevate its quality. Focus on tone, clarity, and impact. Make the text compelling, professional, or poetic depending on the context.', temperature: 0.6, creativity: 0.5 },
-          { id: 'futurist', name: 'The Futurist', role: 'Visionary', prompt: 'You are a Visionary Futurist. Based on the ideas connected to you, project their evolution 10-20 years into the future. What are the long-term implications, potential disruptors, and wild possibilities?', temperature: 0.9, creativity: 0.9 },
-          { id: 'pragmatist', name: 'The Pragmatist', role: 'Realist', prompt: 'You are a realistic Pragmatist. Your job is to ground the user\'s ideas in reality. Identify practical constraints, missing logistical steps, potential costs, and immediate roadblocks that need to be addressed.', temperature: 0.4, creativity: 0.2 }
-        ];
-        
-        const toAdd = allSystemAgents.filter(a => missingIds.includes(a.id));
+        const toAdd = SYSTEM_AGENT_DEFINITIONS.filter(a => missingIds.includes(a.id));
         await db.agents.bulkPut(toAdd);
       }
+
+      await migrateLegacyAgentPrompts();
 
       const totalCount = await db.agents.count();
       if (totalCount <= 6) {

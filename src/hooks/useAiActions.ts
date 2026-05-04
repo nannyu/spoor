@@ -33,12 +33,16 @@ export function useAiActions({
   setActiveReferenceId,
   setActiveTab,
 }: UseAiActionsParams) {
-  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [isToolbarAiLoading, setIsToolbarAiLoading] = useState(false);
+  const [analyzingAgentNodeId, setAnalyzingAgentNodeId] = useState<string | null>(null);
   const [aiPrompt, setAiPrompt] = useState('');
 
+  const isAnyAiBusy = isPublishing || isToolbarAiLoading || analyzingAgentNodeId !== null;
+
   const handlePublish = async () => {
-    if (selectedNodes.size === 0) return;
-    setIsAiLoading(true);
+    if (selectedNodes.size === 0 || isAnyAiBusy) return;
+    setIsPublishing(true);
     try {
       let combinedText = '';
       for (const id of Array.from(selectedNodes)) {
@@ -70,7 +74,7 @@ export function useAiActions({
       console.error('[Scribe AI] handlePublish failed', { error: msg, provider: aiConfig.provider, model: aiConfig.model, apiKey: maskApiKeyForLog(aiConfig.apiKey) });
       alert(`合成失败\n\n${msg}\n\n打开开发者工具 (F12) → Console 查看 [Scribe AI] 日志。`);
     } finally {
-      setIsAiLoading(false);
+      setIsPublishing(false);
     }
   };
 
@@ -85,7 +89,7 @@ export function useAiActions({
     const contextText = clone.innerText || clone.textContent || '';
     if (!contextText.trim()) return;
 
-    setIsAiLoading(true);
+    setAnalyzingAgentNodeId(agentNodeId);
     try {
       const text = await callUniversalAI({
         config: aiConfig,
@@ -107,14 +111,14 @@ export function useAiActions({
       console.error('[Scribe AI] triggerAgentAnalysis failed', { error: msg, provider: aiConfig.provider, model: aiConfig.model, apiKey: maskApiKeyForLog(aiConfig.apiKey) });
       alert(`AI 生成失败\n\n${msg}\n\n打开开发者工具 (F12) → Console 查看 [Scribe AI] 详细日志。`);
     } finally {
-      setIsAiLoading(false);
+      setAnalyzingAgentNodeId(null);
     }
   };
 
   const handleAiSubmit = async () => {
-    if (!aiPrompt.trim() || isAiLoading) return;
+    if (!aiPrompt.trim() || isAnyAiBusy) return;
 
-    setIsAiLoading(true);
+    setIsToolbarAiLoading(true);
     try {
       const connectedNodeIds = new Set<string>();
       edges.forEach(e => {
@@ -145,9 +149,19 @@ export function useAiActions({
       console.error('[Scribe AI] handleAiSubmit failed', { error: msg, provider: aiConfig.provider, model: aiConfig.model, apiKey: maskApiKeyForLog(aiConfig.apiKey) });
       alert(`AI 生成失败\n\n${msg}\n\n请检查：1) 设置中 Provider / MiMo Key / Base URL（需含 /v1） 2) 若用浏览器，需 npm run dev 且已重启（/api/mimo 代理）；桌面端用 Tauri 可不依赖代理。\n\nF12 → Console 查看 [Scribe AI] 日志。`);
     } finally {
-      setIsAiLoading(false);
+      setIsToolbarAiLoading(false);
     }
   };
 
-  return { isAiLoading, setIsAiLoading, aiPrompt, setAiPrompt, handlePublish, triggerAgentAnalysis, handleAiSubmit };
+  return {
+    isPublishing,
+    isToolbarAiLoading,
+    analyzingAgentNodeId,
+    isAnyAiBusy,
+    aiPrompt,
+    setAiPrompt,
+    handlePublish,
+    triggerAgentAnalysis,
+    handleAiSubmit,
+  };
 }

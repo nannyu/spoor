@@ -8,4 +8,5 @@ export interface NodeContentProps {
 
 export interface AgentNodeProps extends NodeContentProps {
   agentConfigs: AgentConfig[];
+  isAnalyzing?: boolean;
 }
