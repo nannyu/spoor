@@ -24,6 +24,7 @@ import { NodeRenderer } from './components/nodes/NodeRenderer';
 import { useSeedData } from './hooks/useSeedData';
 import { useUserProfile } from './hooks/useUserProfile';
 import { useFullscreen } from './hooks/useFullscreen';
+import { useCanvasInteraction } from './hooks/useCanvasInteraction';
 
 export default function App() {
   const { t, i18n } = useTranslation();
@@ -32,7 +33,6 @@ export default function App() {
   const edgeLabelsRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLDivElement>(null);
   const contentContainerRef = useRef<HTMLDivElement>(null);
-  const transformRef = useRef({ x: 0, y: 0, scale: 1 });
 
   // Local-only UI states
   const [activeCanvasId, setActiveCanvasId] = useState<string>(() => localStorage.getItem('active_canvas_id') || 'default');
@@ -52,7 +52,6 @@ export default function App() {
   const [activeReferenceId, setActiveReferenceId] = useState<string>('');
   const [hoveredEdgeId, setHoveredEdgeId] = useState<string | null>(null);
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
-  const [canvasTransform, setCanvasTransform] = useState({ x: 0, y: 0, scale: 1 });
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('personal');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -65,6 +64,11 @@ export default function App() {
 
   // Fullscreen
   const { isFullscreen, toggleFullscreen } = useFullscreen(mainRef);
+
+  // Canvas interaction (transform, pan, zoom, edge lines)
+  const { canvasTransform, setCanvasTransform, transformRef, handlePanStart } = useCanvasInteraction(
+    mainRef, contentContainerRef, svgRef, edgeLabelsRef, nodesRef, connectingFrom, setConnectingFrom,
+  );
 
   const [aiConfig, setAiConfig] = useState(() => {
     const saved = localStorage.getItem('ai_config');
@@ -79,10 +83,6 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('ai_config', JSON.stringify(aiConfig));
   }, [aiConfig]);
-
-  useEffect(() => {
-    transformRef.current = canvasTransform;
-  }, [canvasTransform]);
 
   useEffect(() => {
     localStorage.setItem('active_canvas_id', activeCanvasId);
@@ -242,150 +242,6 @@ export default function App() {
     db.nodes.delete(id);
     db.edges.where('from').equals(id).or('to').equals(id).delete();
   };
-
-  const mousePosRef = useRef({ x: 0, y: 0 });
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      mousePosRef.current = { x: e.clientX, y: e.clientY };
-    };
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, []);
-
-  useEffect(() => {
-    const main = mainRef.current;
-    if (!main) return;
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      if (e.ctrlKey || e.metaKey) {
-        setCanvasTransform(prev => {
-          const zoomBase = 1.05;
-          const factor = e.deltaY < 0 ? zoomBase : 1 / zoomBase;
-          const newScale = Math.min(Math.max(0.1, prev.scale * factor), 5);
-          
-          const mainRect = main.getBoundingClientRect();
-          const clientX = e.clientX - mainRect.left;
-          const clientY = e.clientY - mainRect.top;
-
-          const mouseXInCanvas = (clientX - prev.x) / prev.scale;
-          const mouseYInCanvas = (clientY - prev.y) / prev.scale;
-
-          const newX = clientX - mouseXInCanvas * newScale;
-          const newY = clientY - mouseYInCanvas * newScale;
-
-          return { x: newX, y: newY, scale: newScale };
-        });
-      } else {
-        setCanvasTransform(prev => ({
-          ...prev,
-          x: prev.x - e.deltaX,
-          y: prev.y - e.deltaY,
-        }));
-      }
-    };
-    main.addEventListener('wheel', onWheel, { passive: false });
-    return () => main.removeEventListener('wheel', onWheel);
-  }, []);
-
-  const handlePanStart = (e: React.PointerEvent) => {
-    if (e.target === e.currentTarget || e.button === 1 || e.button === 0) {
-      if (connectingFrom) setConnectingFrom(null);
-      e.preventDefault();
-      const startX = e.clientX;
-      const startY = e.clientY;
-      const startTransform = transformRef.current;
-
-      const onPointerMove = (moveEv: PointerEvent) => {
-        setCanvasTransform({
-          ...startTransform,
-          x: startTransform.x + (moveEv.clientX - startX),
-          y: startTransform.y + (moveEv.clientY - startY),
-        });
-      };
-      const onPointerUp = () => {
-        window.removeEventListener('pointermove', onPointerMove);
-        window.removeEventListener('pointerup', onPointerUp);
-      };
-      window.addEventListener('pointermove', onPointerMove);
-      window.addEventListener('pointerup', onPointerUp);
-    }
-  };
-
-  useEffect(() => {
-    let animationFrameId: number;
-    const updateLines = () => {
-      const svg = svgRef.current;
-      const container = contentContainerRef.current;
-      const edgeLabelsContainer = edgeLabelsRef.current;
-      if (!svg || !container) return;
-      
-      const containerRect = container.getBoundingClientRect();
-      const currentScale = transformRef.current.scale;
-
-      const edgeGroups = Array.from(svg.querySelectorAll('g[data-edge-id]')) as SVGGElement[];
-      
-      edgeGroups.forEach((g: SVGGElement) => {
-        const fromId = g.getAttribute('data-edge-from');
-        const toId = g.getAttribute('data-edge-to');
-        const edgeId = g.getAttribute('data-edge-id');
-        if (!fromId || !toId || !edgeId) return;
-        
-        const fromNode = nodesRef.current[fromId];
-        const toNode = nodesRef.current[toId];
-        if (fromNode && toNode) {
-          const fromRect = fromNode.getBoundingClientRect();
-          const toRect = toNode.getBoundingClientRect();
-          
-          const x1 = (fromRect.left + fromRect.width / 2 - containerRect.left) / currentScale;
-          const y1 = (fromRect.top + fromRect.height / 2 - containerRect.top) / currentScale;
-          const x2 = (toRect.left + toRect.width / 2 - containerRect.left) / currentScale;
-          const y2 = (toRect.top + toRect.height / 2 - containerRect.top) / currentScale;
-          
-          g.querySelectorAll('line').forEach((line: SVGLineElement) => {
-            line.setAttribute('x1', x1.toString());
-            line.setAttribute('y1', y1.toString());
-            line.setAttribute('x2', x2.toString());
-            line.setAttribute('y2', y2.toString());
-          });
-          
-          if (edgeLabelsContainer) {
-             const btn = edgeLabelsContainer.querySelector(`[data-edge-btn="${edgeId}"]`) as HTMLButtonElement;
-             if (btn) {
-               btn.style.left = `${(x1 + x2) / 2}px`;
-               btn.style.top = `${(y1 + y2) / 2}px`;
-             }
-          }
-        }
-      });
-      
-      const tempEdge = svg.querySelector('#temp-edge') as SVGLineElement;
-      const connFrom = svg.getAttribute('data-connecting-from');
-      if (tempEdge) {
-        if (connFrom && nodesRef.current[connFrom]) {
-          const fromNode = nodesRef.current[connFrom];
-          const fromRect = fromNode.getBoundingClientRect();
-          
-          const x1 = (fromRect.right - containerRect.left) / currentScale;
-          const y1 = (fromRect.top + fromRect.height / 2 - containerRect.top) / currentScale;
-          const x2 = (mousePosRef.current.x - containerRect.left) / currentScale;
-          const y2 = (mousePosRef.current.y - containerRect.top) / currentScale;
-
-          tempEdge.style.display = 'block';
-          tempEdge.setAttribute('x1', x1.toString());
-          tempEdge.setAttribute('y1', y1.toString());
-          tempEdge.setAttribute('x2', x2.toString());
-          tempEdge.setAttribute('y2', y2.toString());
-        } else {
-          tempEdge.style.display = 'none';
-        }
-      }
-
-      animationFrameId = requestAnimationFrame(updateLines);
-    };
-    updateLines();
-    return () => cancelAnimationFrame(animationFrameId);
-  }, []);
 
   const handleAiSubmit = async () => {
     if (!aiPrompt.trim() || isAiLoading) return;
