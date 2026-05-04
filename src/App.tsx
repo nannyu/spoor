@@ -34,6 +34,7 @@ import { Reference } from './components/Reference';
 import { ResearchLab } from './components/ResearchLab';
 import { AgentsStudio } from './components/AgentsStudio';
 import { callUniversalAI } from './services/ai';
+import { getCanvasCenterPosition } from './utils/canvas';
 
 export default function App() {
   const { t, i18n } = useTranslation();
@@ -534,11 +535,7 @@ export default function App() {
       });
       
       if (text) {
-        const cx = window.innerWidth / 2;
-        const cy = window.innerHeight / 2;
-        const t = transformRef.current;
-        const x = (cx - t.x) / t.scale - 150 + Math.random() * 50;
-        const y = (cy - t.y) / t.scale - 100 + Math.random() * 50;
+        const { x, y } = getCanvasCenterPosition(transformRef.current);
         await db.nodes.add({ id: crypto.randomUUID(), canvasId: activeCanvasId, type: 'ai', content: text, x, y });
         setAiPrompt('');
       }
@@ -551,11 +548,7 @@ export default function App() {
   };
 
   const addTextNode = async () => {
-    const cx = window.innerWidth / 2;
-    const cy = window.innerHeight / 2;
-    const t = transformRef.current;
-    const x = (cx - t.x) / t.scale - 150 + Math.random() * 50;
-    const y = (cy - t.y) / t.scale - 100 + Math.random() * 50;
+    const { x, y } = getCanvasCenterPosition(transformRef.current);
     await db.nodes.add({ id: crypto.randomUUID(), canvasId: activeCanvasId, type: 'text', content: '', x, y });
   };
 
@@ -564,11 +557,7 @@ export default function App() {
       const file = e.target.files[0];
       const url = URL.createObjectURL(file);
       const type = file.type.startsWith('video/') ? 'video' : 'image';
-      const cx = window.innerWidth / 2;
-      const cy = window.innerHeight / 2;
-      const t = transformRef.current;
-      const x = (cx - t.x) / t.scale - 150 + Math.random() * 50;
-      const y = (cy - t.y) / t.scale - 100 + Math.random() * 50;
+      const { x, y } = getCanvasCenterPosition(transformRef.current);
       await db.nodes.add({ id: crypto.randomUUID(), canvasId: activeCanvasId, type, content: url, fileType: file.type, x, y });
       e.target.value = ''; // Reset input
     }
@@ -1112,11 +1101,7 @@ export default function App() {
                     <div className="px-3 py-2 text-[10px] font-bold text-[#8c8a84] uppercase tracking-wider font-mono">{t('sidebar.agents')}</div>
                     {agentConfigs.map(agent => (
                       <button key={agent.id} onClick={async () => {
-                        const cx = window.innerWidth / 2;
-                        const cy = window.innerHeight / 2;
-                        const t = transformRef.current;
-                        const x = (cx - t.x) / t.scale - 150 + (Math.random() * 50);
-                        const y = (cy - t.y) / t.scale - 100 + (Math.random() * 50);
+                        const { x, y } = getCanvasCenterPosition(transformRef.current);
                         await db.nodes.add({ id: crypto.randomUUID(), canvasId: activeCanvasId, type: 'agent', agentConfigId: agent.id, x, y });
                       }} className="text-left px-3 py-2 text-sm text-[#1a1a1a] hover:bg-[#F4F1ED] rounded-lg mb-1 flex items-center gap-2">
                          <div className="w-2 h-2 rounded-full bg-[#C2410C]"></div>
