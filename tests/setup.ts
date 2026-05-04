@@ -30,3 +30,11 @@ Object.defineProperty(window, 'matchMedia', {
     dispatchEvent: () => false,
   }),
 });
+
+// Mock window.confirm and window.alert to prevent test interruptions
+window.confirm = () => true;
+window.alert = () => {};
+
+// Mock requestFullscreen / exitFullscreen (not available in jsdom)
+Element.prototype.requestFullscreen = Element.prototype.requestFullscreen || (async () => {});
+document.exitFullscreen = document.exitFullscreen || (async () => {});

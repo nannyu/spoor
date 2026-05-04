@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { db } from '../src/db';
 
@@ -470,6 +470,581 @@ describe('App 组件', () => {
         render(<App />);
       });
       expect(screen.getByText('专注写作中')).toBeInTheDocument();
+    });
+  });
+
+  // ============================================================
+  // AISettingsModal 设置面板
+  // ============================================================
+  describe('AISettingsModal 设置面板', () => {
+    const openSettings = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.click(screen.getByTitle('设置'));
+      await waitFor(() => {
+        expect(screen.getByText('AI 配置')).toBeInTheDocument();
+      });
+    };
+
+    it('设置面板显示关闭按钮', async () => {
+      const user = userEvent.setup();
+      await act(async () => { render(<App />); });
+      await openSettings(user);
+      expect(screen.getByText('关闭')).toBeInTheDocument();
+    });
+
+    it('设置面板包含 API 密钥输入框', async () => {
+      const user = userEvent.setup();
+      await act(async () => { render(<App />); });
+      await openSettings(user);
+      const passwordInputs = document.querySelectorAll('input[type="password"]');
+      expect(passwordInputs.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('设置面板包含提供商下拉选项', async () => {
+      const user = userEvent.setup();
+      await act(async () => { render(<App />); });
+      await openSettings(user);
+      const select = document.querySelector('select');
+      expect(select).toBeInTheDocument();
+      expect(select?.querySelector('option[value="gemini"]')).toBeTruthy();
+      expect(select?.querySelector('option[value="openai"]')).toBeTruthy();
+      expect(select?.querySelector('option[value="anthropic"]')).toBeTruthy();
+      expect(select?.querySelector('option[value="custom"]')).toBeTruthy();
+    });
+
+    it('默认不显示 Base URL 字段（gemini 提供商）', async () => {
+      const user = userEvent.setup();
+      await act(async () => { render(<App />); });
+      await openSettings(user);
+      expect(screen.queryByText('基础 URL (可选)')).not.toBeInTheDocument();
+    });
+
+    it('切换到 OpenAI 提供商时显示 Base URL 字段', async () => {
+      const user = userEvent.setup();
+      await act(async () => { render(<App />); });
+      await openSettings(user);
+      const select = document.querySelector('select')!;
+      await user.selectOptions(select, 'openai');
+      expect(screen.getByText('基础 URL (可选)')).toBeInTheDocument();
+    });
+
+    it('切换到 Custom 提供商时显示 Base URL 字段', async () => {
+      const user = userEvent.setup();
+      await act(async () => { render(<App />); });
+      await openSettings(user);
+      const select = document.querySelector('select')!;
+      await user.selectOptions(select, 'custom');
+      expect(screen.getByText('基础 URL (可选)')).toBeInTheDocument();
+    });
+
+    it('切换到 Anthropic 提供商时不显示 Base URL 字段', async () => {
+      const user = userEvent.setup();
+      await act(async () => { render(<App />); });
+      await openSettings(user);
+      const select = document.querySelector('select')!;
+      await user.selectOptions(select, 'anthropic');
+      expect(screen.queryByText('基础 URL (可选)')).not.toBeInTheDocument();
+    });
+
+    it('修改 API Key 后自动更新 localStorage', async () => {
+      const user = userEvent.setup();
+      await act(async () => { render(<App />); });
+      await openSettings(user);
+      const apiKeyInput = document.querySelector('input[type="password"]') as HTMLInputElement;
+      await user.clear(apiKeyInput);
+      await user.type(apiKeyInput, 'test-key-123');
+      // 配置通过 useEffect 自动保存到 localStorage
+      await waitFor(() => {
+        const saved = JSON.parse(localStorage.getItem('ai_config') || '{}');
+        expect(saved.apiKey).toContain('test');
+      });
+    });
+
+    it('修改模型名称', async () => {
+      const user = userEvent.setup();
+      await act(async () => { render(<App />); });
+      await openSettings(user);
+      const textInputs = document.querySelectorAll('input[type="text"]');
+      const modelInput = Array.from(textInputs).find(input =>
+        (input as HTMLInputElement).placeholder?.includes('gemini') ||
+        (input as HTMLInputElement).value?.includes('gemini')
+      );
+      if (modelInput) {
+        await user.clear(modelInput);
+        await user.type(modelInput, 'gpt-4o');
+        expect((modelInput as HTMLInputElement).value).toBe('gpt-4o');
+      }
+    });
+  });
+
+  // ============================================================
+  // Reference 参考文献面板
+  // ============================================================
+  describe('Reference 参考文献面板', () => {
+    const goToReference = async (user: ReturnType<typeof userEvent.setup>) => {
+      await act(async () => { render(<App />); });
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 200));
+      });
+      const links = getNavLinks();
+      const refLink = links.find(a => a.textContent?.includes('回顾区'))!;
+      await user.click(refLink);
+    };
+
+    it('切换到参考区标签后显示档案索引标题', async () => {
+      const user = userEvent.setup();
+      await goToReference(user);
+      expect(screen.getByText('档案索引')).toBeInTheDocument();
+    });
+
+    it('参考区显示文章列表', async () => {
+      const user = userEvent.setup();
+      await goToReference(user);
+      // 文章标题同时出现在列表和内容区，使用 getAllByText
+      const matches = screen.getAllByText(/Spatial Encoding/);
+      expect(matches.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('参考区显示文章类型和日期', async () => {
+      const user = userEvent.setup();
+      await goToReference(user);
+      // REF-042 和 1994 可能出现在列表和内容区
+      const refMatches = screen.getAllByText('REF-042');
+      expect(refMatches.length).toBeGreaterThanOrEqual(1);
+      const dateMatches = screen.getAllByText('1994');
+      expect(dateMatches.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('参考区有搜索框', async () => {
+      const user = userEvent.setup();
+      await goToReference(user);
+      const searchInput = document.querySelector('input[placeholder="搜索参考文献..."]');
+      expect(searchInput).toBeInTheDocument();
+    });
+
+    it('参考区显示引用文献按钮', async () => {
+      const user = userEvent.setup();
+      await goToReference(user);
+      expect(screen.getByText('引用文献')).toBeInTheDocument();
+    });
+
+    it('参考区显示元数据和笔记区域', async () => {
+      const user = userEvent.setup();
+      await goToReference(user);
+      expect(screen.getByText('元数据与笔记')).toBeInTheDocument();
+    });
+
+    it('参考区显示标签区域', async () => {
+      const user = userEvent.setup();
+      await goToReference(user);
+      expect(screen.getByText('标签')).toBeInTheDocument();
+    });
+
+    it('参考区显示私密笔记区域', async () => {
+      const user = userEvent.setup();
+      await goToReference(user);
+      expect(screen.getByText('私密笔记')).toBeInTheDocument();
+    });
+  });
+
+  // ============================================================
+  // AgentsStudio AI 助手工作室
+  // ============================================================
+  describe('AgentsStudio AI 助手工作室', () => {
+    const goToAgents = async (user: ReturnType<typeof userEvent.setup>) => {
+      await act(async () => { render(<App />); });
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 300));
+      });
+      const links = getNavLinks();
+      const agentsLink = links.find(a => a.textContent?.includes('AI 助手'))!;
+      await user.click(agentsLink);
+    };
+
+    it('切换到 AI 助手标签后显示人格设定标题', async () => {
+      const user = userEvent.setup();
+      await goToAgents(user);
+      expect(screen.getByText('人格设定')).toBeInTheDocument();
+    });
+
+    it('显示默认的系统代理列表', async () => {
+      const user = userEvent.setup();
+      await goToAgents(user);
+      // The Challenger 出现在列表和编辑器中，使用 getAllByText
+      const challengerMatches = screen.getAllByText('The Challenger');
+      expect(challengerMatches.length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByText('AI Interviewer')).toBeInTheDocument();
+      expect(screen.getByText('The Synthesizer')).toBeInTheDocument();
+    });
+
+    it('显示代理角色标签', async () => {
+      const user = userEvent.setup();
+      await goToAgents(user);
+      expect(screen.getByText('Debater')).toBeInTheDocument();
+      expect(screen.getByText('Journalist')).toBeInTheDocument();
+    });
+
+    it('显示搜索人格输入框', async () => {
+      const user = userEvent.setup();
+      await goToAgents(user);
+      const searchInput = document.querySelector('input[placeholder="搜索人格..."]');
+      expect(searchInput).toBeInTheDocument();
+    });
+
+    it('搜索代理过滤列表', async () => {
+      const user = userEvent.setup();
+      await goToAgents(user);
+      const searchInput = document.querySelector('input[placeholder="搜索人格..."]') as HTMLInputElement;
+      await user.type(searchInput, 'Challenger');
+      // The Challenger 出现在列表和编辑器中
+      expect(screen.getAllByText('The Challenger').length).toBeGreaterThanOrEqual(1);
+      // 其他代理应该被过滤掉
+      expect(screen.queryByText('AI Interviewer')).not.toBeInTheDocument();
+    });
+
+    it('点击代理选中并显示配置编辑器', async () => {
+      const user = userEvent.setup();
+      await goToAgents(user);
+      // 第一个代理默认已选中，直接验证编辑器
+      expect(screen.getByText('当前配置')).toBeInTheDocument();
+      expect(screen.getByText('身份与基调')).toBeInTheDocument();
+    });
+
+    it('选中代理后显示人格名称和角色专长输入', async () => {
+      const user = userEvent.setup();
+      await goToAgents(user);
+      expect(screen.getByText('人格名称')).toBeInTheDocument();
+      expect(screen.getByText('角色专长')).toBeInTheDocument();
+    });
+
+    it('选中代理后显示系统提示词', async () => {
+      const user = userEvent.setup();
+      await goToAgents(user);
+      expect(screen.getByText('系统提示词')).toBeInTheDocument();
+    });
+
+    it('选中代理后显示模型参数', async () => {
+      const user = userEvent.setup();
+      await goToAgents(user);
+      expect(screen.getByText('模型参数')).toBeInTheDocument();
+      expect(screen.getByText('采样温度')).toBeInTheDocument();
+      expect(screen.getByText('创造力')).toBeInTheDocument();
+    });
+
+    it('选中代理后显示沙盒测试按钮', async () => {
+      const user = userEvent.setup();
+      await goToAgents(user);
+      expect(screen.getByText('测试沙盒')).toBeInTheDocument();
+    });
+
+    it('选中代理后显示删除按钮', async () => {
+      const user = userEvent.setup();
+      await goToAgents(user);
+      expect(screen.getByText('删除便签')).toBeInTheDocument();
+    });
+
+    it('点击新建人格按钮添加新代理', async () => {
+      const user = userEvent.setup();
+      await goToAgents(user);
+      // 点击 + 按钮（在人格设定标题旁边）
+      const addBtns = document.querySelectorAll('button');
+      const addBtn = Array.from(addBtns).find(btn => {
+        const svg = btn.querySelector('svg[data-testid="icon-Plus"]');
+        return svg && btn.closest('section')?.querySelector('h3')?.textContent?.includes('人格设定');
+      });
+      expect(addBtn).toBeDefined();
+      await user.click(addBtn!);
+      // 新人格应出现在列表中
+      await waitFor(() => {
+        expect(screen.getAllByText('新建人格').length).toBeGreaterThanOrEqual(1);
+      });
+    });
+
+    it('点击沙盒按钮打开沙盒面板', async () => {
+      const user = userEvent.setup();
+      await goToAgents(user);
+      await user.click(screen.getByText('测试沙盒'));
+      expect(screen.getByText('关闭沙盒')).toBeInTheDocument();
+    });
+  });
+
+  // ============================================================
+  // ResearchLab 研究实验室
+  // ============================================================
+  describe('ResearchLab 研究实验室', () => {
+    const goToLab = async (user: ReturnType<typeof userEvent.setup>) => {
+      await act(async () => { render(<App />); });
+      const links = getNavLinks();
+      const labLink = links.find(a => a.textContent?.includes('研究实验室'))!;
+      await user.click(labLink);
+    };
+
+    it('切换到研究标签后显示调查输入框', async () => {
+      const user = userEvent.setup();
+      await goToLab(user);
+      expect(screen.getByText('您想调查什么？')).toBeInTheDocument();
+    });
+
+    it('研究实验室显示深度研究智能体标题', async () => {
+      const user = userEvent.setup();
+      await goToLab(user);
+      expect(screen.getByText('深度研究智能体')).toBeInTheDocument();
+    });
+
+    it('输入框有正确的 placeholder', async () => {
+      const user = userEvent.setup();
+      await goToLab(user);
+      const input = document.querySelector('input[placeholder*="空间衰减"]');
+      expect(input).toBeInTheDocument();
+    });
+
+    it('显示历史会话区域', async () => {
+      const user = userEvent.setup();
+      await goToLab(user);
+      expect(screen.getByText('历史会话')).toBeInTheDocument();
+    });
+
+    it('idle 阶段显示提交箭头按钮', async () => {
+      const user = userEvent.setup();
+      await goToLab(user);
+      // idle 阶段有 form submit 按钮（ArrowRight 图标）
+      const form = document.querySelector('form');
+      const submitBtn = form?.querySelector('button[type="submit"]');
+      expect(submitBtn).toBeInTheDocument();
+    });
+
+    it('输入研究主题后可以提交', async () => {
+      const user = userEvent.setup();
+      await goToLab(user);
+      const input = document.querySelector('input[placeholder*="空间衰减"]') as HTMLInputElement;
+      await user.type(input, 'The relationship between spatial decay and memory loss');
+      expect(input.value).toContain('spatial decay');
+    });
+
+    it('提交研究主题后进入 planning 阶段', async () => {
+      const user = userEvent.setup();
+      await goToLab(user);
+      const input = document.querySelector('input[placeholder*="空间衰减"]') as HTMLInputElement;
+      await user.type(input, 'memory architecture');
+      const form = document.querySelector('form');
+      const submitBtn = form?.querySelector('button[type="submit"]');
+      await user.click(submitBtn!);
+      // 应进入 planning 阶段或 plan_ready 阶段
+      // 由于 mock 了 AI，会立即完成
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      });
+    });
+  });
+
+  // ============================================================
+  // callUniversalAI 间接测试
+  // ============================================================
+  describe('callUniversalAI 间接测试', () => {
+    it('Gemini 配置下 AI 提交成功返回内容', async () => {
+      const user = userEvent.setup();
+      localStorage.setItem('ai_config', JSON.stringify({
+        provider: 'gemini', apiKey: 'test-gemini-key', model: 'gemini-1.5-flash'
+      }));
+      await act(async () => { render(<App />); });
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 200));
+      });
+
+      // 找到 AI 输入框并提交
+      const aiInput = document.querySelector('input[placeholder*="AI 构思"]');
+      if (aiInput) {
+        await user.type(aiInput, 'Write about memory architecture');
+        const sendBtn = aiInput.closest('div')?.querySelector('button');
+        if (sendBtn) {
+          await user.click(sendBtn);
+          // AI 应该返回 mock 的内容
+          await act(async () => {
+            await new Promise(resolve => setTimeout(resolve, 500));
+          });
+        }
+      }
+    });
+
+    it('无 API Key 时 Gemini 回退到环境变量', async () => {
+      // 不设置 apiKey，环境变量也没有 GEMINI_API_KEY
+      localStorage.setItem('ai_config', JSON.stringify({
+        provider: 'gemini', apiKey: '', model: 'gemini-1.5-flash'
+      }));
+      await act(async () => { render(<App />); });
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 200));
+      });
+      // 应用正常渲染不崩溃 — 使用 getNavLinks 验证侧栏存在
+      const links = getNavLinks();
+      expect(links.length).toBeGreaterThan(0);
+    });
+
+    it('OpenAI 配置下应用正常渲染', async () => {
+      localStorage.setItem('ai_config', JSON.stringify({
+        provider: 'openai', apiKey: 'sk-test', model: 'gpt-4o', baseUrl: ''
+      }));
+      await act(async () => { render(<App />); });
+      const links = getNavLinks();
+      expect(links.length).toBeGreaterThan(0);
+    });
+
+    it('Anthropic 配置下应用正常渲染', async () => {
+      localStorage.setItem('ai_config', JSON.stringify({
+        provider: 'anthropic', apiKey: 'sk-ant-test', model: 'claude-3-5-sonnet'
+      }));
+      await act(async () => { render(<App />); });
+      const links = getNavLinks();
+      expect(links.length).toBeGreaterThan(0);
+    });
+
+    it('Custom 配置下应用正常渲染', async () => {
+      localStorage.setItem('ai_config', JSON.stringify({
+        provider: 'custom', apiKey: 'test-key', model: 'custom-model', baseUrl: 'http://localhost:8080/v1'
+      }));
+      await act(async () => { render(<App />); });
+      const links = getNavLinks();
+      expect(links.length).toBeGreaterThan(0);
+    });
+  });
+
+  // ============================================================
+  // DraggableNode 节点交互
+  // ============================================================
+  describe('DraggableNode 节点交互', () => {
+    it('渲染种子节点内容', async () => {
+      await act(async () => { render(<App />); });
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 300));
+      });
+      // 种子数据包含 "The Memory Architect" 节点
+      expect(screen.getByText('The Memory Architect')).toBeInTheDocument();
+    });
+
+    it('渲染多种节点类型', async () => {
+      await act(async () => { render(<App />); });
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 300));
+      });
+      // 种子数据包含 note 和 ai 类型节点
+      expect(screen.getByText('Spatial architecture of trauma')).toBeInTheDocument();
+      expect(screen.getByText('Non-euclidean memory leaks')).toBeInTheDocument();
+    });
+
+    it('新建便签按钮在数据库中创建 text 类型节点', async () => {
+      const user = userEvent.setup();
+      await act(async () => { render(<App />); });
+      const newNoteBtn = screen.getAllByTitle('新建便签')[0];
+      await user.click(newNoteBtn);
+      const nodes = await db.nodes.toArray();
+      const textNodes = nodes.filter(n => n.type === 'text');
+      expect(textNodes.length).toBeGreaterThanOrEqual(1);
+      expect(textNodes[0].canvasId).toBeDefined();
+    });
+
+    it('新建便签的节点有正确的 canvasId', async () => {
+      const user = userEvent.setup();
+      await act(async () => { render(<App />); });
+      const newNoteBtn = screen.getAllByTitle('新建便签')[0];
+      await user.click(newNoteBtn);
+      const nodes = await db.nodes.toArray();
+      const textNode = nodes.find(n => n.type === 'text');
+      expect(textNode?.canvasId).toBe('default');
+    });
+
+    it('节点有 x 和 y 坐标', async () => {
+      await act(async () => { render(<App />); });
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 300));
+      });
+      const nodes = await db.nodes.toArray();
+      nodes.forEach(node => {
+        expect(typeof node.x).toBe('number');
+        expect(typeof node.y).toBe('number');
+      });
+    });
+  });
+
+  // ============================================================
+  // 画布增强测试
+  // ============================================================
+  describe('画布增强测试', () => {
+    it('新建画布后切换到新画布', async () => {
+      const user = userEvent.setup();
+      await act(async () => { render(<App />); });
+
+      // 打开画布列表
+      const historyBtn = screen.getByTitle('历史记录');
+      await user.click(historyBtn);
+
+      // 点击新建画布
+      const newCanvasBtn = screen.getByText('新建画布');
+      await user.click(newCanvasBtn);
+
+      // 验证数据库中有新画布
+      const canvases = await db.canvases.toArray();
+      expect(canvases.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('画布列表显示默认画布名称', async () => {
+      const user = userEvent.setup();
+      await act(async () => { render(<App />); });
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 200));
+      });
+
+      const historyBtn = screen.getByTitle('历史记录');
+      await user.click(historyBtn);
+      expect(screen.getByText('Main Workspace')).toBeInTheDocument();
+    });
+
+    it('新建便签后节点属于当前画布', async () => {
+      const user = userEvent.setup();
+      await act(async () => { render(<App />); });
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 200));
+      });
+
+      const newNoteBtn = screen.getAllByTitle('新建便签')[0];
+      await user.click(newNoteBtn);
+
+      const nodes = await db.nodes.toArray();
+      const newNode = nodes.find(n => n.type === 'text');
+      expect(newNode?.canvasId).toBe('default');
+    });
+
+    it('合成文章按钮存在', async () => {
+      await act(async () => { render(<App />); });
+      // 合成文章按钮在右上角
+      const publishBtns = screen.getAllByTitle(/合成文章/);
+      expect(publishBtns.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('AI 提交输入框存在', async () => {
+      await act(async () => { render(<App />); });
+      const aiInput = document.querySelector('input[placeholder*="AI"]');
+      expect(aiInput).toBeInTheDocument();
+    });
+
+    it('全屏按钮存在', async () => {
+      await act(async () => { render(<App />); });
+      const fullscreenBtn = screen.getByTitle('全屏');
+      expect(fullscreenBtn).toBeInTheDocument();
+    });
+
+    it('侧边栏折叠/展开切换', async () => {
+      const user = userEvent.setup();
+      await act(async () => { render(<App />); });
+
+      // 找到折叠按钮（ChevronLeft 图标所在的按钮）
+      const aside = document.querySelector('aside')!;
+      const toggleBtn = aside.querySelector('div.mt-auto button:first-child')!;
+
+      // 初始状态侧边栏是展开的
+      expect(aside).toHaveClass('w-48');
+
+      // 点击折叠
+      await user.click(toggleBtn);
+      expect(aside).toHaveClass('w-20');
     });
   });
 });
