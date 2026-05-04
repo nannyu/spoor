@@ -2,7 +2,7 @@ import { useState, type RefObject } from 'react';
 import type { AgentConfig, CanvasNode, Edge as DbEdge } from '../db';
 import type { AIConfig } from '../components/AISettingsModal';
 import type { CanvasTransform } from './useCanvasInteraction';
-import { callUniversalAI } from '../services/ai';
+import { callUniversalAI, formatAiError, maskApiKeyForLog } from '../services/ai';
 import { getCanvasCenterPosition } from '../utils/canvas';
 import { db } from '../db';
 
@@ -66,7 +66,9 @@ export function useAiActions({
       setActiveTab('reference');
       setSelectedNodes(new Set());
     } catch (e) {
-      console.error(e);
+      const msg = formatAiError(e);
+      console.error('[Scribe AI] handlePublish failed', { error: msg, provider: aiConfig.provider, model: aiConfig.model, apiKey: maskApiKeyForLog(aiConfig.apiKey) });
+      alert(`合成失败\n\n${msg}\n\n打开开发者工具 (F12) → Console 查看 [Scribe AI] 日志。`);
     } finally {
       setIsAiLoading(false);
     }
@@ -101,8 +103,9 @@ export function useAiActions({
         await db.edges.add({ id: crypto.randomUUID(), canvasId: activeCanvasId, from: agentNodeId, to: newNodeId });
       }
     } catch (e) {
-      console.error(e);
-      alert('AI generation failed.');
+      const msg = formatAiError(e);
+      console.error('[Scribe AI] triggerAgentAnalysis failed', { error: msg, provider: aiConfig.provider, model: aiConfig.model, apiKey: maskApiKeyForLog(aiConfig.apiKey) });
+      alert(`AI 生成失败\n\n${msg}\n\n打开开发者工具 (F12) → Console 查看 [Scribe AI] 详细日志。`);
     } finally {
       setIsAiLoading(false);
     }
@@ -138,8 +141,9 @@ export function useAiActions({
         setAiPrompt('');
       }
     } catch (error) {
-      console.error(error);
-      alert('AI generation failed. Please check your API key or network.');
+      const msg = formatAiError(error);
+      console.error('[Scribe AI] handleAiSubmit failed', { error: msg, provider: aiConfig.provider, model: aiConfig.model, apiKey: maskApiKeyForLog(aiConfig.apiKey) });
+      alert(`AI 生成失败\n\n${msg}\n\n请检查：1) 设置中 Provider / MiMo Key / Base URL（需含 /v1） 2) 若用浏览器，需 npm run dev 且已重启（/api/mimo 代理）；桌面端用 Tauri 可不依赖代理。\n\nF12 → Console 查看 [Scribe AI] 日志。`);
     } finally {
       setIsAiLoading(false);
     }

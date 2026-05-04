@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { Settings, X, Sparkles } from 'lucide-react';
+import { MIMO_TOKEN_PLAN_BASE_URL } from '../constants/mimo';
 
 export interface AIConfig {
   provider: string;
@@ -66,11 +67,23 @@ export function AISettingsModal({ isOpen, onClose, config, setConfig }: AISettin
                  <select 
                    className="w-full h-10 px-3 bg-[#FAF9F6] border border-[#E6E4DF] rounded-lg text-sm outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C] transition-all"
                    value={config.provider}
-                   onChange={e => setConfig({ ...config, provider: e.target.value })}
+                   onChange={e => {
+                     const newProvider = e.target.value;
+                     const defaults: Record<string, { model: string; baseUrl: string }> = {
+                       gemini: { model: 'gemini-1.5-flash', baseUrl: '' },
+                       openai: { model: 'gpt-4o', baseUrl: '' },
+                       anthropic: { model: 'claude-3-5-sonnet-20240620', baseUrl: '' },
+                       mimo: { model: 'mimo-v2.5-pro', baseUrl: MIMO_TOKEN_PLAN_BASE_URL },
+                       custom: { model: 'gpt-4o', baseUrl: '' }
+                     };
+                     const d = defaults[newProvider] || { model: '', baseUrl: '' };
+                     setConfig({ ...config, provider: newProvider, model: d.model, baseUrl: d.baseUrl });
+                   }}
                  >
                    <option value="gemini">Google Gemini</option>
                    <option value="openai">OpenAI (GPT)</option>
                    <option value="anthropic">Anthropic (Claude)</option>
+                   <option value="mimo">MiMo (小米大模型)</option>
                    <option value="custom">Custom Endpoint</option>
                  </select>
                </div>
@@ -79,7 +92,7 @@ export function AISettingsModal({ isOpen, onClose, config, setConfig }: AISettin
                  <input 
                    type="text"
                    className="w-full h-10 px-3 bg-[#FAF9F6] border border-[#E6E4DF] rounded-lg text-sm outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C] transition-all"
-                   placeholder={config.provider === 'gemini' ? 'gemini-1.5-flash' : 'gpt-4o'}
+                   placeholder={config.provider === 'gemini' ? 'gemini-1.5-flash' : config.provider === 'mimo' ? 'mimo-v2.5-pro' : 'gpt-4o'}
                    value={config.model}
                    onChange={e => setConfig({ ...config, model: e.target.value })}
                  />
@@ -97,13 +110,13 @@ export function AISettingsModal({ isOpen, onClose, config, setConfig }: AISettin
               />
             </div>
 
-            {(config.provider === 'custom' || config.provider === 'openai') && (
+            {(config.provider === 'custom' || config.provider === 'openai' || config.provider === 'mimo') && (
               <div className="space-y-2">
                 <label className="text-[10px] font-mono font-bold text-[#8c8a84] uppercase tracking-wider">{t('settings.base_url')}</label>
                 <input 
                   type="text"
                   className="w-full h-10 px-3 bg-[#FAF9F6] border border-[#E6E4DF] rounded-lg text-sm outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C] transition-all"
-                  placeholder="https://api.openai.com/v1"
+                  placeholder={config.provider === 'mimo' ? MIMO_TOKEN_PLAN_BASE_URL : 'https://api.openai.com/v1'}
                   value={config.baseUrl}
                   onChange={e => setConfig({ ...config, baseUrl: e.target.value })}
                 />

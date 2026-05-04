@@ -1,0 +1,118 @@
+=== Git Commit Log ===
+�ύ�ɹ���
+
+commit e42a5e0
+Author: ף��
+Date:   Mon May 4 15:04 2026
+
+  test: add unit tests for all refactored modules - 10 new test files, 62 new tests, 194 total passing
+
+����ļ�:
+  - tests/utils/canvas.test.ts                (+68 ��)  getCanvasCenterPosition ����������
+  - tests/services/ai.test.ts                 (+196 ��) callUniversalAI ���� provider ·�� + ������
+  - tests/hooks/useUserProfile.test.ts        (+63 ��)  localStorage �־û� hook ����
+  - tests/hooks/useFullscreen.test.ts         (+81 ��)  ȫ��״̬/�л� hook ����
+  - tests/hooks/useNodeActions.test.ts        (+85 ��)  �ڵ� CRUD/��/���߲�������
+  - tests/hooks/useAiActions.test.ts          (+131 ��) AI ����/�ύ/Agent ��������
+  - tests/hooks/useSeedData.test.ts           (+79 ��)  ���ݿ������ݵ��Բ���
+  - tests/hooks/useCanvasInteraction.test.ts  (+81 ��)  ƽ��/����/wheel/pointer �¼�����
+  - tests/components/CanvasEdgeLines.test.tsx  (+101 ��) SVG ����Ⱦ/hover/ɾ������
+  - tests/components/NodeRenderer.test.tsx     (+183 ��) 7 �ֽڵ�����·�� + null fallback ����
+
+�� 10 ���ļ������1068 ������
+
+--- ��ʷ�ύ ---
+
+commit a50206c
+Author: ף��
+Date:   Mon May 4 13:38 2026
+
+  refactor: eliminate all `any` types & unify CallAIFn to types.ts (Knife 22)
+
+����ļ�:
+  - src/types.ts                              (�½�, ͳһ CallAIFn ���Ͷ���)
+  - src/App.tsx                               (���� node: any, newConfigs: any)
+  - src/components/AgentsStudio.tsx           (agentConfigs: any[] �� AgentConfig[])
+  - src/components/ResearchLab.tsx            (config: any �� AIConfig)
+  - src/components/nodes/types.ts             (node: any �� CanvasNode)
+  - src/components/nodes/NodeRenderer.tsx     (node: any �� CanvasNode)
+
+commit 5e62eda
+Author: ף��
+Date:   Mon May 4 13:30 2026
+
+  refactor: extract CanvasEdgeLines component (Knife 21)
+
+����ļ�:
+  - src/components/canvas/CanvasEdgeLines.tsx (�½�)
+  - src/App.tsx                               (-43 ��)
+
+commit f30c81b
+Author: ף��
+Date:   Mon May 4 13:20 2026
+
+  refactor: extract useAiActions hook (Knife 20)
+
+����ļ�:
+  - src/hooks/useAiActions.ts                 (�½�)
+  - src/App.tsx                               (-113 ��)
+
+commit 945e3cc
+Author: ף��
+Date:   Mon May 4 13:10 2026
+
+  refactor: extract useNodeActions hook (Knife 19)
+
+����ļ�:
+  - src/hooks/useNodeActions.ts               (�½�)
+  - src/App.tsx                               (-47 ��)
+
+commit ce375af
+Author: ף��
+Date:   Mon May 4 13:00 2026
+
+  refactor: extract useCanvasInteraction hook (Knife 18)
+
+����ļ�:
+  - src/hooks/useCanvasInteraction.ts         (�½�)
+  - src/App.tsx                               (-150 ��)
+
+commit d46b8c8
+Author: ף��
+Date:   Mon May 4 12:50 2026
+
+  refactor: extract useUserProfile and useFullscreen hooks (Knife 16-17)
+
+����ļ�:
+  - src/hooks/useUserProfile.ts               (�½�)
+  - src/hooks/useFullscreen.ts                (�½�)
+  - src/App.tsx                               (-25 ��)
+
+--- P0 �ύ (Knife 10-15) ---
+
+commit [P0-Knife15] ��ȡ CanvasToolbar ���
+commit [P0-Knife14] ��ȡ CanvasHistoryPopover ���
+commit [P0-Knife13] ��ȡ Sidebar ���
+commit [P0-Knife12] ��ȡ 6 �ֽڵ���Ⱦ��� + NodeRenderer
+commit [P0-Knife11] ��ȡ useSeedData hook
+commit [P0-Knife10] ��ȡ getCanvasCenterPosition ���ߺ���
+
+--- �ع����̻��� ---
+
+ԭʼ App.tsx: 2556 ��
+P0 ������:     654 ��
+P1 ������:     307 ��
+������:        2249 �� (88%)
+
+����ģ��:
+  hooks/      8 ���Զ��� hooks
+  utils/      1 �����ߺ���
+  services/   1 �� AI ����
+  types.ts    1 ��ͳһ����
+  components/ 10+ ����ȡ���
+
+���Ը���:
+  ԭʼ:  1 ���ļ���132 �����ɲ���
+  ����: 10 ���ļ���62 ����Ԫ����
+  �ܼ�: 14 ���ļ���194 ������ȫ��ͨ��
+  src/ Ŀ¼: �� `any` ����

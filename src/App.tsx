@@ -19,6 +19,7 @@ import { Reference } from './components/Reference';
 import { ResearchLab } from './components/ResearchLab';
 import { AgentsStudio } from './components/AgentsStudio';
 import { callUniversalAI } from './services/ai';
+import { MIMO_TOKEN_PLAN_BASE_URL } from './constants/mimo';
 import { NodeRenderer } from './components/nodes/NodeRenderer';
 import { useSeedData } from './hooks/useSeedData';
 import { useUserProfile } from './hooks/useUserProfile';
@@ -27,6 +28,18 @@ import { useCanvasInteraction } from './hooks/useCanvasInteraction';
 import { useNodeActions } from './hooks/useNodeActions';
 import { useAiActions } from './hooks/useAiActions';
 
+/** tp- Token 套餐密钥须走 token-plan-cn；旧版默认 api.xiaomimimo.com 会导致 401 */
+function migrateStoredAiConfig(raw: unknown): AIConfig | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const p = raw as AIConfig;
+  if (p.provider === 'mimo') {
+    const b = (p.baseUrl ?? '').trim();
+    if (!b || /api\.xiaomimimo\.com/i.test(b)) {
+      return { ...p, baseUrl: MIMO_TOKEN_PLAN_BASE_URL };
+    }
+  }
+  return p;
+}
 export default function App() {
   const { t, i18n } = useTranslation();
   const nodesRef = useRef<Record<string, HTMLElement | null>>({});
@@ -71,12 +84,16 @@ export default function App() {
 
   const [aiConfig, setAiConfig] = useState(() => {
     const saved = localStorage.getItem('ai_config');
-    return saved ? JSON.parse(saved) : {
-      provider: 'gemini',
-      apiKey: '',
-      baseUrl: '',
-      model: 'gemini-1.5-flash'
-    };
+    const parsed = saved ? migrateStoredAiConfig(JSON.parse(saved)) : null;
+    if (!parsed || (parsed.provider === 'gemini' && !parsed.apiKey?.trim())) {
+      return {
+        provider: 'mimo',
+        apiKey: '',
+        baseUrl: MIMO_TOKEN_PLAN_BASE_URL,
+        model: 'mimo-v2.5-pro'
+      };
+    }
+    return parsed;
   });
 
   useEffect(() => {

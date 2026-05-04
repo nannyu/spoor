@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import type { AgentConfig } from '../db';
 import type { CallAIFn } from '../types';
+import { formatAiError } from '../services/ai';
 
 export interface AgentsStudioProps {
   agentConfigs: AgentConfig[];
@@ -92,8 +93,9 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
       
       handleUpdateActiveAgent('prompt', newPrompt.trim());
     } catch (error) {
-      console.error("Enhance error:", error);
-      alert("Failed to enhance prompt. Check console.");
+      const msg = formatAiError(error);
+      console.error('[Scribe AI] enhance prompt failed', msg);
+      alert(`增强提示词失败\n\n${msg}\n\nF12 → Console 查看 [Scribe AI] 日志。`);
     } finally {
       setIsEnhancing(false);
     }
@@ -118,8 +120,9 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
       });
       setSandboxMessages(prev => [...prev, { role: 'model', text: responseText }]);
     } catch (error) {
-      console.error("Sandbox chat error:", error);
-      setSandboxMessages(prev => [...prev, { role: 'model', text: "Error: Failed to get response from persona." }]);
+      const msg = formatAiError(error);
+      console.error('[Scribe AI] sandbox chat failed', msg);
+      setSandboxMessages(prev => [...prev, { role: 'model', text: `Error: ${msg}（详见 Console [Scribe AI]）` }]);
     } finally {
       setIsSandboxLoading(false);
     }

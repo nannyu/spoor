@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatAiError } from '../services/ai';
 import {
   Terminal,
   Cpu,
@@ -47,7 +48,7 @@ Respond ONLY in valid JSON format like: [{"title": "Step 1 Title", "desc": "Step
       setResearchPlan(plan);
       setPhase('plan_ready');
     } catch (e) {
-      console.error(e);
+      console.error('[Scribe AI] ResearchLab generatePlan failed', formatAiError(e));
       setResearchPlan([
          { title: "Archive Extraction", desc: "Scan personal drafts and reference library for direct mentions." },
          { title: "Thematic Networking", desc: "Cross-reference dialogue with established metaphors." },
@@ -86,7 +87,7 @@ Respond ONLY in valid JSON format matching this structure:
       const report = JSON.parse(jsonStr);
       setResearchReport(report);
     } catch (e) {
-      console.error(e);
+      console.error('[Scribe AI] ResearchLab executeResearch failed', formatAiError(e));
       setResearchReport({
         intro: "Based on the analysis of your interconnected drafts and referenced literature, there are interesting narrative connections.",
         points: [
