@@ -511,10 +511,12 @@ describe('App 组件', () => {
       expect(select?.querySelector('option[value="custom"]')).toBeTruthy();
     });
 
-    it('默认不显示 Base URL 字段（gemini 提供商）', async () => {
+    it('切换到 gemini 提供商后不显示 Base URL 字段', async () => {
       const user = userEvent.setup();
       await act(async () => { render(<App />); });
       await openSettings(user);
+      const select = document.querySelector('select')!;
+      await user.selectOptions(select, 'gemini');
       expect(screen.queryByText('基础 URL (可选)')).not.toBeInTheDocument();
     });
 

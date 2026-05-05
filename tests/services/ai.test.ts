@@ -79,11 +79,13 @@ describe('callUniversalAI', () => {
   // --- OpenAI ---
   describe('OpenAI provider', () => {
     beforeEach(() => {
+      const okBody = JSON.stringify({
+        choices: [{ message: { content: 'OpenAI response' } }],
+      });
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({
-          choices: [{ message: { content: 'OpenAI response' } }],
-        }),
+        text: async () => okBody,
+        json: async () => JSON.parse(okBody),
       }));
     });
 
@@ -116,9 +118,11 @@ describe('callUniversalAI', () => {
     });
 
     it('API 返回非 200 时抛错', async () => {
+      const errorBody = JSON.stringify({ error: { message: 'Unauthorized' } });
       vi.mocked(fetch).mockResolvedValueOnce({
         ok: false,
         status: 401,
+        text: async () => errorBody,
         json: async () => ({ error: { message: 'Unauthorized' } }),
       } as any);
       await expect(
@@ -144,11 +148,13 @@ describe('callUniversalAI', () => {
   // --- Custom provider (same as OpenAI) ---
   describe('Custom provider', () => {
     it('custom provider 走 OpenAI 兼容路径', async () => {
+      const okBody = JSON.stringify({
+        choices: [{ message: { content: 'Custom response' } }],
+      });
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({
-          choices: [{ message: { content: 'Custom response' } }],
-        }),
+        text: async () => okBody,
+        json: async () => JSON.parse(okBody),
       }));
       const result = await callUniversalAI({
         config: { ...baseConfig, provider: 'custom', apiKey: 'custom-key', baseUrl: 'http://custom.api/v1' },
@@ -161,11 +167,13 @@ describe('callUniversalAI', () => {
   // --- Anthropic ---
   describe('Anthropic provider', () => {
     beforeEach(() => {
+      const okBody = JSON.stringify({
+        content: [{ text: 'Anthropic response' }],
+      });
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({
-          content: [{ text: 'Anthropic response' }],
-        }),
+        text: async () => okBody,
+        json: async () => JSON.parse(okBody),
       }));
     });
 
@@ -196,9 +204,11 @@ describe('callUniversalAI', () => {
     });
 
     it('API 返回非 200 时抛错', async () => {
+      const errorBody = JSON.stringify({ error: { message: 'Forbidden' } });
       vi.mocked(fetch).mockResolvedValueOnce({
         ok: false,
         status: 403,
+        text: async () => errorBody,
         json: async () => ({ error: { message: 'Forbidden' } }),
       } as any);
       await expect(

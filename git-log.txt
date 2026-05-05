@@ -116,3 +116,22 @@ P1 ������:     307 ��
   ����: 10 ���ļ���62 ����Ԫ����
   �ܼ�: 14 ���ļ���194 ������ȫ��ͨ��
   src/ Ŀ¼: �� `any` ����
+
+commit [fix-20260505] 修复桌面端图片/视频本地存储 + 修复 7 个既有测试失败
+
+Date: Tue May 5 23:52 2026
+
+修改文件:
+  - src/App.tsx                 (+10 -1)  readFileAsDataURL 替代 URL.createObjectURL
+  - tests/services/ai.test.ts   (+14 -8)  补充 fetch mock 的 text() 方法
+  - tests/App.test.tsx           (+3 -1)   修正 gemini provider Base URL 断言
+
+问题描述:
+  1. 桌面端拖放图片/视频后刷新页面丢失 —— URL.createObjectURL 创建临时 URL，
+     页面刷新后失效。改用 FileReader.readAsDataURL 读取为 Base64 Data URL 持久化到 IndexedDB。
+  2. ai.test.ts 6 个测试失败 —— 代码使用 response.text() + JSON.parse()，
+     但测试 mock 只提供 json() 方法。补充 text() mock。
+  3. App.test.tsx 1 个测试失败 —— 断言假设默认 provider 是 gemini（不显示 Base URL），
+     但实际默认是 mimo（显示 Base URL）。改为先切换到 gemini 再断言。
+
+测试结果: 14 files passed, 198 tests passed (0 failed)

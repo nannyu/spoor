@@ -28,6 +28,15 @@ import { useCanvasInteraction } from './hooks/useCanvasInteraction';
 import { useNodeActions } from './hooks/useNodeActions';
 import { useAiActions } from './hooks/useAiActions';
 
+/** 将文件读取为 Base64 Data URL，持久化存储到 IndexedDB（替代会失效的 blob URL）。 */
+const readFileAsDataURL = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
 /** tp- Token 套餐密钥须走 token-plan-cn；旧版默认 api.xiaomimimo.com 会导致 401 */
 function migrateStoredAiConfig(raw: unknown): AIConfig | null {
   if (!raw || typeof raw !== 'object') return null;
@@ -204,7 +213,7 @@ export default function App() {
                 const file = e.dataTransfer.files[index];
                 if (!file.type.startsWith('video/') && !file.type.startsWith('image/')) continue;
                 const type = file.type.startsWith('video/') ? 'video' : 'image';
-                const url = URL.createObjectURL(file);
+                const url = await readFileAsDataURL(file);
                 await db.nodes.add({
                   id: crypto.randomUUID(),
                   canvasId: activeCanvasId,
