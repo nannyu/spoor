@@ -186,3 +186,10 @@ commit [feat-dnd-capture] 画布文件拖放：捕获阶段放行 + 连线层补
 在 main 捕获阶段统一放行可覆盖假设 B；连线层双重保险对应假设 A。假设 C（WebView files 为空）仍可通过 SCRIBE_DEBUG_DND 看 drop.filesLength。
 
 测试: tsc --noEmit 通过；vitest 210 例通过。
+
+commit [fix-tauri-html5-drop] Tauri 关闭原生拖放以启用网页 HTML5 drop
+
+原因: Tauri 默认 dragDropEnabled 为 true 时，窗口级原生拖放与 WebView 内 HTML5 drag/drop 互斥，
+从资源管理器拖文件不会触发页面的 drop，故看不到 [dnd:drop]、画布逻辑也不执行。
+修复: src-tauri/tauri.conf.json 窗口增加 "dragDropEnabled": false。
+附带: App.tsx 中 SCRIBE_DEBUG_DND 不再依赖 import.meta.env.DEV，打包桌面版也可打诊断日志。

@@ -30,9 +30,8 @@ import { useAiActions } from './hooks/useAiActions';
 import { processFileToNode } from './utils/file';
 import { dataTransferHasFiles, preventDefaultIfFileDrag } from './utils/dnd';
 
-/** 在控制台设置 localStorage.SCRIBE_DEBUG_DND='1' 并刷新，可在拖放时看到 diagnostic 日志（仅 DEV）。 */
+/** 控制台执行 localStorage.setItem('SCRIBE_DEBUG_DND','1') 并刷新；桌面打包版也可用（不设 DEV 门槛）。 */
 const DEBUG_DND =
-  import.meta.env.DEV &&
   typeof localStorage !== 'undefined' &&
   localStorage.getItem('SCRIBE_DEBUG_DND') === '1';
 
