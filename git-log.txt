@@ -135,3 +135,31 @@ Date: Tue May 5 23:52 2026
      但实际默认是 mimo（显示 Base URL）。改为先切换到 gemini 再断言。
 
 测试结果: 14 files passed, 198 tests passed (0 failed)
+
+commit [feat-20260506] 支持 Word/文本文件上传到画布
+
+Date: Wed May 6 12:54 2026
+
+新增文件:
+  - src/utils/file.ts                 (新建) 文件处理工具 — readFileAsDataURL + processFileToNode
+  - src/components/nodes/DocumentNode.tsx (新建) 文档节点组件，渲染 .docx 解析后的 HTML
+  - tests/utils/file.test.ts           (新建) 8 个单元测试覆盖所有文件类型
+
+修改文件:
+  - package.json                       (+1)   新增 mammoth.js 依赖
+  - package-lock.json                  (+210) 依赖锁文件更新
+  - src/App.tsx                        (+17 -20) onDrop 改用 processFileToNode，移除内联 readFileAsDataURL
+  - src/components/CanvasToolbar.tsx   (+4 -4) 上传按钮 accept 扩展，图标换为 FileText
+  - src/components/nodes/NodeRenderer.tsx (+2) 新增 case 'document' 分支
+  - src/hooks/useNodeActions.ts        (+10 -5) addFileNode 重构为调用 processFileToNode
+  - src/index.css                      (+13) 新增 .doc-content 样式
+  - tests/components/NodeRenderer.test.tsx (+14) 新增 document 节点渲染测试
+
+功能说明:
+  - .docx 文件通过 mammoth.js 解析为 HTML，显示为 document 节点
+  - .txt / .md 文件直接读取文本，显示为 text 节点
+  - 图片/视频保持原有 Base64 存储方式
+  - 工具栏上传按钮支持多类型文件选择
+  - 拖放和按钮上传共用 processFileToNode 统一逻辑
+
+测试结果: 15 files passed, 207 tests passed (0 failed)

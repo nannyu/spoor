@@ -6,7 +6,7 @@ import {
   Wand2,
   Send,
   ZoomIn,
-  Image as ImageIcon,
+  FileText as FileTextIcon,
   Loader2,
 } from 'lucide-react';
 import type { AgentConfig } from '../db';
@@ -74,9 +74,9 @@ export function CanvasToolbar({
                 ))}
               </div>
             </div>
-            <label title="Upload Media" className="w-8 h-8 flex items-center justify-center text-[#5a5a54] hover:text-[#1a1a1a] hover:bg-[#F4F1ED] rounded-lg cursor-pointer transition-colors m-0">
-              <ImageIcon className="w-4 h-4" />
-              <input type="file" accept="image/*,video/*" className="hidden" onChange={addFileNode} />
+            <label title="Upload File" className="w-8 h-8 flex items-center justify-center text-[#5a5a54] hover:text-[#1a1a1a] hover:bg-[#F4F1ED] rounded-lg cursor-pointer transition-colors m-0">
+              <FileTextIcon className="w-4 h-4" />
+              <input type="file" accept="image/*,video/*,.docx,.txt,.md" className="hidden" onChange={addFileNode} />
             </label>
           </div>
           <div className="pl-1 text-[#C2410C]">

@@ -2,6 +2,7 @@ import type { RefObject } from 'react';
 import type { CanvasTransform } from './useCanvasInteraction';
 import { db } from '../db';
 import { getCanvasCenterPosition } from '../utils/canvas';
+import { processFileToNode } from '../utils/file';
 
 interface UseNodeActionsParams {
   activeCanvasId: string;
@@ -61,10 +62,18 @@ export function useNodeActions({
   const addFileNode = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
-      const url = URL.createObjectURL(file);
-      const type = file.type.startsWith('video/') ? 'video' : 'image';
-      const { x, y } = getCanvasCenterPosition(transformRef.current);
-      await db.nodes.add({ id: crypto.randomUUID(), canvasId: activeCanvasId, type, content: url, fileType: file.type, x, y });
+      try {
+        const { x, y } = getCanvasCenterPosition(transformRef.current);
+        const data = await processFileToNode(file);
+        await db.nodes.add({
+          id: crypto.randomUUID(),
+          canvasId: activeCanvasId,
+          ...data,
+          x, y,
+        });
+      } catch (err) {
+        console.error('Failed to process file:', file.name, err);
+      }
       e.target.value = '';
     }
   };

@@ -27,15 +27,7 @@ import { useFullscreen } from './hooks/useFullscreen';
 import { useCanvasInteraction } from './hooks/useCanvasInteraction';
 import { useNodeActions } from './hooks/useNodeActions';
 import { useAiActions } from './hooks/useAiActions';
-
-/** 将文件读取为 Base64 Data URL，持久化存储到 IndexedDB（替代会失效的 blob URL）。 */
-const readFileAsDataURL = (file: File): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+import { processFileToNode } from './utils/file';
 
 /** tp- Token 套餐密钥须走 token-plan-cn；旧版默认 api.xiaomimimo.com 会导致 401 */
 function migrateStoredAiConfig(raw: unknown): AIConfig | null {
@@ -205,24 +197,24 @@ export default function App() {
             if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
               const t = canvasTransform;
               const rect = e.currentTarget.getBoundingClientRect();
-              
+
               const ox = ((e.clientX - rect.left) - t.x) / t.scale;
               const oy = ((e.clientY - rect.top) - t.y) / t.scale;
 
               for (let index = 0; index < Array.from(e.dataTransfer.files).length; index++) {
                 const file = e.dataTransfer.files[index];
-                if (!file.type.startsWith('video/') && !file.type.startsWith('image/')) continue;
-                const type = file.type.startsWith('video/') ? 'video' : 'image';
-                const url = await readFileAsDataURL(file);
-                await db.nodes.add({
-                  id: crypto.randomUUID(),
-                  canvasId: activeCanvasId,
-                  type,
-                  content: url,
-                  fileType: file.type,
-                  x: ox + (index * 20) - 100, 
-                  y: oy + (index * 20) - 100
-                });
+                try {
+                  const data = await processFileToNode(file);
+                  await db.nodes.add({
+                    id: crypto.randomUUID(),
+                    canvasId: activeCanvasId,
+                    ...data,
+                    x: ox + (index * 20) - 100,
+                    y: oy + (index * 20) - 100
+                  });
+                } catch (err) {
+                  console.error('Failed to process file:', file.name, err);
+                }
               }
             }
           }}
@@ -275,7 +267,8 @@ export default function App() {
                   (node.type === 'note' || node.type === 'text') ? (node.layout === 0 || node.layout === undefined ? 1 : 0) :
                   (node.type === 'theme') ? (node.layout === 0 || node.layout === undefined ? -1 : 0) :
                   (node.type === 'image') ? -1 :
-                  (node.type === 'video') ? 1 : 0;
+                  (node.type === 'video') ? 1 :
+                  (node.type === 'document') ? 1 : 0;
 
                 return (
                   <DraggableNode 

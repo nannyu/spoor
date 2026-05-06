@@ -141,6 +141,20 @@ describe('NodeRenderer', () => {
     expect(video).toBeInTheDocument();
   });
 
+  it('type="document" 渲染 DocumentNode', () => {
+    const { container } = render(
+      <NodeRenderer
+        node={makeNode('document', { content: '<p>Hello</p>', description: 'test.docx', fileType: 'docx' })}
+        editingNodeId={null}
+        setEditingNodeId={vi.fn()}
+        agentConfigs={mockAgentConfigs}
+        analyzingAgentNodeId={null}
+      />
+    );
+    expect(container.querySelector('.doc-content')).toBeInTheDocument();
+    expect(container.querySelector('[data-testid="icon-FileText"]')).toBeInTheDocument();
+  });
+
   it('type="agent" 渲染 AgentNode', () => {
     const { getByText, queryByTestId } = render(
       <NodeRenderer
