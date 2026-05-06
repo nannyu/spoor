@@ -10,3 +10,9 @@ export interface AgentNodeProps extends NodeContentProps {
   agentConfigs: AgentConfig[];
   isAnalyzing?: boolean;
 }
+
+export interface AiNodeProps extends NodeContentProps {
+  onSubmitFollowUp?: (message: string) => void;
+  isFollowUpLoading?: boolean;
+  isFollowUpDisabled?: boolean;
+}

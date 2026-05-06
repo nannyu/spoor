@@ -13,6 +13,10 @@ export interface CanvasNode {
   width?: number;
   height?: number;
   layout?: number;
+  /** 画布 AI 对话卡：本回合用户追问（上半区）；`content` 为 AI 回复（下半区） */
+  userTurn?: string;
+  /** 已从该卡成功发出过追问并生成下游 AI 卡后隐藏追问输入，保持卡片简洁 */
+  followUpSent?: boolean;
 }
 
 export interface Canvas {

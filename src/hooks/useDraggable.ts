@@ -17,9 +17,10 @@ export function useDraggable(initialX: number, initialY: number, scale: number =
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
     if (
-      target.isContentEditable || 
-      target.tagName === 'BUTTON' || 
+      target.isContentEditable ||
+      target.tagName === 'BUTTON' ||
       target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
       target.tagName === 'VIDEO' ||
       target.closest('button')
     ) {

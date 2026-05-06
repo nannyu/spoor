@@ -38,6 +38,29 @@ export function useCanvasInteraction(
     const main = mainRef.current;
     if (!main) return;
     const onWheel = (e: WheelEvent) => {
+      // 缩放手势仍始终由画布处理；普通滚轮在可滚动子区域内交给浏览器默认滚动
+      if (!e.ctrlKey && !e.metaKey) {
+        let node: HTMLElement | null = e.target as HTMLElement;
+        if (node && node.nodeType !== Node.ELEMENT_NODE) {
+          node = node.parentElement;
+        }
+        while (node && main.contains(node) && node !== main) {
+          const { overflowY } = window.getComputedStyle(node);
+          const canScrollY =
+            (overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay') &&
+            node.scrollHeight > node.clientHeight;
+          if (canScrollY) {
+            const dy = e.deltaY;
+            const atTop = node.scrollTop <= 0;
+            const atBottom = node.scrollTop + node.clientHeight >= node.scrollHeight - 1;
+            if ((dy < 0 && !atTop) || (dy > 0 && !atBottom)) {
+              return;
+            }
+          }
+          node = node.parentElement;
+        }
+      }
+
       e.preventDefault();
       if (e.ctrlKey || e.metaKey) {
         setCanvasTransform(prev => {

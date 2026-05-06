@@ -73,7 +73,11 @@ export const DraggableNode: React.FC<DraggableNodeProps> = ({
       }}
       onPointerDown={(e) => {
         const target = e.target as HTMLElement;
-        const isTextInteraction = target.isContentEditable || target.closest('.markdown-body') || target.closest('[contentEditable="true"]');
+        const isTextInteraction =
+          target.isContentEditable ||
+          target.closest('.markdown-body') ||
+          target.closest('[contentEditable="true"]') ||
+          target.closest('textarea');
 
         if (showPalette) setShowPalette(false);
         if (isConnecting) {

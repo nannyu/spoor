@@ -112,6 +112,34 @@ describe('NodeRenderer', () => {
     expect(getByTestId('markdown')).toBeInTheDocument();
   });
 
+  it('type="ai" 且含 userTurn 时展示用户追问与 AI 正文', () => {
+    const { getByTestId, getByText } = render(
+      <NodeRenderer
+        node={makeNode('ai', { userTurn: '追问内容', content: 'AI 回复' })}
+        editingNodeId={null}
+        setEditingNodeId={vi.fn()}
+        agentConfigs={mockAgentConfigs}
+        analyzingAgentNodeId={null}
+      />
+    );
+    expect(getByText('追问内容')).toBeInTheDocument();
+    expect(getByTestId('markdown')).toHaveTextContent('AI 回复');
+  });
+
+  it('type="ai" 已 followUpSent 时不渲染追问输入', () => {
+    const { container } = render(
+      <NodeRenderer
+        node={makeNode('ai', { followUpSent: true })}
+        editingNodeId={null}
+        setEditingNodeId={vi.fn()}
+        agentConfigs={mockAgentConfigs}
+        analyzingAgentNodeId={null}
+        onAiFollowUp={vi.fn()}
+      />
+    );
+    expect(container.querySelector('textarea')).toBeNull();
+  });
+
   it('type="image" 渲染 ImageNode', () => {
     const { container } = render(
       <NodeRenderer

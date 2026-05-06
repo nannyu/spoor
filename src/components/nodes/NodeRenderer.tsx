@@ -14,9 +14,21 @@ interface NodeRendererProps {
   setEditingNodeId: (id: string | null) => void;
   agentConfigs: AgentConfig[];
   analyzingAgentNodeId: string | null;
+  onAiFollowUp?: (nodeId: string, message: string) => void;
+  followUpLoadingNodeId?: string | null;
+  isFollowUpGloballyDisabled?: boolean;
 }
 
-export function NodeRenderer({ node, editingNodeId, setEditingNodeId, agentConfigs, analyzingAgentNodeId }: NodeRendererProps) {
+export function NodeRenderer({
+  node,
+  editingNodeId,
+  setEditingNodeId,
+  agentConfigs,
+  analyzingAgentNodeId,
+  onAiFollowUp,
+  followUpLoadingNodeId,
+  isFollowUpGloballyDisabled,
+}: NodeRendererProps) {
   switch (node.type) {
     case 'theme':
       return <ThemeNode node={node} editingNodeId={editingNodeId} setEditingNodeId={setEditingNodeId} />;
@@ -24,7 +36,16 @@ export function NodeRenderer({ node, editingNodeId, setEditingNodeId, agentConfi
     case 'text':
       return <NoteNode node={node} editingNodeId={editingNodeId} setEditingNodeId={setEditingNodeId} />;
     case 'ai':
-      return <AiNode node={node} editingNodeId={editingNodeId} setEditingNodeId={setEditingNodeId} />;
+      return (
+        <AiNode
+          node={node}
+          editingNodeId={editingNodeId}
+          setEditingNodeId={setEditingNodeId}
+          onSubmitFollowUp={onAiFollowUp ? (msg) => onAiFollowUp(node.id, msg) : undefined}
+          isFollowUpLoading={followUpLoadingNodeId === node.id}
+          isFollowUpDisabled={isFollowUpGloballyDisabled}
+        />
+      );
     case 'image':
       return <ImageNode node={node} editingNodeId={editingNodeId} setEditingNodeId={setEditingNodeId} />;
     case 'video':

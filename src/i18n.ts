@@ -43,7 +43,10 @@ const resources = {
         "ai_loading": "Synthesizing...",
         "empty_note": "Empty note. Click to edit.",
         "type_something": "Type something...",
-        "connect_notes": "Connect notes to analyze."
+        "connect_notes": "Connect notes to analyze.",
+        "ai_your_follow_up": "Your follow-up",
+        "ai_follow_up_placeholder": "Ask a follow-up (Enter to send, Shift+Enter for newline)...",
+        "ai_follow_up_send": "Send"
       },
       "settings": {
         "title": "Settings",
@@ -69,7 +72,8 @@ const resources = {
           "publish": "Turn the following concepts, notes, and drafts into a cohesive, well-written article:\n\n{{content}}",
           "agentContext": "Context to analyze:\n{{content}}",
           "toolbar": "Context from connected notes across the canvas:\n{{context}}\n\nUser request: {{request}}",
-          "context_fragment_label": "\n[Context Fragment]: "
+          "context_fragment_label": "\n[Context Fragment]: ",
+          "threadFollowUp": "You are continuing a dialogue on the canvas. The assistant’s previous reply was:\n\n---\n{{previous}}\n---\n\nThe user’s new message:\n{{request}}\n\nRespond as a thoughtful continuation. Address the follow-up directly; keep the same voice and depth as before unless the user asks otherwise."
         }
       },
       "lab": {
@@ -166,7 +170,10 @@ const resources = {
         "ai_loading": "合成中...",
         "empty_note": "空笔记。点击编辑。",
         "type_something": "输入内容...",
-        "connect_notes": "连接笔记进行分析。"
+        "connect_notes": "连接笔记进行分析。",
+        "ai_your_follow_up": "你的追问",
+        "ai_follow_up_placeholder": "继续追问…（Enter 发送，Shift+Enter 换行）",
+        "ai_follow_up_send": "发送"
       },
       "settings": {
         "title": "设置",
@@ -192,7 +199,8 @@ const resources = {
           "publish": "请将以下概念、笔记与草稿整合为一篇连贯、文笔流畅的文章：\n\n{{content}}",
           "agentContext": "待分析上下文：\n{{content}}",
           "toolbar": "画布上已连接笔记的上下文：\n{{context}}\n\n用户需求：{{request}}",
-          "context_fragment_label": "\n【上下文片段】："
+          "context_fragment_label": "\n【上下文片段】：",
+          "threadFollowUp": "你正在画布上延续一段对话。助手上一轮回复如下：\n\n---\n{{previous}}\n---\n\n用户的新消息：\n{{request}}\n\n请承接上文，直接回应这条追问；语气与深度与之前保持一致，除非用户另有要求。"
         }
       },
       "lab": {

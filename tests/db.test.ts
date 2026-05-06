@@ -70,6 +70,33 @@ describe('MyDatabase', () => {
       expect(count).toBe(3);
     });
 
+    it('支持可选属性 userTurn（AI 对话链卡片）', async () => {
+      await db.nodes.add({
+        id: 'n-thread',
+        type: 'ai',
+        x: 0,
+        y: 0,
+        userTurn: '用户追问',
+        content: 'AI 回复正文',
+      });
+      const result = await db.nodes.get('n-thread');
+      expect(result?.userTurn).toBe('用户追问');
+      expect(result?.content).toBe('AI 回复正文');
+    });
+
+    it('支持可选属性 followUpSent（追问已发出则隐藏输入）', async () => {
+      await db.nodes.add({
+        id: 'n-sent',
+        type: 'ai',
+        x: 0,
+        y: 0,
+        content: 'reply',
+        followUpSent: true,
+      });
+      const result = await db.nodes.get('n-sent');
+      expect(result?.followUpSent).toBe(true);
+    });
+
     it('支持可选属性 width, height, layout', async () => {
       await db.nodes.add({
         id: 'n1', type: 'note', x: 0, y: 0,

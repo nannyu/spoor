@@ -1,4 +1,4 @@
-import { useState, type RefObject } from 'react';
+import { useRef, useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AgentConfig, CanvasNode, Edge as DbEdge } from '../db';
 import type { AIConfig } from '../components/AISettingsModal';
@@ -39,9 +39,17 @@ export function useAiActions({
   const [isPublishing, setIsPublishing] = useState(false);
   const [isToolbarAiLoading, setIsToolbarAiLoading] = useState(false);
   const [analyzingAgentNodeId, setAnalyzingAgentNodeId] = useState<string | null>(null);
+  const [followUpParentId, setFollowUpParentId] = useState<string | null>(null);
   const [aiPrompt, setAiPrompt] = useState('');
+  const followUpGuardRef = useRef(false);
 
-  const isAnyAiBusy = isPublishing || isToolbarAiLoading || analyzingAgentNodeId !== null;
+  const THREAD_GAP = 24;
+
+  const isAnyAiBusy =
+    isPublishing ||
+    isToolbarAiLoading ||
+    analyzingAgentNodeId !== null ||
+    followUpParentId !== null;
 
   const handlePublish = async () => {
     if (selectedNodes.size === 0 || isAnyAiBusy) return;
@@ -162,15 +170,76 @@ export function useAiActions({
     }
   };
 
+  const submitAiThreadFollowUp = async (parentNodeId: string, userMessage: string) => {
+    const trimmed = userMessage.trim();
+    if (!trimmed || followUpGuardRef.current) return;
+    if (isPublishing || isToolbarAiLoading || analyzingAgentNodeId !== null || followUpParentId !== null) return;
+
+    const parent = dynamicNodes.find((n) => n.id === parentNodeId);
+    if (!parent || parent.type !== 'ai') return;
+
+    followUpGuardRef.current = true;
+    setFollowUpParentId(parentNodeId);
+    try {
+      const previous = (parent.content ?? '').trim();
+      const text = await callUniversalAI({
+        config: aiConfig,
+        systemInstruction: getLocaleDirective(),
+        prompt: t('ai.prompts.threadFollowUp', {
+          previous: previous || '—',
+          request: trimmed,
+        }),
+      });
+
+      if (text) {
+        const el = nodesRef.current[parentNodeId];
+        const h = el?.offsetHeight ?? 200;
+        const w = parent.width && parent.width > 0 ? parent.width : el?.offsetWidth ?? 320;
+        const newNodeId = crypto.randomUUID();
+        await db.nodes.add({
+          id: newNodeId,
+          canvasId: activeCanvasId,
+          type: 'ai',
+          userTurn: trimmed,
+          content: text,
+          x: parent.x,
+          y: parent.y + h + THREAD_GAP,
+          width: w,
+        });
+        await db.edges.add({
+          id: crypto.randomUUID(),
+          canvasId: activeCanvasId,
+          from: parentNodeId,
+          to: newNodeId,
+        });
+        await db.nodes.update(parentNodeId, { followUpSent: true });
+      }
+    } catch (e) {
+      const msg = formatAiError(e);
+      console.error('[Scribe AI] submitAiThreadFollowUp failed', {
+        error: msg,
+        provider: aiConfig.provider,
+        model: aiConfig.model,
+        apiKey: maskApiKeyForLog(aiConfig.apiKey),
+      });
+      alert(`AI 生成失败\n\n${msg}\n\n打开开发者工具 (F12) → Console 查看 [Scribe AI] 详细日志。`);
+    } finally {
+      followUpGuardRef.current = false;
+      setFollowUpParentId(null);
+    }
+  };
+
   return {
     isPublishing,
     isToolbarAiLoading,
     analyzingAgentNodeId,
+    followUpParentId,
     isAnyAiBusy,
     aiPrompt,
     setAiPrompt,
     handlePublish,
     triggerAgentAnalysis,
     handleAiSubmit,
+    submitAiThreadFollowUp,
   };
 }

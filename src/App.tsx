@@ -152,7 +152,7 @@ export default function App() {
   });
 
   // AI actions (publish, agent analysis, AI submit)
-  const { isPublishing, isToolbarAiLoading, analyzingAgentNodeId, isAnyAiBusy, aiPrompt, setAiPrompt, handlePublish, triggerAgentAnalysis, handleAiSubmit } = useAiActions({
+  const { isPublishing, isToolbarAiLoading, analyzingAgentNodeId, followUpParentId, isAnyAiBusy, aiPrompt, setAiPrompt, handlePublish, triggerAgentAnalysis, handleAiSubmit, submitAiThreadFollowUp } = useAiActions({
     aiConfig, agentConfigs, activeCanvasId, nodesRef, transformRef,
     dynamicNodes, edges, selectedNodes, setSelectedNodes, setActiveReferenceId, setActiveTab,
   });
@@ -338,7 +338,16 @@ export default function App() {
                     db.nodes.update(node.id, size);
                   }}
                 >
-                  <NodeRenderer node={node} editingNodeId={editingNodeId} setEditingNodeId={setEditingNodeId} agentConfigs={agentConfigs} analyzingAgentNodeId={analyzingAgentNodeId} />
+                  <NodeRenderer
+                    node={node}
+                    editingNodeId={editingNodeId}
+                    setEditingNodeId={setEditingNodeId}
+                    agentConfigs={agentConfigs}
+                    analyzingAgentNodeId={analyzingAgentNodeId}
+                    onAiFollowUp={submitAiThreadFollowUp}
+                    followUpLoadingNodeId={followUpParentId}
+                    isFollowUpGloballyDisabled={isAnyAiBusy}
+                  />
                 </DraggableNode>
               );
             })}
