@@ -54,6 +54,42 @@ describe('useCanvasInteraction', () => {
     expect(mainEl.addEventListener).toHaveBeenCalledWith('wheel', expect.any(Function), { passive: false });
   });
 
+  it('wheel 在仍可纵向滚动的子元素内时提前返回，不触发画布平移', () => {
+    const { result } = setupHook();
+    const wheelEntry = vi.mocked(mainEl.addEventListener).mock.calls.find((c) => c[0] === 'wheel');
+    const onWheel = wheelEntry?.[1] as (e: WheelEvent) => void;
+    expect(onWheel).toBeDefined();
+
+    const scrollEl = document.createElement('div');
+    const inner = document.createElement('span');
+    scrollEl.appendChild(inner);
+    mainEl.appendChild(scrollEl);
+
+    Object.defineProperties(scrollEl, {
+      scrollHeight: { get: () => 200, configurable: true },
+      clientHeight: { get: () => 50, configurable: true },
+      scrollTop: { get: () => 0, configurable: true },
+    });
+
+    const gcs = vi.spyOn(window, 'getComputedStyle').mockImplementation((elt: Element) => {
+      if (elt === scrollEl) {
+        return { overflowY: 'auto' } as unknown as CSSStyleDeclaration;
+      }
+      return { overflowY: 'visible' } as unknown as CSSStyleDeclaration;
+    });
+
+    const before = { ...result.current.canvasTransform };
+    const e = new WheelEvent('wheel', { deltaY: 40, bubbles: true });
+    Object.defineProperty(e, 'target', { value: inner, enumerable: true });
+
+    act(() => {
+      onWheel(e);
+    });
+
+    expect(result.current.canvasTransform).toEqual(before);
+    gcs.mockRestore();
+  });
+
   it('handlePanStart 消费 pointerdown 事件后注册 pointermove/pointerup', () => {
     const { result } = setupHook();
     const addSpy = vi.spyOn(window, 'addEventListener');

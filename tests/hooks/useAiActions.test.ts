@@ -3,7 +3,7 @@ import { renderHook, act } from '@testing-library/react';
 import { useRef, useState } from 'react';
 import { useAiActions } from '../../src/hooks/useAiActions';
 import { db } from '../../src/db';
-import type { AgentConfig } from '../../src/db';
+import type { AgentConfig, CanvasNode } from '../../src/db';
 
 vi.mock('../../src/services/ai', () => ({
   callUniversalAI: vi.fn().mockResolvedValue('AI generated text'),
@@ -19,6 +19,7 @@ function useTestAiActions(opts?: {
   agentConfigs?: AgentConfig[];
   selectedNodes?: Set<string>;
   edges?: { from: string; to: string; id?: string }[];
+  dynamicNodes?: CanvasNode[];
 }) {
   const [selectedNodes, setSelectedNodes] = useState<Set<string>>(opts?.selectedNodes ?? new Set());
   const setActiveReferenceId = vi.fn();
@@ -34,13 +35,14 @@ function useTestAiActions(opts?: {
       activeCanvasId: 'default',
       nodesRef: nodesRef as React.RefObject<Record<string, HTMLElement | null>>,
       transformRef: transformRef as React.RefObject<{ x: number; y: number; scale: number }>,
-      dynamicNodes: [],
+      dynamicNodes: opts?.dynamicNodes ?? [],
       edges: (opts?.edges ?? []) as any[],
       selectedNodes,
       setSelectedNodes,
       setActiveReferenceId,
       setActiveTab,
     }),
+    nodesRef,
     setActiveReferenceId,
     setActiveTab,
     setSelectedNodes,
@@ -140,7 +142,148 @@ describe('useAiActions', () => {
       expect(result.current.isPublishing).toBe(false);
       expect(result.current.isToolbarAiLoading).toBe(false);
       expect(result.current.analyzingAgentNodeId).toBe(null);
+      expect(result.current.followUpParentId).toBe(null);
       expect(result.current.isAnyAiBusy).toBe(false);
+    });
+  });
+
+  // --- submitAiThreadFollowUp ---
+  describe('submitAiThreadFollowUp', () => {
+    const parentCard: CanvasNode = {
+      id: 'parent-ai',
+      type: 'ai',
+      content: '上一轮 AI 正文',
+      x: 5,
+      y: 10,
+      canvasId: 'default',
+    };
+
+    it('追问文案为空时不调用 AI', async () => {
+      await db.nodes.add({ ...parentCard });
+      const { result } = renderHook(() =>
+        useTestAiActions({ dynamicNodes: [parentCard] })
+      );
+
+      await act(async () => {
+        await result.current.submitAiThreadFollowUp('parent-ai', '   ');
+      });
+
+      expect(callUniversalAI).not.toHaveBeenCalled();
+    });
+
+    it('父节点不是 ai 类型时不调用 AI', async () => {
+      const noteNode: CanvasNode = {
+        id: 'note-1',
+        type: 'note',
+        content: 'x',
+        x: 0,
+        y: 0,
+        canvasId: 'default',
+      };
+      const { result } = renderHook(() =>
+        useTestAiActions({ dynamicNodes: [noteNode] })
+      );
+
+      await act(async () => {
+        await result.current.submitAiThreadFollowUp('note-1', '追问');
+      });
+
+      expect(callUniversalAI).not.toHaveBeenCalled();
+    });
+
+    it('成功时创建子 AI 节点、边，并写入父节点 followUpSent', async () => {
+      await db.nodes.add({ ...parentCard });
+
+      const { result } = renderHook(() =>
+        useTestAiActions({ dynamicNodes: [parentCard] })
+      );
+
+      const mockEl = document.createElement('div');
+      Object.defineProperties(mockEl, {
+        offsetHeight: { get: () => 100 },
+        offsetWidth: { get: () => 280 },
+      });
+
+      act(() => {
+        result.current.nodesRef.current['parent-ai'] = mockEl;
+      });
+
+      await act(async () => {
+        await result.current.submitAiThreadFollowUp('parent-ai', '我的追问');
+      });
+
+      expect(callUniversalAI).toHaveBeenCalledTimes(1);
+      const callArg = vi.mocked(callUniversalAI).mock.calls[0][0];
+      expect(callArg.prompt).toContain('我的追问');
+      expect(callArg.prompt).toContain('上一轮 AI 正文');
+
+      const allNodes = await db.nodes.toArray();
+      expect(allNodes).toHaveLength(2);
+      const child = allNodes.find((n) => n.id !== 'parent-ai');
+      expect(child?.type).toBe('ai');
+      expect(child?.userTurn).toBe('我的追问');
+      expect(child?.content).toBe('AI generated text');
+      expect(child?.canvasId).toBe('default');
+      expect(child?.x).toBe(5);
+      expect(child?.y).toBe(10 + 100 + 24);
+      expect(child?.width).toBe(280);
+
+      const edges = await db.edges.toArray();
+      expect(edges).toHaveLength(1);
+      expect(edges[0].from).toBe('parent-ai');
+      expect(edges[0].to).toBe(child!.id);
+
+      const parentRow = await db.nodes.get('parent-ai');
+      expect(parentRow?.followUpSent).toBe(true);
+    });
+
+    it('AI 返回空字符串时不创建子节点且不标记 followUpSent', async () => {
+      vi.mocked(callUniversalAI).mockResolvedValueOnce('');
+      await db.nodes.add({ ...parentCard });
+
+      const { result } = renderHook(() =>
+        useTestAiActions({ dynamicNodes: [parentCard] })
+      );
+
+      const mockEl = document.createElement('div');
+      Object.defineProperty(mockEl, 'offsetHeight', { get: () => 50 });
+
+      act(() => {
+        result.current.nodesRef.current['parent-ai'] = mockEl;
+      });
+
+      await act(async () => {
+        await result.current.submitAiThreadFollowUp('parent-ai', '追问');
+      });
+
+      const nodes = await db.nodes.toArray();
+      expect(nodes).toHaveLength(1);
+
+      const parentRow = await db.nodes.get('parent-ai');
+      expect(parentRow?.followUpSent).not.toBe(true);
+    });
+
+    it('AI 失败时不标记 followUpSent', async () => {
+      vi.mocked(callUniversalAI).mockRejectedValueOnce(new Error('network'));
+      await db.nodes.add({ ...parentCard });
+
+      const { result } = renderHook(() =>
+        useTestAiActions({ dynamicNodes: [parentCard] })
+      );
+
+      const mockEl = document.createElement('div');
+      Object.defineProperty(mockEl, 'offsetHeight', { get: () => 40 });
+
+      act(() => {
+        result.current.nodesRef.current['parent-ai'] = mockEl;
+      });
+
+      await act(async () => {
+        await result.current.submitAiThreadFollowUp('parent-ai', '追问');
+      });
+
+      const parentRow = await db.nodes.get('parent-ai');
+      expect(parentRow?.followUpSent).not.toBe(true);
     });
   });
 });
