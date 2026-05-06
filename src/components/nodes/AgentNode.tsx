@@ -2,9 +2,12 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Bot, Loader2 } from 'lucide-react';
 import type { AgentNodeProps } from './types';
+import { resolveAgentLocalizedName, resolveAgentLocalizedRole } from '../../utils/aiI18n';
 
 export function AgentNode({ node, agentConfigs, isAnalyzing }: AgentNodeProps) {
   const { t } = useTranslation();
+
+  const conf = agentConfigs.find((a) => a.id === node.agentConfigId);
 
   return (
     <div className="w-full h-full bg-white text-[#1a1a1a] p-4 shadow-lg border border-[#E6E4DF] rounded-lg relative overflow-hidden group flex flex-col">
@@ -14,8 +17,8 @@ export function AgentNode({ node, agentConfigs, isAnalyzing }: AgentNodeProps) {
           <Bot className="w-4 h-4" />
         </div>
         <div>
-          <div className="text-xs font-bold leading-tight">{agentConfigs.find(a => a.id === node.agentConfigId)?.name || 'Agent'}</div>
-          <div className="text-[10px] text-[#8c8a84] font-mono uppercase tracking-wider">{agentConfigs.find(a => a.id === node.agentConfigId)?.role || 'Assistant'}</div>
+          <div className="text-xs font-bold leading-tight">{conf ? resolveAgentLocalizedName(conf) : 'Agent'}</div>
+          <div className="text-[10px] text-[#8c8a84] font-mono uppercase tracking-wider">{conf ? resolveAgentLocalizedRole(conf) : 'Assistant'}</div>
         </div>
       </div>
       <div className="text-xs text-[#5a5a54] mt-2 border-t border-[#E6E4DF] pt-2 relative z-10">

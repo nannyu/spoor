@@ -12,6 +12,7 @@ import {
 import type { AgentConfig } from '../db';
 import { db } from '../db';
 import { getCanvasCenterPosition } from '../utils/canvas';
+import { resolveAgentLocalizedName, resolveAgentLocalizedRole } from '../utils/aiI18n';
 
 export interface CanvasToolbarProps {
   isToolbarAiLoading: boolean;
@@ -67,8 +68,8 @@ export function CanvasToolbar({
                   }} className="text-left px-3 py-2 text-sm text-[#1a1a1a] hover:bg-[#F4F1ED] rounded-lg mb-1 flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-[#C2410C]"></div>
                     <div>
-                      <div className="font-bold">{agent.name}</div>
-                      <div className="text-[10px] text-[#5a5a54] leading-tight">{agent.role}</div>
+                      <div className="font-bold">{resolveAgentLocalizedName(agent)}</div>
+                      <div className="text-[10px] text-[#5a5a54] leading-tight">{resolveAgentLocalizedRole(agent)}</div>
                     </div>
                   </button>
                 ))}

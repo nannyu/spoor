@@ -19,6 +19,31 @@ function isBuiltinAgentId(id: string): id is SystemAgentId {
   return (SYSTEM_AGENT_IDS as readonly string[]).includes(id);
 }
 
+/** 与 resolveAgentSystemPrompt 相同策略：内置人格在 en/zh 默认文案之间切换显示，用户自定义则保留。 */
+function resolveAgentLocalizedField(agent: AgentConfig, field: 'name' | 'role'): string {
+  const id = agent.id;
+  if (!isBuiltinAgentId(id)) {
+    return String(agent[field] ?? '');
+  }
+  const current = norm(String(agent[field] ?? ''));
+  const candidates = new Set<string>();
+  for (const lng of ['en', 'zh'] as const) {
+    candidates.add(norm(i18n.getFixedT(lng)(`agents.defaults.${id}.${field}`)));
+  }
+  if (candidates.has(current)) {
+    return i18n.t(`agents.defaults.${id}.${field}`);
+  }
+  return String(agent[field] ?? '');
+}
+
+export function resolveAgentLocalizedName(agent: AgentConfig): string {
+  return resolveAgentLocalizedField(agent, 'name');
+}
+
+export function resolveAgentLocalizedRole(agent: AgentConfig): string {
+  return resolveAgentLocalizedField(agent, 'role');
+}
+
 /**
  * If the saved prompt is still a stock / legacy built-in, use the string for the **current** UI language.
  * Custom user edits are left as-is (locale directive still applies separately).

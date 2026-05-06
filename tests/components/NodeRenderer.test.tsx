@@ -4,12 +4,16 @@ import React from 'react';
 import { NodeRenderer } from '../../src/components/nodes/NodeRenderer';
 import type { CanvasNode, AgentConfig } from '../../src/db';
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-    i18n: { language: 'zh', changeLanguage: vi.fn() },
-  }),
-}));
+vi.mock('react-i18next', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-i18next')>();
+  return {
+    ...actual,
+    useTranslation: () => ({
+      t: (key: string) => key,
+      i18n: { language: 'zh', changeLanguage: vi.fn() },
+    }),
+  };
+});
 
 vi.mock('lucide-react', () => {
   const iconNames = [

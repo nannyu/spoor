@@ -14,7 +14,7 @@ import {
 import type { AgentConfig } from '../db';
 import type { CallAIFn } from '../types';
 import { formatAiError } from '../services/ai';
-import { combineSystemParts, getLocaleDirective } from '../utils/aiI18n';
+import { combineSystemParts, getLocaleDirective, resolveAgentLocalizedName, resolveAgentLocalizedRole, resolveAgentSystemPrompt } from '../utils/aiI18n';
 
 export interface AgentsStudioProps {
   agentConfigs: AgentConfig[];
@@ -42,6 +42,10 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const activeAgent = agentConfigs.find((a) => a.id === activeAgentId) || agentConfigs[0];
+
+  const displayName = activeAgent ? resolveAgentLocalizedName(activeAgent) : '';
+  const displayRole = activeAgent ? resolveAgentLocalizedRole(activeAgent) : '';
+  const displayPrompt = activeAgent ? resolveAgentSystemPrompt(activeAgent) : '';
 
   useEffect(() => {
     if (chatEndRef.current) {
@@ -75,16 +79,16 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
   };
 
   const handleEnhancePrompt = async () => {
-    if (!activeAgent || !activeAgent.prompt) return;
+    if (!activeAgent || !displayPrompt.trim()) return;
     setIsEnhancing(true);
     try {
       const newPrompt = await callAI({
         config: aiConfig,
         systemInstruction: getLocaleDirective(),
         prompt: t('agents.studio.enhance_user', {
-          name: activeAgent.name,
-          role: activeAgent.role,
-          prompt: activeAgent.prompt,
+          name: resolveAgentLocalizedName(activeAgent),
+          role: resolveAgentLocalizedRole(activeAgent),
+          prompt: resolveAgentSystemPrompt(activeAgent),
         }),
       });
       
@@ -115,7 +119,7 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
         prompt: userMsg,
         systemInstruction: combineSystemParts(
           getLocaleDirective(),
-          activeAgent.prompt || t('agents.studio.fallback_assistant'),
+          resolveAgentSystemPrompt(activeAgent) || t('agents.studio.fallback_assistant'),
         ),
         temperature: activeAgent.temperature || 0.7,
         topP: activeAgent.creativity || 0.4
@@ -139,7 +143,9 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
     }
   };
 
-  const filteredAgents = agentConfigs.filter((a) => a.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredAgents = agentConfigs.filter((a) =>
+    resolveAgentLocalizedName(a).toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="flex-1 flex bg-[#FAF9F6] overflow-hidden relative">
@@ -167,8 +173,8 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
                     <Bot className={`w-5 h-5 ${activeAgentId === agent.id ? 'text-[#C2410C]' : 'text-[#8c8a84]'}`} />
                   </div>
                   <div>
-                    <h4 className={`font-bold ${activeAgentId === agent.id ? 'text-[#1a1a1a]' : 'text-[#5a5a54]'}`}>{agent.name}</h4>
-                    <span className="text-[10px] bg-[#E6E4DF] text-[#5a5a54] px-1.5 py-0.5 rounded uppercase tracking-wider font-mono">{agent.role}</span>
+                    <h4 className={`font-bold ${activeAgentId === agent.id ? 'text-[#1a1a1a]' : 'text-[#5a5a54]'}`}>{resolveAgentLocalizedName(agent)}</h4>
+                    <span className="text-[10px] bg-[#E6E4DF] text-[#5a5a54] px-1.5 py-0.5 rounded uppercase tracking-wider font-mono">{resolveAgentLocalizedRole(agent)}</span>
                   </div>
                 </div>
               </div>
@@ -200,7 +206,7 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
                   <span className={`w-1.5 h-1.5 rounded-full ${saveStatus === 'Saved' ? 'bg-green-500' : saveStatus === 'Saving...' ? 'bg-yellow-400 animate-pulse' : 'bg-[#C2410C]'}`}></span>
                   {saveStatus && <span className={`text-[10px] font-mono ${saveStatus === 'Saved' ? 'text-green-600' : 'text-yellow-600'}`}>{saveStatus}</span>}
                 </div>
-                <h1 className="font-serif text-3xl font-bold text-[#1a1a1a]">{activeAgent.name || t('agents.new_persona')}</h1>
+                <h1 className="font-serif text-3xl font-bold text-[#1a1a1a]">{displayName || t('agents.new_persona')}</h1>
               </div>
               <div className="flex gap-3">
                 <button 
@@ -230,7 +236,7 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
                       <input 
                         className="w-full p-3 font-sans text-sm bg-white border border-[#E6E4DF] rounded-lg focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C] outline-none transition-colors" 
                         type="text" 
-                        value={activeAgent.name}
+                        value={displayName}
                         onChange={e => handleUpdateActiveAgent('name', e.target.value)}
                       />
                     </div>
@@ -239,7 +245,7 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
                       <input 
                         className="w-full p-3 font-sans text-sm bg-white border border-[#E6E4DF] rounded-lg focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C] outline-none transition-colors" 
                         type="text" 
-                        value={activeAgent.role}
+                        value={displayRole}
                         onChange={e => handleUpdateActiveAgent('role', e.target.value)}
                       />
                     </div>
@@ -248,10 +254,10 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
                     <div className="flex justify-between items-end">
                       <label className="text-[10px] font-mono font-bold text-[#8c8a84] uppercase tracking-wider">{t('agents.system_prompt')}</label>
                       <div className="flex items-center gap-3">
-                        <span className={`${(activeAgent.prompt?.length || 0) > 2000 ? 'text-red-500' : 'text-[#a09f9c]'} text-[10px] font-mono`}>{(activeAgent.prompt?.length || 0)} / 2000</span>
+                        <span className={`${(displayPrompt.length || 0) > 2000 ? 'text-red-500' : 'text-[#a09f9c]'} text-[10px] font-mono`}>{displayPrompt.length} / 2000</span>
                         <button 
                           onClick={handleEnhancePrompt}
-                          disabled={isEnhancing || !activeAgent.prompt}
+                          disabled={isEnhancing || !displayPrompt.trim()}
                           className="flex items-center gap-1.5 text-[10px] font-bold text-[#C2410C] hover:text-[#9a3412] px-2 py-1 bg-[#C2410C]/5 rounded border border-[#C2410C]/20 transition-all disabled:opacity-50"
                         >
                           {isEnhancing ? <Loader2 className="w-3 h-3 animate-spin"/> : <Wand2 className="w-3 h-3" />}
@@ -260,9 +266,9 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
                       </div>
                     </div>
                     <textarea 
-                      className={`w-full p-4 font-mono text-sm text-[#5a5a54] bg-white border ${(activeAgent.prompt?.length || 0) > 2000 ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-[#E6E4DF] focus:border-[#C2410C] focus:ring-[#C2410C]'} rounded-lg outline-none transition-colors overflow-y-auto resize-y min-h-[160px]`} 
-                      style={{ height: Math.max(160, (activeAgent.prompt?.split('\n').length || 1) * 24 + 40) + 'px' }}
-                      value={activeAgent.prompt}
+                      className={`w-full p-4 font-mono text-sm text-[#5a5a54] bg-white border ${displayPrompt.length > 2000 ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-[#E6E4DF] focus:border-[#C2410C] focus:ring-[#C2410C]'} rounded-lg outline-none transition-colors overflow-y-auto resize-y min-h-[160px]`} 
+                      style={{ height: Math.max(160, (displayPrompt.split('\n').length || 1) * 24 + 40) + 'px' }}
+                      value={displayPrompt}
                       onChange={e => handleUpdateActiveAgent('prompt', e.target.value)}
                       placeholder="You are a specialized agent. Your goal is to..."
                     />
@@ -343,7 +349,7 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
                 <div className="p-4 border-b border-[#E6E4DF] flex items-center justify-between bg-[#F4F1ED]/50">
                   <div className="flex items-center gap-2">
                     <MessageSquare className="w-4 h-4 text-[#C2410C]" />
-                    <span className="font-serif font-bold text-[#1a1a1a]">{t('agents.sandbox_title', { name: activeAgent.name })}</span>
+                    <span className="font-serif font-bold text-[#1a1a1a]">{t('agents.sandbox_title', { name: displayName })}</span>
                   </div>
                   <button onClick={() => setIsSandboxOpen(false)} className="text-[#8c8a84] hover:text-[#1a1a1a]">
                     <X className="w-5 h-5" />
@@ -355,7 +361,7 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
                     <div className="text-center py-10 px-4">
                       <Bot className="w-10 h-10 text-[#E6E4DF] mx-auto mb-3" />
                       <p className="text-xs text-[#8c8a84] font-sans">
-                        {t('agents.sandbox_empty', { name: activeAgent.name })}
+                        {t('agents.sandbox_empty', { name: displayName })}
                       </p>
                     </div>
                   )}
@@ -386,7 +392,7 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
                     <input 
                       type="text"
                       className="w-full pl-4 pr-12 py-3 bg-[#FAF9F6] border border-[#E6E4DF] rounded-xl text-sm font-sans focus:outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C] transition-all"
-                      placeholder={t('agents.message_placeholder', { name: activeAgent.name })}
+                      placeholder={t('agents.message_placeholder', { name: displayName })}
                       value={sandboxInput}
                       onChange={e => setSandboxInput(e.target.value)}
                     />
