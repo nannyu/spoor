@@ -169,3 +169,20 @@ commit d105d5e fix: allow file drop on canvas through edge SVG layer
 原因: CanvasEdgeLines 全屏 SVG 拦截指针但未处理 dragover，导致画布空白处无法接收文件拖放。
 修复: svg 根节点添加 pointer-events-none；连线 g 元素仍为 pointer-events-auto，边交互不变。
 CanvasEdgeLines 单测 8/8 通过。
+
+commit [feat-dnd-capture] 画布文件拖放：捕获阶段放行 + 连线层补充 + DEV 诊断
+
+新增:
+  - src/utils/dnd.ts — dataTransferHasFiles / preventDefaultIfFileDrag
+  - tests/utils/dnd.test.ts — 3 例单元测试
+  - src/vite-env.d.ts — Vite ImportMeta 类型（tsc）
+
+修改:
+  - src/App.tsx — main 上 useLayoutEffect 注册 dragenter/dragover 捕获监听；
+    DEV 下 localStorage SCRIBE_DEBUG_DND='1' 时打印 dragenter/drop 诊断（tag/types/filesLength）
+  - src/components/canvas/CanvasEdgeLines.tsx — 边 g 上 onDragEnter/onDragOver 对 Files 放行（假设 A）
+
+说明: HTML5 文件拖放要求命中链上对 dragover 调用 preventDefault；连线命中条带与节点内控件会先接住事件，
+在 main 捕获阶段统一放行可覆盖假设 B；连线层双重保险对应假设 A。假设 C（WebView files 为空）仍可通过 SCRIBE_DEBUG_DND 看 drop.filesLength。
+
+测试: tsc --noEmit 通过；vitest 210 例通过。

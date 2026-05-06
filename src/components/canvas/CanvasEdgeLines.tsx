@@ -1,6 +1,7 @@
 import React, { useRef, type RefObject } from 'react';
 import { X } from 'lucide-react';
 import type { Edge as DbEdge } from '../../db';
+import { preventDefaultIfFileDrag } from '../../utils/dnd';
 
 interface CanvasEdgeLinesProps {
   edges: DbEdge[];
@@ -31,6 +32,8 @@ export function CanvasEdgeLines({
             data-edge-from={edge.from}
             data-edge-to={edge.to}
             className="group cursor-pointer pointer-events-auto"
+            onDragEnter={(e) => preventDefaultIfFileDrag(e)}
+            onDragOver={(e) => preventDefaultIfFileDrag(e)}
             onMouseEnter={() => setHoveredEdgeId(edge.id)}
             onMouseLeave={() => setHoveredEdgeId(null)}
           >

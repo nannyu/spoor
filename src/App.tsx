@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useTranslation } from 'react-i18next';
 import { db } from './db';
@@ -28,6 +28,13 @@ import { useCanvasInteraction } from './hooks/useCanvasInteraction';
 import { useNodeActions } from './hooks/useNodeActions';
 import { useAiActions } from './hooks/useAiActions';
 import { processFileToNode } from './utils/file';
+import { dataTransferHasFiles, preventDefaultIfFileDrag } from './utils/dnd';
+
+/** 在控制台设置 localStorage.SCRIBE_DEBUG_DND='1' 并刷新，可在拖放时看到 diagnostic 日志（仅 DEV）。 */
+const DEBUG_DND =
+  import.meta.env.DEV &&
+  typeof localStorage !== 'undefined' &&
+  localStorage.getItem('SCRIBE_DEBUG_DND') === '1';
 
 /** tp- Token 套餐密钥须走 token-plan-cn；旧版默认 api.xiaomimimo.com 会导致 401 */
 function migrateStoredAiConfig(raw: unknown): AIConfig | null {
@@ -106,6 +113,39 @@ export default function App() {
   }, [activeCanvasId]);
 
   useSeedData();
+
+  /**
+   * 捕获阶段放行文件拖放：子元素（连线粗命中区、video/img 等）若未调用 dragover.preventDefault，
+   * 浏览器会禁止放置；在 main 上捕获可先放行整张画布。
+   * Manual QA：Chrome vs Tauri；空白区 vs 连线附近 vs 节点上；参见 localStorage SCRIBE_DEBUG_DND='1'。
+   */
+  useLayoutEffect(() => {
+    if (activeTab !== 'personal') return;
+    const el = mainRef.current;
+    if (!el) return;
+
+    const handleCaptureDragEnter = (e: DragEvent) => {
+      preventDefaultIfFileDrag(e);
+      if (!DEBUG_DND || !dataTransferHasFiles(e.dataTransfer)) return;
+      const t = e.target;
+      const tag = t instanceof Element ? t.tagName : String(t);
+      console.debug('[dnd:dragenter]', {
+        tag,
+        types: e.dataTransfer ? Array.from(e.dataTransfer.types) : [],
+      });
+    };
+
+    const handleCaptureDragOver = (e: DragEvent) => {
+      preventDefaultIfFileDrag(e);
+    };
+
+    el.addEventListener('dragenter', handleCaptureDragEnter, true);
+    el.addEventListener('dragover', handleCaptureDragOver, true);
+    return () => {
+      el.removeEventListener('dragenter', handleCaptureDragEnter, true);
+      el.removeEventListener('dragover', handleCaptureDragOver, true);
+    };
+  }, [activeTab]);
 
   // Node actions (CRUD, selection, linking)
   const { toggleNodeSelection, handleLink, deleteEdge, removeNodeId, addTextNode, addFileNode } = useNodeActions({
@@ -194,6 +234,14 @@ export default function App() {
           onDrop={async (e) => {
             e.preventDefault();
             e.stopPropagation();
+            if (DEBUG_DND) {
+              const t = e.target;
+              console.debug('[dnd:drop]', {
+                tag: t instanceof Element ? t.tagName : String(t),
+                types: Array.from(e.dataTransfer.types),
+                filesLength: e.dataTransfer.files?.length ?? 0,
+              });
+            }
             if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
               const t = canvasTransform;
               const rect = e.currentTarget.getBoundingClientRect();
