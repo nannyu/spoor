@@ -163,3 +163,9 @@ Date: Wed May 6 12:54 2026
   - 拖放和按钮上传共用 processFileToNode 统一逻辑
 
 测试结果: 15 files passed, 207 tests passed (0 failed)
+
+commit d105d5e fix: allow file drop on canvas through edge SVG layer
+
+原因: CanvasEdgeLines 全屏 SVG 拦截指针但未处理 dragover，导致画布空白处无法接收文件拖放。
+修复: svg 根节点添加 pointer-events-none；连线 g 元素仍为 pointer-events-auto，边交互不变。
+CanvasEdgeLines 单测 8/8 通过。

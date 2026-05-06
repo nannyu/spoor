@@ -23,7 +23,7 @@ export function CanvasEdgeLines({
 }: CanvasEdgeLinesProps) {
   return (
     <>
-      <svg ref={svgRef} data-connecting-from={connectingFrom || ''} className="absolute inset-0 overflow-visible z-10 w-[1px] h-[1px]">
+      <svg ref={svgRef} data-connecting-from={connectingFrom || ''} className="absolute inset-0 overflow-visible z-10 w-[1px] h-[1px] pointer-events-none">
         {edges.map(edge => (
           <g
             key={edge.id}
