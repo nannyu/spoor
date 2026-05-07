@@ -4,6 +4,9 @@ import type { AgentConfig, CanvasNode, Edge as DbEdge } from '../db';
 import type { AIConfig } from '../components/AISettingsModal';
 import type { CanvasTransform } from './useCanvasInteraction';
 import { callUniversalAI, formatAiError, maskApiKeyForLog } from '../services/ai';
+import { metasoSearch } from '../services/search';
+import { deriveSearchQueryFromNoteText, spawnWebSearchCardsFromPages } from '../services/spawnWebSearchNoteCards';
+import { parseThreadWebSearchIntent } from '../utils/webSearchCommand';
 import { getCanvasCenterPosition } from '../utils/canvas';
 import { combineSystemParts, getLocaleDirective, resolveAgentSystemPrompt } from '../utils/aiI18n';
 import { db } from '../db';
@@ -178,10 +181,74 @@ export function useAiActions({
     const parent = dynamicNodes.find((n) => n.id === parentNodeId);
     if (!parent || parent.type !== 'ai') return;
 
+    const previous = (parent.content ?? '').trim();
+    const searchIntent = parseThreadWebSearchIntent(trimmed);
+
+    if (searchIntent) {
+      const key = (aiConfig.metasoApiKey || '').trim();
+      if (!key) {
+        alert(t('nodes.search_no_metaso_key'));
+        return;
+      }
+
+      const query =
+        searchIntent.explicitQuery ||
+        deriveSearchQueryFromNoteText(previous.replace(/#{1,6}\s+/g, ''));
+      if (!query) {
+        alert(t('nodes.search_need_text'));
+        return;
+      }
+
+      followUpGuardRef.current = true;
+      setFollowUpParentId(parentNodeId);
+      try {
+        const res = await metasoSearch(query, { apiKey: key });
+        const pages = res.webpages ?? [];
+        if (pages.length === 0) {
+          alert(t('nodes.search_no_results'));
+          return;
+        }
+
+        const el = nodesRef.current[parentNodeId];
+        const h = el?.offsetHeight ?? 200;
+        const w = parent.width && parent.width > 0 ? parent.width : el?.offsetWidth ?? 320;
+        const childY = parent.y + h + THREAD_GAP;
+        const newNodeId = crypto.randomUUID();
+
+        await db.nodes.add({
+          id: newNodeId,
+          canvasId: activeCanvasId,
+          type: 'ai',
+          userTurn: trimmed,
+          content: t('nodes.search_follow_up_ack'),
+          x: parent.x,
+          y: childY,
+          width: w,
+        });
+        await db.edges.add({
+          id: crypto.randomUUID(),
+          canvasId: activeCanvasId,
+          from: parentNodeId,
+          to: newNodeId,
+        });
+        await spawnWebSearchCardsFromPages(newNodeId, { x: parent.x, y: childY }, pages, activeCanvasId);
+        await db.nodes.update(parentNodeId, { followUpSent: true });
+      } catch (e) {
+        const msg = formatAiError(e);
+        console.error('[Scribe AI] thread web search failed', {
+          error: msg,
+        });
+        alert(`${t('nodes.search_failed')}\n\n${msg}`);
+      } finally {
+        followUpGuardRef.current = false;
+        setFollowUpParentId(null);
+      }
+      return;
+    }
+
     followUpGuardRef.current = true;
     setFollowUpParentId(parentNodeId);
     try {
-      const previous = (parent.content ?? '').trim();
       const text = await callUniversalAI({
         config: aiConfig,
         systemInstruction: getLocaleDirective(),

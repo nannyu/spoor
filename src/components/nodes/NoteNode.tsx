@@ -6,7 +6,11 @@ import { db } from '../../db';
 import type { NodeContentProps } from './types';
 import { isContentBlurPersistenceDisabled } from '../../config/persistence';
 
-export function NoteNode({ node, editingNodeId, setEditingNodeId }: NodeContentProps) {
+export function NoteNode({
+  node,
+  editingNodeId,
+  setEditingNodeId,
+}: NodeContentProps) {
   const { t } = useTranslation();
 
   return (

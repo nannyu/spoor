@@ -45,10 +45,16 @@ const resources = {
         "type_something": "Type something...",
         "connect_notes": "Connect notes to analyze.",
         "ai_your_follow_up": "Your follow-up",
-        "ai_follow_up_placeholder": "Ask a follow-up (Enter to send, Shift+Enter for newline)...",
+        "ai_follow_up_placeholder": "Ask a follow-up. Type \"web search\" to fetch sources (Enter to send, Shift+Enter for newline)…",
         "ai_follow_up_send": "Send",
         "agent_run_analysis": "Run analysis on linked notes",
-        "agent_no_context": "Link a note that has content to this agent (use the + button), then run analysis."
+        "agent_no_context": "Link a note that has content to this agent (use the + button), then run analysis.",
+        "search_while_writing": "Web search from this note (streams result cards beside you)",
+        "search_follow_up_ack": "Retrieved web sources as linked cards from this turn.",
+        "search_no_metaso_key": "Add a Metaso Search API key in Settings to use “web search” in the AI follow-up box.",
+        "search_need_text": "No query: add keywords after “web search”, or ensure the AI reply above has a usable first line.",
+        "search_no_results": "No web results for that query.",
+        "search_failed": "Web search failed. Check the Metaso key and network."
       },
       "settings": {
         "title": "Settings",
@@ -184,10 +190,16 @@ const resources = {
         "type_something": "输入内容...",
         "connect_notes": "连接笔记进行分析。",
         "ai_your_follow_up": "你的追问",
-        "ai_follow_up_placeholder": "继续追问…（Enter 发送，Shift+Enter 换行）",
+        "ai_follow_up_placeholder": "继续追问…（可输入「联网搜索」检索资料；Enter 发送，Shift+Enter 换行）",
         "ai_follow_up_send": "发送",
         "agent_run_analysis": "开始分析已连接的笔记",
-        "agent_no_context": "请先用右侧「+」将含有内容的笔记连到该智能体，再点此开始分析。"
+        "agent_no_context": "请先用右侧「+」将含有内容的笔记连到该智能体，再点此开始分析。",
+        "search_while_writing": "据此便签联网检索（结果以多张卡片逐张出现在旁侧）",
+        "search_follow_up_ack": "已检索并生成资料卡片（见连线）。",
+        "search_no_metaso_key": "请先在设置中填写秘塔搜索 API Key，才能在 AI 追问中输入「联网搜索」或使用研究实验室检索。",
+        "search_need_text": "缺少检索词：可在「联网搜索」后写上关键词，或确保上方 AI 回复首行有可用内容。",
+        "search_no_results": "没有搜到相关网页结果。",
+        "search_failed": "联网搜索失败，请检查秘塔 Key 与网络。"
       },
       "settings": {
         "title": "设置",

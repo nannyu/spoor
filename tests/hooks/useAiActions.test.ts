@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { useAiActions } from '../../src/hooks/useAiActions';
 import { db } from '../../src/db';
 import type { AgentConfig, CanvasNode } from '../../src/db';
+import type { AIConfig } from '../../src/components/AISettingsModal';
 
 vi.mock('../../src/services/ai', () => ({
   callUniversalAI: vi.fn().mockResolvedValue('AI generated text'),
@@ -11,15 +12,32 @@ vi.mock('../../src/services/ai', () => ({
   maskApiKeyForLog: (k: string) => (k ? `${k.slice(0, 2)}…` : ''),
 }));
 
-import { callUniversalAI } from '../../src/services/ai';
+vi.mock('../../src/services/search', () => ({
+  metasoSearch: vi.fn().mockResolvedValue({
+    credits: 0,
+    total: 0,
+    webpages: [],
+  }),
+  buildSearchContext: vi.fn(),
+}));
 
-const mockAiConfig = { provider: 'gemini', apiKey: 'test', baseUrl: '', model: 'gemini-1.5-flash' };
+import { callUniversalAI } from '../../src/services/ai';
+import { metasoSearch } from '../../src/services/search';
+
+const baseAiConfig: AIConfig = {
+  provider: 'gemini',
+  apiKey: 'test',
+  baseUrl: '',
+  model: 'gemini-1.5-flash',
+  metasoApiKey: 'metaso-k',
+};
 
 function useTestAiActions(opts?: {
   agentConfigs?: AgentConfig[];
   selectedNodes?: Set<string>;
   edges?: { from: string; to: string; id?: string }[];
   dynamicNodes?: CanvasNode[];
+  aiConfigOverrides?: Partial<AIConfig>;
 }) {
   const [selectedNodes, setSelectedNodes] = useState<Set<string>>(opts?.selectedNodes ?? new Set());
   const setActiveReferenceId = vi.fn();
@@ -30,7 +48,7 @@ function useTestAiActions(opts?: {
 
   return {
     ...useAiActions({
-      aiConfig: mockAiConfig,
+      aiConfig: { ...baseAiConfig, ...opts?.aiConfigOverrides },
       agentConfigs: opts?.agentConfigs ?? ([] as AgentConfig[]),
       activeCanvasId: 'default',
       nodesRef: nodesRef as React.RefObject<Record<string, HTMLElement | null>>,
@@ -56,6 +74,12 @@ describe('useAiActions', () => {
     await db.edges.clear();
     vi.mocked(callUniversalAI).mockClear();
     vi.mocked(callUniversalAI).mockResolvedValue('AI generated text');
+    vi.mocked(metasoSearch).mockClear();
+    vi.mocked(metasoSearch).mockResolvedValue({
+      credits: 0,
+      total: 0,
+      webpages: [],
+    });
   });
 
   // --- handlePublish ---
@@ -261,6 +285,94 @@ describe('useAiActions', () => {
 
       const parentRow = await db.nodes.get('parent-ai');
       expect(parentRow?.followUpSent).not.toBe(true);
+    });
+
+    it('「联网搜索」时调用秘塔并生成子节点与资料卡，不调用对话模型', async () => {
+      vi.mocked(metasoSearch).mockResolvedValueOnce({
+        credits: 0,
+        total: 1,
+        webpages: [{ title: 'T', snippet: 'S', link: 'https://ex.com', score: '', date: '' }],
+      });
+      await db.nodes.add({ ...parentCard });
+
+      const { result } = renderHook(() =>
+        useTestAiActions({ dynamicNodes: [parentCard] })
+      );
+
+      const mockEl = document.createElement('div');
+      Object.defineProperties(mockEl, {
+        offsetHeight: { get: () => 100 },
+        offsetWidth: { get: () => 280 },
+      });
+
+      act(() => {
+        result.current.nodesRef.current['parent-ai'] = mockEl;
+      });
+
+      await act(async () => {
+        await result.current.submitAiThreadFollowUp('parent-ai', '联网搜索');
+      });
+
+      expect(callUniversalAI).not.toHaveBeenCalled();
+      expect(metasoSearch).toHaveBeenCalledWith('上一轮 AI 正文', { apiKey: 'metaso-k' });
+
+      const allNodes = await db.nodes.toArray();
+      expect(allNodes).toHaveLength(3);
+      const child = allNodes.find((n) => n.userTurn === '联网搜索');
+      expect(child?.type).toBe('ai');
+      expect(child?.content).toBeTruthy();
+
+      const edges = await db.edges.toArray();
+      expect(edges.length).toBeGreaterThanOrEqual(2);
+
+      const parentRow = await db.nodes.get('parent-ai');
+      expect(parentRow?.followUpSent).toBe(true);
+    });
+
+    it('「联网搜索 主题」用后面的词作为检索词', async () => {
+      vi.mocked(metasoSearch).mockResolvedValueOnce({
+        credits: 0,
+        total: 1,
+        webpages: [{ title: 'T', snippet: 'S', link: 'https://ex.com', score: '', date: '' }],
+      });
+      await db.nodes.add({ ...parentCard });
+
+      const { result } = renderHook(() =>
+        useTestAiActions({ dynamicNodes: [parentCard] })
+      );
+
+      const mockEl = document.createElement('div');
+      Object.defineProperty(mockEl, 'offsetHeight', { get: () => 50 });
+
+      act(() => {
+        result.current.nodesRef.current['parent-ai'] = mockEl;
+      });
+
+      await act(async () => {
+        await result.current.submitAiThreadFollowUp('parent-ai', '联网搜索 仅用这个');
+      });
+
+      expect(metasoSearch).toHaveBeenCalledWith('仅用这个', { apiKey: 'metaso-k' });
+    });
+
+    it('无秘塔 Key 时不调用检索', async () => {
+      await db.nodes.add({ ...parentCard });
+      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+
+      const { result } = renderHook(() =>
+        useTestAiActions({
+          dynamicNodes: [parentCard],
+          aiConfigOverrides: { metasoApiKey: '' },
+        })
+      );
+
+      await act(async () => {
+        await result.current.submitAiThreadFollowUp('parent-ai', '联网搜索');
+      });
+
+      expect(metasoSearch).not.toHaveBeenCalled();
+      expect(alertSpy).toHaveBeenCalled();
+      alertSpy.mockRestore();
     });
 
     it('AI 失败时不标记 followUpSent', async () => {

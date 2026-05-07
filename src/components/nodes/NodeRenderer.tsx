@@ -39,7 +39,13 @@ export function NodeRenderer({
       return <ThemeNode node={node} editingNodeId={editingNodeId} setEditingNodeId={setEditingNodeId} />;
     case 'note':
     case 'text':
-      return <NoteNode node={node} editingNodeId={editingNodeId} setEditingNodeId={setEditingNodeId} />;
+      return (
+        <NoteNode
+          node={node}
+          editingNodeId={editingNodeId}
+          setEditingNodeId={setEditingNodeId}
+        />
+      );
     case 'ai':
       return (
         <AiNode
