@@ -44,20 +44,27 @@ export function useCanvasInteraction(
         if (node && node.nodeType !== Node.ELEMENT_NODE) {
           node = node.parentElement;
         }
+        let insideScrollable = false;
         while (node && main.contains(node) && node !== main) {
           const { overflowY } = window.getComputedStyle(node);
           const canScrollY =
             (overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay') &&
             node.scrollHeight > node.clientHeight;
           if (canScrollY) {
+            insideScrollable = true;
             const dy = e.deltaY;
             const atTop = node.scrollTop <= 0;
             const atBottom = node.scrollTop + node.clientHeight >= node.scrollHeight - 1;
+            // 内容未滚到边界时，交给浏览器默认滚动
             if ((dy < 0 && !atTop) || (dy > 0 && !atBottom)) {
               return;
             }
           }
           node = node.parentElement;
+        }
+        // 如果目标位于任何可滚动子区域内（即使已到顶/底），也不触发画布滚动
+        if (insideScrollable) {
+          return;
         }
       }
 
