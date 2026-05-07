@@ -369,13 +369,13 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
             <div className="flex-1 flex overflow-hidden">
                {/* Final Report */}
                <div className="flex-1 bg-[#FAF9F6] text-[#1a1a1a] overflow-y-auto relative paper-texture">
-                  <div className="max-w-3xl mx-auto p-12">
-                     <div className="mb-10 text-center">
+                  <div className="max-w-5xl mx-auto px-16 py-14">
+                     <div className="mb-12 text-center">
                         <div className="text-[#C2410C] font-mono text-xs uppercase tracking-widest mb-4 flex items-center justify-center gap-2 font-bold">
                           <FileText className="w-4 h-4" /> {t('lab.report')}
                         </div>
-                        <h1 className="font-serif text-4xl font-bold leading-tight mb-4">{query || t('lab.report')}</h1>
-                        <div className="h-0.5 w-16 bg-[#1a1a1a] mx-auto"></div>
+                        <h1 className="font-serif text-[44px] font-bold leading-tight mb-4">{query || t('lab.report')}</h1>
+                        <div className="h-0.5 w-20 bg-[#1a1a1a] mx-auto"></div>
                         {searchStatus === 'found' && (
                           <p className="text-xs text-[#8c8a84] mt-3 font-mono">Based on {sourceCount} web sources + LLM synthesis</p>
                         )}
@@ -384,17 +384,17 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
                         )}
                      </div>
 
-                     <div className="font-serif text-lg leading-relaxed text-[#1a1a1a] space-y-6">
+                     <div className="font-serif text-[19px] leading-[1.9] text-[#1a1a1a] space-y-7">
                         <p>{researchReport.intro}</p>
 
                         {researchReport.points?.map((pt, idx) => (
                            <React.Fragment key={idx}>
-                              <h3 className="font-sans font-bold text-xl mt-8 mb-4">{idx + 1}. {pt.title}</h3>
+                              <h3 className="font-sans font-bold text-[22px] mt-10 mb-4">{idx + 1}. {pt.title}</h3>
                               <p>{pt.text}</p>
                            </React.Fragment>
                         ))}
 
-                        <div className="bg-[#fff9e6] border-l-4 border-[#C2410C] p-4 text-[#5a5a54] font-sans text-sm my-6 shadow-sm">
+                        <div className="bg-[#fff9e6] border-l-4 border-[#C2410C] p-5 text-[#5a5a54] font-sans text-sm my-8 shadow-sm rounded-r">
                            <strong className="text-[#1a1a1a]">Agent Recommendation & Conclusion:</strong> {researchReport.conclusion}
                         </div>
                      </div>
