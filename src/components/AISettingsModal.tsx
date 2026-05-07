@@ -151,11 +151,11 @@ export function AISettingsModal({ isOpen, onClose, config, setConfig }: AISettin
         </div>
 
         <div className="p-6 border-t border-[#E6E4DF] bg-white flex justify-end">
-          <button 
+          <button
             onClick={onClose}
             className="px-8 py-2.5 bg-[#1a1a1a] text-white rounded-xl font-sans font-bold hover:bg-[#333] transition-all text-sm shadow-md"
           >
-            {t('settings.close')}
+            {t('settings.save')}
           </button>
         </div>
       </div>
