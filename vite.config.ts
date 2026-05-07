@@ -5,6 +5,8 @@ import {defineConfig, loadEnv} from 'vite';
 
 /** 与 tp- Token 套餐控制台一致；开发代理转发到此前缀 */
 const MIMO_PROXY_TARGET = 'https://token-plan-cn.xiaomimimo.com/v1';
+/** 秘塔搜索 API 代理目标 */
+const METASO_PROXY_TARGET = 'https://metaso.cn';
 
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
@@ -26,6 +28,11 @@ export default defineConfig(({mode}) => {
           changeOrigin: true,
           rewrite: (path: string) => path.replace(/^\/api\/mimo/, ''),
         },
+        '/api/metaso': {
+          target: METASO_PROXY_TARGET,
+          changeOrigin: true,
+          rewrite: (path: string) => path.replace(/^\/api\/metaso/, ''),
+        },
       },
     },
     preview: {
@@ -34,6 +41,11 @@ export default defineConfig(({mode}) => {
           target: MIMO_PROXY_TARGET,
           changeOrigin: true,
           rewrite: (path: string) => path.replace(/^\/api\/mimo/, ''),
+        },
+        '/api/metaso': {
+          target: METASO_PROXY_TARGET,
+          changeOrigin: true,
+          rewrite: (path: string) => path.replace(/^\/api\/metaso/, ''),
         },
       },
     },

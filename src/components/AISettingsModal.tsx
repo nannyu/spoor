@@ -7,6 +7,7 @@ export interface AIConfig {
   apiKey: string;
   baseUrl: string;
   model: string;
+  metasoApiKey?: string;
 }
 
 export interface AISettingsModalProps {
@@ -113,7 +114,7 @@ export function AISettingsModal({ isOpen, onClose, config, setConfig }: AISettin
             {(config.provider === 'custom' || config.provider === 'openai' || config.provider === 'mimo') && (
               <div className="space-y-2">
                 <label className="text-[10px] font-mono font-bold text-[#8c8a84] uppercase tracking-wider">{t('settings.base_url')}</label>
-                <input 
+                <input
                   type="text"
                   className="w-full h-10 px-3 bg-[#FAF9F6] border border-[#E6E4DF] rounded-lg text-sm outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C] transition-all"
                   placeholder={config.provider === 'mimo' ? MIMO_TOKEN_PLAN_BASE_URL : 'https://api.openai.com/v1'}
@@ -122,6 +123,21 @@ export function AISettingsModal({ isOpen, onClose, config, setConfig }: AISettin
                 />
               </div>
             )}
+          </div>
+
+          <div className="h-px bg-[#F4F1ED]"></div>
+
+          {/* Metaso Search API Key (optional) */}
+          <div className="space-y-2">
+            <label className="text-[10px] font-mono font-bold text-[#8c8a84] uppercase tracking-wider">{t('settings.metaso_key')}</label>
+            <input
+              type="password"
+              className="w-full h-10 px-3 bg-[#FAF9F6] border border-[#E6E4DF] rounded-lg text-sm outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C] transition-all"
+              placeholder="sk-metaso-..."
+              value={config.metasoApiKey ?? ''}
+              onChange={e => setConfig({ ...config, metasoApiKey: e.target.value })}
+            />
+            <p className="text-[10px] text-[#8c8a84] leading-relaxed">{t('settings.metaso_key_hint')}</p>
           </div>
           
           <div className="p-4 bg-[#F4F1ED] rounded-xl border border-[#E6E4DF] border-dashed">

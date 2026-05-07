@@ -41,10 +41,48 @@ async fn openai_compatible_chat(api_key: String, url: String, body: Value) -> Re
   }
 }
 
+/// Metaso (秘塔) search API proxy.
+/// POST https://metaso.cn/api/v1/search — bypasses browser CORS in Tauri webview.
+#[tauri::command]
+async fn metaso_search(api_key: String, query: String) -> Result<String, String> {
+    let client = reqwest::Client::builder()
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let body = serde_json::json!({
+        "q": query,
+        "scope": "webpage",
+        "size": 5,
+    });
+
+    let response = client
+        .post("https://metaso.cn/api/v1/search")
+        .header("Authorization", format!("Bearer {api_key}"))
+        .header("Content-Type", "application/json")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| {
+            eprintln!("[Scribe AI] metaso_search network error: {e}");
+            e.to_string()
+        })?;
+
+    let status = response.status();
+    let text = response.text().await.map_err(|e| e.to_string())?;
+
+    if !status.is_success() {
+        let preview: String = text.chars().take(800).collect();
+        eprintln!("[Scribe AI] metaso_search HTTP {status} body_preview={preview}");
+        return Err(text);
+    }
+
+    Ok(text)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
-    .invoke_handler(tauri::generate_handler![openai_compatible_chat])
+    .invoke_handler(tauri::generate_handler![openai_compatible_chat, metaso_search])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }
