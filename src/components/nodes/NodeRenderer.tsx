@@ -14,6 +14,9 @@ interface NodeRendererProps {
   setEditingNodeId: (id: string | null) => void;
   agentConfigs: AgentConfig[];
   analyzingAgentNodeId: string | null;
+  /** Invoked when user clicks Run analysis on an agent card (linked notes only). */
+  onAgentRunAnalysis?: (agentNodeId: string) => void;
+  isAgentAnalysisActionDisabled?: boolean;
   onAiFollowUp?: (nodeId: string, message: string) => void;
   followUpLoadingNodeId?: string | null;
   isFollowUpGloballyDisabled?: boolean;
@@ -25,6 +28,8 @@ export function NodeRenderer({
   setEditingNodeId,
   agentConfigs,
   analyzingAgentNodeId,
+  onAgentRunAnalysis,
+  isAgentAnalysisActionDisabled,
   onAiFollowUp,
   followUpLoadingNodeId,
   isFollowUpGloballyDisabled,
@@ -53,7 +58,17 @@ export function NodeRenderer({
     case 'document':
       return <DocumentNode node={node} editingNodeId={editingNodeId} setEditingNodeId={setEditingNodeId} />;
     case 'agent':
-      return <AgentNode node={node} editingNodeId={editingNodeId} setEditingNodeId={setEditingNodeId} agentConfigs={agentConfigs} isAnalyzing={analyzingAgentNodeId === node.id} />;
+      return (
+        <AgentNode
+          node={node}
+          editingNodeId={editingNodeId}
+          setEditingNodeId={setEditingNodeId}
+          agentConfigs={agentConfigs}
+          isAnalyzing={analyzingAgentNodeId === node.id}
+          onRunAnalysis={onAgentRunAnalysis ? () => onAgentRunAnalysis(node.id) : undefined}
+          isAgentAnalysisActionDisabled={isAgentAnalysisActionDisabled}
+        />
+      );
     default:
       return null;
   }

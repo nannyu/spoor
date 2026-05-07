@@ -157,6 +157,32 @@ export default function App() {
     dynamicNodes, edges, selectedNodes, setSelectedNodes, setActiveReferenceId, setActiveTab,
   });
 
+  const runAgentAnalysisFromCard = (agentNodeId: string) => {
+    if (isAnyAiBusy) return;
+    const agentNode = dynamicNodes.find(n => n.id === agentNodeId && n.type === 'agent');
+    if (!agentNode?.agentConfigId) return;
+
+    const neighborIds: string[] = [];
+    for (const edge of edges) {
+      if (edge.from === agentNodeId) neighborIds.push(edge.to);
+      else if (edge.to === agentNodeId) neighborIds.push(edge.from);
+    }
+    neighborIds.sort();
+
+    for (const cid of neighborIds) {
+      const n = dynamicNodes.find(x => x.id === cid);
+      if (!n || n.type === 'agent') continue;
+      const el = nodesRef.current[cid];
+      if (!el) continue;
+      const text = (el.innerText || el.textContent || '').trim();
+      if (!text) continue;
+      void triggerAgentAnalysis(agentNode.agentConfigId, agentNodeId, cid);
+      return;
+    }
+
+    alert(t('nodes.agent_no_context'));
+  };
+
   const handleNodeDragEnd = (draggedId: string, finalPos: {x: number, y: number}) => {
     // Update position in database
     db.nodes.update(draggedId, { x: finalPos.x, y: finalPos.y });
@@ -197,11 +223,10 @@ export default function App() {
           
           if (agentConfigId && agentId && contextId) {
             snapped = true;
-            // Optionally add edge to visualize snap
+            // Optionally add edge to visualize snap (analysis runs only from the agent card button).
             if (!edges.find(e => (e.from === agentId && e.to === contextId) || (e.from === contextId && e.to === agentId))) {
                db.edges.add({ id: crypto.randomUUID(), canvasId: activeCanvasId, from: agentId, to: contextId });
             }
-            triggerAgentAnalysis(agentConfigId, agentId, contextId);
           }
         }
       }
@@ -344,6 +369,8 @@ export default function App() {
                     setEditingNodeId={setEditingNodeId}
                     agentConfigs={agentConfigs}
                     analyzingAgentNodeId={analyzingAgentNodeId}
+                    onAgentRunAnalysis={runAgentAnalysisFromCard}
+                    isAgentAnalysisActionDisabled={isAnyAiBusy}
                     onAiFollowUp={submitAiThreadFollowUp}
                     followUpLoadingNodeId={followUpParentId}
                     isFollowUpGloballyDisabled={isAnyAiBusy}

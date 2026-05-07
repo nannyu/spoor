@@ -4,6 +4,7 @@ import { Bot, Loader2, Send } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { db } from '../../db';
 import type { AiNodeProps } from './types';
+import { isContentBlurPersistenceDisabled } from '../../config/persistence';
 
 export function AiNode({
   node,
@@ -33,7 +34,9 @@ export function AiNode({
         contentEditable
         suppressContentEditableWarning
         onBlur={(e) => {
-          db.nodes.update(node.id, { content: e.currentTarget.innerText });
+          if (!isContentBlurPersistenceDisabled()) {
+            db.nodes.update(node.id, { content: e.currentTarget.innerText });
+          }
           setEditingNodeId(null);
         }}
       >

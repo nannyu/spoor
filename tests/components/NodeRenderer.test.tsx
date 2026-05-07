@@ -22,7 +22,7 @@ vi.mock('lucide-react', () => {
     'Quote', 'Brain', 'Bot', 'Wand2', 'Send', 'SlidersHorizontal', 'History', 'ZoomIn',
     'Focus', 'Image', 'FilePlus', 'Trash2', 'Link2', 'X', 'Camera', 'ChevronLeft',
     'ChevronRight', 'Check', 'Cpu', 'ArrowRight', 'ListChecks', 'CheckCircle2',
-    'Loader2', 'PenLine', 'Edit3', 'FileText',
+    'Loader2', 'PenLine', 'Edit3', 'FileText', 'Play',
   ];
   const icons: Record<string, React.FC> = {};
   for (const name of iconNames) {
@@ -195,10 +195,12 @@ describe('NodeRenderer', () => {
         setEditingNodeId={vi.fn()}
         agentConfigs={mockAgentConfigs}
         analyzingAgentNodeId={null}
+        onAgentRunAnalysis={vi.fn()}
       />
     );
     expect(getByText('Test Agent')).toBeInTheDocument();
-    expect(queryByTestId('agent-analyzing-overlay')).not.toBeInTheDocument();
+    expect(queryByTestId('agent-analyzing-overlay')).toBeNull();
+    expect(queryByTestId('agent-run-analysis')).toBeInTheDocument();
   });
 
   it('type="agent" 且 analyzingAgentNodeId 匹配时显示分析遮罩', () => {
@@ -209,6 +211,7 @@ describe('NodeRenderer', () => {
         setEditingNodeId={vi.fn()}
         agentConfigs={mockAgentConfigs}
         analyzingAgentNodeId="agent-1"
+        onAgentRunAnalysis={vi.fn()}
       />
     );
     expect(getByTestId('agent-analyzing-overlay')).toBeInTheDocument();

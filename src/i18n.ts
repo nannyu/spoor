@@ -46,7 +46,9 @@ const resources = {
         "connect_notes": "Connect notes to analyze.",
         "ai_your_follow_up": "Your follow-up",
         "ai_follow_up_placeholder": "Ask a follow-up (Enter to send, Shift+Enter for newline)...",
-        "ai_follow_up_send": "Send"
+        "ai_follow_up_send": "Send",
+        "agent_run_analysis": "Run analysis on linked notes",
+        "agent_no_context": "Link a note that has content to this agent (use the + button), then run analysis."
       },
       "settings": {
         "title": "Settings",
@@ -183,7 +185,9 @@ const resources = {
         "connect_notes": "连接笔记进行分析。",
         "ai_your_follow_up": "你的追问",
         "ai_follow_up_placeholder": "继续追问…（Enter 发送，Shift+Enter 换行）",
-        "ai_follow_up_send": "发送"
+        "ai_follow_up_send": "发送",
+        "agent_run_analysis": "开始分析已连接的笔记",
+        "agent_no_context": "请先用右侧「+」将含有内容的笔记连到该智能体，再点此开始分析。"
       },
       "settings": {
         "title": "设置",

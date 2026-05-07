@@ -4,6 +4,7 @@ import { Bot } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { db } from '../../db';
 import type { NodeContentProps } from './types';
+import { isContentBlurPersistenceDisabled } from '../../config/persistence';
 
 export function NoteNode({ node, editingNodeId, setEditingNodeId }: NodeContentProps) {
   const { t } = useTranslation();
@@ -40,7 +41,9 @@ export function NoteNode({ node, editingNodeId, setEditingNodeId }: NodeContentP
             contentEditable 
             suppressContentEditableWarning
             onBlur={(e) => {
-              db.nodes.update(node.id, { content: e.currentTarget.innerText });
+              if (!isContentBlurPersistenceDisabled()) {
+                db.nodes.update(node.id, { content: e.currentTarget.innerText });
+              }
               setEditingNodeId(null);
             }}
           >

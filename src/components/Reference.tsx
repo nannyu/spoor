@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Library, Plus, Search, ChevronLeft, Minimize2, Maximize2, Link2, BookOpen } from 'lucide-react';
 import { db } from '../db';
 import type { Article } from '../db';
+import { isContentBlurPersistenceDisabled } from '../config/persistence';
 
 export interface ReferenceProps {
   articles: Article[];
@@ -112,7 +113,8 @@ export function Reference({ articles, activeReferenceId, setActiveReferenceId }:
                       contentEditable 
                       suppressContentEditableWarning
                       onBlur={(e) => {
-                        if (activeArticle) db.articles.update(activeArticle.id, { type: e.currentTarget.innerText });
+                        if (!activeArticle || isContentBlurPersistenceDisabled()) return;
+                        db.articles.update(activeArticle.id, { type: e.currentTarget.innerText });
                       }}
                     >
                       Document // {activeArticle?.type}
@@ -122,7 +124,8 @@ export function Reference({ articles, activeReferenceId, setActiveReferenceId }:
                       contentEditable 
                       suppressContentEditableWarning
                       onBlur={(e) => {
-                        if (activeArticle) db.articles.update(activeArticle.id, { title: e.currentTarget.innerText });
+                        if (!activeArticle || isContentBlurPersistenceDisabled()) return;
+                        db.articles.update(activeArticle.id, { title: e.currentTarget.innerText });
                       }}
                     >
                       {activeArticle?.title}
@@ -143,7 +146,7 @@ export function Reference({ articles, activeReferenceId, setActiveReferenceId }:
                     contentEditable 
                     suppressContentEditableWarning
                     onBlur={(e) => {
-                      if (!activeArticle) return;
+                      if (!activeArticle || isContentBlurPersistenceDisabled()) return;
                       const paragraphs = activeArticle.content.split('\n\n');
                       paragraphs[i] = e.currentTarget.innerText;
                       db.articles.update(activeArticle.id, { content: paragraphs.join('\n\n') });

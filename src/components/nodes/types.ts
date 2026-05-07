@@ -9,6 +9,9 @@ export interface NodeContentProps {
 export interface AgentNodeProps extends NodeContentProps {
   agentConfigs: AgentConfig[];
   isAnalyzing?: boolean;
+  onRunAnalysis?: () => void;
+  /** When true, Run analysis is disabled (e.g. another AI task is in progress). */
+  isAgentAnalysisActionDisabled?: boolean;
 }
 
 export interface AiNodeProps extends NodeContentProps {

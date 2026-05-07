@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Sparkles, Maximize2 } from 'lucide-react';
 import { db } from '../../db';
 import type { NodeContentProps } from './types';
+import { isContentBlurPersistenceDisabled } from '../../config/persistence';
 
 export function ThemeNode({ node, editingNodeId }: NodeContentProps) {
   const { t } = useTranslation();
@@ -43,7 +44,11 @@ export function ThemeNode({ node, editingNodeId }: NodeContentProps) {
           }`} 
           contentEditable 
           suppressContentEditableWarning
-          onBlur={(e) => db.nodes.update(node.id, { content: e.currentTarget.innerText })}
+          onBlur={(e) => {
+            if (!isContentBlurPersistenceDisabled()) {
+              db.nodes.update(node.id, { content: e.currentTarget.innerText });
+            }
+          }}
         >
           {node.content}
         </h3>
