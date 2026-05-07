@@ -34,7 +34,12 @@ export function AISettingsModal({ isOpen, onClose, config, setConfig }: AISettin
               <p className="text-[10px] text-[#8c8a84] uppercase tracking-widest font-mono">{t('settings.ai_config')}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-[#EAE7E2] rounded-full transition-colors">
+          <button
+            type="button"
+            aria-label={t('settings.close')}
+            onClick={onClose}
+            className="p-2 hover:bg-[#EAE7E2] rounded-full transition-colors"
+          >
             <X className="w-5 h-5 text-[#8c8a84]" />
           </button>
         </div>

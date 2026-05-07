@@ -12,8 +12,6 @@ function cfg(overrides: Partial<AgentConfig> & Pick<AgentConfig, 'id'>): AgentCo
     name: '',
     role: '',
     prompt: '',
-    x: 0,
-    y: 0,
     ...overrides,
   };
 }

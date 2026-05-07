@@ -19,7 +19,12 @@ vi.mock('react-i18next', () => ({
         'lab.searching': 'Searching the web...',
         'lab.search_complete': `${opts?.count ?? 0} web sources found`,
         'lab.search_fallback': 'Search unavailable, using offline mode',
+        'lab.plan_edit_hint': 'Edit plan hint',
+        'lab.plan_revision_placeholder': 'Revision instructions...',
+        'lab.plan_revision_apply': 'Update outline with AI',
+        'lab.plan_revision_applying': 'Updating outline...',
         'lab.ai_generate_plan': 'Generate plan for: {{query}}',
+        'lab.ai_revise_plan': 'Revise plan for {{query}}. Plan: {{plan}}. Instruction: {{instruction}}',
         'lab.ai_research_report': 'Generate report for: {{query}}',
         'nodes.ai_loading': 'Synthesizing...',
       };
@@ -165,5 +170,117 @@ describe('ResearchLab', () => {
     expect(prompt).not.toContain('[Source]');
 
     consoleSpy.mockRestore();
+  });
+
+  it('includes user-approved research plan in the report prompt when executing', async () => {
+    const planJson = JSON.stringify([
+      { title: 'Step 1', desc: 'Desc 1' },
+      { title: 'Step 2', desc: 'Desc 2' },
+      { title: 'Step 3', desc: 'Desc 3' },
+    ]);
+    const reportJson = JSON.stringify({
+      intro: 'Intro',
+      points: [{ title: 'P1', text: 'T1' }],
+      conclusion: 'Done',
+    });
+    const callAI = vi.fn().mockResolvedValueOnce(planJson).mockResolvedValueOnce(reportJson);
+
+    render(<ResearchLab aiConfig={baseConfig} callAI={callAI} />);
+
+    const topicInput = screen.getByPlaceholderText('Search topic...');
+    fireEvent.change(topicInput, { target: { value: 'memory loss' } });
+    fireEvent.submit(topicInput.closest('form')!);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Step 1 title')).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByLabelText('Step 1 title'), { target: { value: 'Edited step one' } });
+    fireEvent.click(screen.getByRole('button', { name: /Approve & Execute/i }));
+
+    await waitFor(() => {
+      expect(callAI).toHaveBeenCalledTimes(2);
+    });
+
+    const reportPrompt = callAI.mock.calls[1][0].prompt as string;
+    expect(reportPrompt).toContain('user-approved research plan');
+    expect(reportPrompt).toContain('Edited step one');
+    expect(reportPrompt).toContain('memory loss');
+  });
+
+  it('calls AI to revise plan from the revision textarea', async () => {
+    const initialPlan = JSON.stringify([
+      { title: 'Step 1', desc: 'Desc 1' },
+      { title: 'Step 2', desc: 'Desc 2' },
+      { title: 'Step 3', desc: 'Desc 3' },
+    ]);
+    const revisedPlan = JSON.stringify([{ title: 'Only one step', desc: 'Condensed' }]);
+    const callAI = vi.fn().mockResolvedValueOnce(initialPlan).mockResolvedValueOnce(revisedPlan);
+
+    render(<ResearchLab aiConfig={baseConfig} callAI={callAI} />);
+
+    const topicInput = screen.getByPlaceholderText('Search topic...');
+    fireEvent.change(topicInput, { target: { value: 'topic t' } });
+    fireEvent.submit(topicInput.closest('form')!);
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Revision instructions...')).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByPlaceholderText('Revision instructions...'), {
+      target: { value: 'Merge everything into one step' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Update outline with AI/i }));
+
+    await waitFor(() => {
+      expect(callAI).toHaveBeenCalledTimes(2);
+    });
+
+    const revisePrompt = callAI.mock.calls[1][0].prompt as string;
+    expect(revisePrompt).toContain('Merge everything into one step');
+    expect(revisePrompt).toContain('Step 1');
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Step 1 title')).toHaveValue('Only one step');
+    });
+  });
+
+  it('uses fallback plan when model returns empty or invalid JSON', async () => {
+    const callAI = vi.fn().mockResolvedValueOnce('[]');
+
+    render(<ResearchLab aiConfig={baseConfig} callAI={callAI} />);
+
+    const topicInput = screen.getByPlaceholderText('Search topic...');
+    fireEvent.change(topicInput, { target: { value: 'topic' } });
+    fireEvent.submit(topicInput.closest('form')!);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Step 1 title')).toHaveValue('Archive Extraction');
+    });
+    expect(callAI).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps plan unchanged when AI revision returns empty array', async () => {
+    const planJson = JSON.stringify([{ title: 'Step 1', desc: 'Desc 1' }]);
+    const callAI = vi.fn().mockResolvedValueOnce(planJson).mockResolvedValueOnce('[]');
+
+    render(<ResearchLab aiConfig={baseConfig} callAI={callAI} />);
+
+    fireEvent.change(screen.getByPlaceholderText('Search topic...'), { target: { value: 't' } });
+    fireEvent.submit(screen.getByPlaceholderText('Search topic...').closest('form')!);
+
+    await waitFor(() => screen.getByPlaceholderText('Revision instructions...'));
+
+    fireEvent.change(screen.getByPlaceholderText('Revision instructions...'), {
+      target: { value: 'please break this' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Update outline with AI/i }));
+
+    await waitFor(() => expect(callAI).toHaveBeenCalledTimes(2));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Step 1 title')).toHaveValue('Step 1');
+    });
+    expect(screen.getByPlaceholderText('Revision instructions...')).toHaveValue('please break this');
   });
 });

@@ -15,8 +15,31 @@ import {
   FileText,
   Globe,
   AlertTriangle,
+  Sparkles,
 } from 'lucide-react';
 import type { CallAIFn } from '../types';
+
+export type ResearchPlanStep = { title: string; desc: string };
+
+const RESEARCH_PLAN_FALLBACK: ResearchPlanStep[] = [
+  { title: 'Archive Extraction', desc: "Scan personal drafts and reference library for direct mentions." },
+  { title: 'Thematic Networking', desc: 'Cross-reference dialogue with established metaphors.' },
+  { title: 'Synthesis & Drafting', desc: 'Generate a comprehensive deep-dive report.' },
+];
+
+function normalizeResearchPlan(raw: unknown): ResearchPlanStep[] {
+  if (!Array.isArray(raw)) return [];
+  const out: ResearchPlanStep[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const o = item as Record<string, unknown>;
+    const title = String(o.title ?? '').trim();
+    const desc = String(o.desc ?? '').trim();
+    if (!title && !desc) continue;
+    out.push({ title: title || `Step ${out.length + 1}`, desc });
+  }
+  return out;
+}
 
 export interface ResearchLabProps {
   aiConfig: {
@@ -34,12 +57,14 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
   const [phase, setPhase] = useState<'idle' | 'planning' | 'plan_ready' | 'researching' | 'completed'>('idle');
   const [query, setQuery] = useState('');
   const [activeStep, setActiveStep] = useState(0);
-  const [researchPlan, setResearchPlan] = useState<{title: string, desc: string}[]>([]);
+  const [researchPlan, setResearchPlan] = useState<ResearchPlanStep[]>([]);
   const [researchReport, setResearchReport] = useState<{intro: string, points: {title: string, text: string}[], conclusion: string}>({
     intro: '', points: [], conclusion: ''
   });
   const [searchStatus, setSearchStatus] = useState<'idle' | 'searching' | 'found' | 'fallback'>('idle');
   const [sourceCount, setSourceCount] = useState(0);
+  const [planRevisionNote, setPlanRevisionNote] = useState('');
+  const [planRevising, setPlanRevising] = useState(false);
 
   /**
    * Attempt a Metaso web search; returns a context string or empty string on
@@ -70,6 +95,7 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
   const generatePlan = async () => {
     setPhase('planning');
     setSearchStatus('idle');
+    setPlanRevisionNote('');
 
     const searchContext = await tryWebSearch(query);
 
@@ -84,17 +110,51 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
         prompt,
       });
       const jsonStr = text?.replace(/```json|```/g, '').trim() || '[]';
-      const plan = JSON.parse(jsonStr);
-      setResearchPlan(plan);
+      const plan = normalizeResearchPlan(JSON.parse(jsonStr));
+      setResearchPlan(plan.length > 0 ? plan : RESEARCH_PLAN_FALLBACK);
       setPhase('plan_ready');
     } catch (e) {
       console.error('[Scribe AI] ResearchLab generatePlan failed', formatAiError(e));
-      setResearchPlan([
-         { title: "Archive Extraction", desc: "Scan personal drafts and reference library for direct mentions." },
-         { title: "Thematic Networking", desc: "Cross-reference dialogue with established metaphors." },
-         { title: "Synthesis & Drafting", desc: "Generate a comprehensive deep-dive report." }
-      ]);
+      setResearchPlan(RESEARCH_PLAN_FALLBACK);
       setPhase('plan_ready');
+    }
+  };
+
+  const updatePlanItem = (idx: number, field: 'title' | 'desc', value: string) => {
+    setResearchPlan(prev => {
+      const next = [...prev];
+      if (!next[idx]) return prev;
+      next[idx] = { ...next[idx], [field]: value };
+      return next;
+    });
+  };
+
+  const revisePlanWithAi = async () => {
+    const instruction = planRevisionNote.trim();
+    if (!instruction || planRevising || researchPlan.length === 0) return;
+
+    setPlanRevising(true);
+    try {
+      const prompt = t('lab.ai_revise_plan', {
+        query,
+        plan: JSON.stringify(researchPlan, null, 2),
+        instruction,
+      });
+      const text = await callAI({
+        config: aiConfig,
+        systemInstruction: getLocaleDirective(),
+        prompt,
+      });
+      const jsonStr = text?.replace(/```json|```/g, '').trim() || '[]';
+      const revised = normalizeResearchPlan(JSON.parse(jsonStr));
+      if (revised.length > 0) {
+        setResearchPlan(revised);
+        setPlanRevisionNote('');
+      }
+    } catch (e) {
+      console.error('[Scribe AI] ResearchLab revisePlan failed', formatAiError(e));
+    } finally {
+      setPlanRevising(false);
     }
   };
 
@@ -112,10 +172,15 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
 
     const searchContext = await tryWebSearch(query);
 
+    const planContext =
+      researchPlan.length > 0
+        ? `\n\nThe user-approved research plan (your report must follow this structure: align the "points" array with these steps in order and honor each step's goals in the analysis):\n${JSON.stringify(researchPlan, null, 2)}`
+        : '';
+
     try {
       const prompt = searchContext
-        ? `${t('lab.ai_research_report', { query })}\n\nUse the following web search results as primary sources for your report. Cite sources where appropriate.\n\n${searchContext}`
-        : t('lab.ai_research_report', { query });
+        ? `${t('lab.ai_research_report', { query })}${planContext}\n\nUse the following web search results as primary sources for your report. Cite sources where appropriate.\n\n${searchContext}`
+        : `${t('lab.ai_research_report', { query })}${planContext}`;
 
       const text = await callAI({
         config: aiConfig,
@@ -249,7 +314,7 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
          )}
 
          {(phase === 'planning' || phase === 'plan_ready') && (
-           <div className="flex-1 p-12 overflow-y-auto w-full max-w-4xl mx-auto">
+           <div className="flex-1 p-12 overflow-y-auto w-full max-w-5xl mx-auto">
               <div className="mb-8 border-b border-[#E6E4DF] pb-8">
                  <div className="text-[#C2410C] font-mono text-xs mb-2">TARGET INQUIRY</div>
                  <h2 className="text-3xl font-serif font-bold text-[#1a1a1a]">{query}</h2>
@@ -267,18 +332,33 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
 
                 {phase === 'plan_ready' && (
                   <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-                     <div className="flex items-center gap-3 mb-6">
+                     <div className="flex items-center gap-3 mb-2">
                         <ListChecks className="w-6 h-6 text-[#4ade80]" />
                         <h3 className="text-xl font-sans font-bold text-[#1a1a1a]">Recommended Research Plan</h3>
                      </div>
+                     <p className="text-[#5a5a54] text-sm font-sans mb-6">{t('lab.plan_edit_hint')}</p>
 
-                     <div className="space-y-6 mb-8">
+                     <div className="space-y-5 mb-8">
                         {researchPlan.length > 0 ? researchPlan.map((plan, idx) => (
                            <div key={idx} className="flex gap-4">
-                              <div className="w-6 h-6 rounded-full bg-[#F4F1ED] border border-[#E6E4DF] flex items-center justify-center font-mono text-xs text-[#5a5a54] shrink-0 font-bold">{idx + 1}</div>
-                              <div>
-                                 <h4 className="font-bold text-[#1a1a1a] mb-1">{plan.title}</h4>
-                                 <p className="text-[#5a5a54] text-sm">{plan.desc}</p>
+                              <div className="w-6 h-6 rounded-full bg-[#F4F1ED] border border-[#E6E4DF] flex items-center justify-center font-mono text-xs text-[#5a5a54] shrink-0 font-bold mt-2">{idx + 1}</div>
+                              <div className="flex-1 min-w-0 space-y-2">
+                                 <input
+                                   type="text"
+                                   value={plan.title}
+                                   onChange={e => updatePlanItem(idx, 'title', e.target.value)}
+                                   disabled={planRevising}
+                                   className="w-full font-bold text-[#1a1a1a] text-base bg-[#FAF9F6] border border-[#E6E4DF] rounded-lg px-3 py-2 font-sans focus:outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C] disabled:opacity-60"
+                                   aria-label={`Step ${idx + 1} title`}
+                                 />
+                                 <textarea
+                                   value={plan.desc}
+                                   onChange={e => updatePlanItem(idx, 'desc', e.target.value)}
+                                   disabled={planRevising}
+                                   rows={4}
+                                   className="w-full text-[#5a5a54] text-sm bg-[#FAF9F6] border border-[#E6E4DF] rounded-lg px-3 py-2 font-sans leading-relaxed resize-y min-h-[5rem] focus:outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C] disabled:opacity-60"
+                                   aria-label={`Step ${idx + 1} description`}
+                                 />
                               </div>
                            </div>
                         )) : (
@@ -286,10 +366,41 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
                         )}
                      </div>
 
-                     <div className="flex justify-end pt-6 border-t border-[#E6E4DF]">
+                     <div className="border-t border-[#E6E4DF] pt-6 space-y-3">
+                        <form
+                          onSubmit={e => {
+                            e.preventDefault();
+                            void revisePlanWithAi();
+                          }}
+                          className="space-y-3"
+                        >
+                           <textarea
+                             value={planRevisionNote}
+                             onChange={e => setPlanRevisionNote(e.target.value)}
+                             disabled={planRevising || researchPlan.length === 0}
+                             rows={3}
+                             placeholder={t('lab.plan_revision_placeholder')}
+                             className="w-full text-[#1a1a1a] text-sm bg-[#FAF9F6] border border-[#E6E4DF] rounded-lg px-4 py-3 font-sans placeholder:text-[#8c8a84] focus:outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C] disabled:opacity-60 resize-y min-h-[5.5rem]"
+                           />
+                           <div className="flex flex-wrap items-center justify-between gap-3">
+                              <button
+                                type="submit"
+                                disabled={planRevising || !planRevisionNote.trim() || researchPlan.length === 0}
+                                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-sans text-sm font-bold border border-[#E6E4DF] bg-white text-[#1a1a1a] hover:border-[#C2410C]/60 hover:bg-[#FFF7ED] disabled:opacity-50 disabled:pointer-events-none transition-colors shadow-sm"
+                              >
+                                {planRevising ? <Loader2 className="w-4 h-4 animate-spin text-[#C2410C]" /> : <Sparkles className="w-4 h-4 text-[#C2410C]" />}
+                                {planRevising ? t('lab.plan_revision_applying') : t('lab.plan_revision_apply')}
+                              </button>
+                           </div>
+                        </form>
+                     </div>
+
+                     <div className="flex justify-end pt-6 border-t border-[#E6E4DF] mt-6">
                         <button
-                          onClick={executeResearch}
-                          className="bg-[#C2410C] hover:bg-[#a0350a] text-white px-6 py-3 rounded-lg font-sans font-bold transition-all shadow-md flex items-center gap-2"
+                          type="button"
+                          onClick={() => void executeResearch()}
+                          disabled={planRevising || researchPlan.length === 0}
+                          className="bg-[#C2410C] hover:bg-[#a0350a] disabled:opacity-50 disabled:pointer-events-none text-white px-6 py-3 rounded-lg font-sans font-bold transition-all shadow-md flex items-center gap-2"
                         >
                           {t('lab.approve')} <ArrowRight className="w-4 h-4" />
                         </button>

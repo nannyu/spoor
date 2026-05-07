@@ -488,7 +488,7 @@ describe('App 组件', () => {
       const user = userEvent.setup();
       await act(async () => { render(<App />); });
       await openSettings(user);
-      expect(screen.getByText('关闭')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '关闭' })).toBeInTheDocument();
     });
 
     it('设置面板包含 API 密钥输入框', async () => {

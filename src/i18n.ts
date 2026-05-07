@@ -90,7 +90,12 @@ const resources = {
         "searching": "Searching the web...",
         "search_complete": "{{count}} web sources found",
         "search_fallback": "Search unavailable, using offline mode",
+        "plan_edit_hint": "Edit each step directly below. When you run research, the model will follow this outline.",
+        "plan_revision_placeholder": "Describe how you want to change the outline (e.g., merge steps, add a competitor review, shorten step 2)...",
+        "plan_revision_apply": "Update outline with AI",
+        "plan_revision_applying": "Updating outline...",
         "ai_generate_plan": "You are a senior research strategist helping an author who is writing a manuscript.\nTheir research question is: \"{{query}}\".\n\nDesign a logically connected 3‑step research plan that will help the author deeply investigate this topic and integrate the findings into their manuscript.\n\nFor each step, return a JSON object with:\n- \"title\": a short, descriptive title (5–7 words),\n- \"desc\": a 2–3 sentence description that clearly states:\n  - the specific goal of this step,\n  - the key methods, sources, or analytical techniques to be used,\n  - how the output of this step directly feeds into the manuscript.\n\nThe three steps should follow a natural research progression, such as:\n(1) scoping & literature foundation, (2) core analysis or evidence gathering, (3) synthesis, implications, or argument construction.\nTailor the progression to the nature of the query (e.g., empirical paper, review, theoretical essay, policy report).\n\nRespond ONLY with a valid JSON array in the following format (no additional text):\n[\n  {\"title\": \"Step 1 Title\", \"desc\": \"Step 1 Description\"},\n  {\"title\": \"Step 2 Title\", \"desc\": \"Step 2 Description\"},\n  {\"title\": \"Step 3 Title\", \"desc\": \"Step 3 Description\"}\n]",
+        "ai_revise_plan": "You are refining a multi-step research outline.\n\nResearch question: \"{{query}}\"\n\nCurrent plan (JSON array; each item has \"title\" and \"desc\"):\n{{plan}}\n\nUser instructions for revising the plan:\n{{instruction}}\n\nApply the instructions faithfully. Keep a coherent 2–5 step flow unless the user explicitly asks for a different number. Each step must have meaningful \"title\" and \"desc\" strings.\n\nRespond ONLY with a valid JSON array (no markdown fences, no extra text), exactly in this shape:\n[\n  {\"title\": \"...\", \"desc\": \"...\"}\n]",
         "ai_research_report": "You are a research synthesizing agent. Based on the user's query: \"{{query}}\", generate a detailed research report.\nRespond ONLY in valid JSON format matching this structure:\n{\n  \"intro\": \"Introduction paragraph\",\n  \"points\": [\n    {\"title\": \"Point 1 Title\", \"text\": \"Detailed analysis of this point\"}\n  ],\n  \"conclusion\": \"Conclusion paragraph with actionable next steps\"\n}"
       },
       "reference": {
@@ -222,7 +227,12 @@ const resources = {
         "searching": "正在联网搜索...",
         "search_complete": "已获取 {{count}} 条网络来源",
         "search_fallback": "搜索不可用，使用离线模式",
+        "plan_edit_hint": "可直接编辑各步标题与说明；执行研究时，模型会以你最终保存的大纲为准。",
+        "plan_revision_placeholder": "说明希望如何修改大纲（例如：合并第 1、2 步，新增竞品对比，收紧第 2 步范围）…",
+        "plan_revision_apply": "让 AI 按说明更新大纲",
+        "plan_revision_applying": "正在更新大纲…",
         "ai_generate_plan": "你是一位资深研究策略顾问，正在辅助作者完成书稿写作。\n作者的研究问题是：「{{query}}」。\n\n请设计一个逻辑连贯的三步研究计划，帮助作者深入调研该主题，并把成果融入书稿。\n\n每一步请返回一个 JSON 对象，字段为：\n- \"title\"：简短有概括力的标题（约 5–7 个词）；\n- \"desc\"：2–3 句话，清楚说明：\n  - 该步的具体目标；\n  - 关键方法、文献来源或分析手段；\n  - 该步产出如何直接进入书稿。\n\n三步应形成自然递进，例如：\n（1）界定范围与文献基础；（2）核心分析或证据收集；（3）综合、推论或论点构建。\n请根据问题性质（如实证论文、综述、理论散文、政策报告等）调整递进。\n\n仅回复合法 JSON 数组，不要任何额外文字，格式如下：\n[\n  {\"title\": \"第一步标题\", \"desc\": \"第一步描述\"},\n  {\"title\": \"第二步标题\", \"desc\": \"第二步描述\"},\n  {\"title\": \"第三步标题\", \"desc\": \"第三步描述\"}\n]",
+        "ai_revise_plan": "你正在根据用户意见修订多步研究大纲。\n\n研究问题：「{{query}}」\n\n当前大纲（JSON 数组，每项含 \"title\" 与 \"desc\"）：\n{{plan}}\n\n用户对大纲的修改要求：\n{{instruction}}\n\n请忠实落实上述要求，保持 2–5 个有机衔接的步骤（除非用户明确要求其他数量）。每一步须有清晰的「title」与「desc」。\n\n仅回复合法 JSON 数组，不要 Markdown 代码块或任何额外说明，格式示例：\n[\n  {\"title\": \"…\", \"desc\": \"…\"}\n]",
         "ai_research_report": "你是研究综合智能体。请基于用户问题「{{query}}」生成一份详细研究报告。\n仅使用合法 JSON，结构必须符合：\n{\n  \"intro\": \"引言段落\",\n  \"points\": [\n    {\"title\": \"要点一标题\", \"text\": \"该要点的详细分析\"}\n  ],\n  \"conclusion\": \"结论文段，含可执行的后续步骤\"\n}"
       },
       "reference": {

@@ -90,6 +90,112 @@ describe('useCanvasInteraction', () => {
     gcs.mockRestore();
   });
 
+  it('wheel 在可滚动子元素已触底时仍不触发画布平移（避免穿透滚动）', () => {
+    const { result } = setupHook();
+    const wheelEntry = vi.mocked(mainEl.addEventListener).mock.calls.find((c) => c[0] === 'wheel');
+    const onWheel = wheelEntry?.[1] as (e: WheelEvent) => void;
+    expect(onWheel).toBeDefined();
+
+    const scrollEl = document.createElement('div');
+    const inner = document.createElement('span');
+    scrollEl.appendChild(inner);
+    mainEl.appendChild(scrollEl);
+
+    Object.defineProperties(scrollEl, {
+      scrollHeight: { get: () => 200, configurable: true },
+      clientHeight: { get: () => 50, configurable: true },
+      // 已滚到底：scrollTop + clientHeight >= scrollHeight - 1
+      scrollTop: { get: () => 150, configurable: true },
+    });
+
+    const gcs = vi.spyOn(window, 'getComputedStyle').mockImplementation((elt: Element) => {
+      if (elt === scrollEl) {
+        return { overflowY: 'auto' } as unknown as CSSStyleDeclaration;
+      }
+      return { overflowY: 'visible' } as unknown as CSSStyleDeclaration;
+    });
+
+    const before = { ...result.current.canvasTransform };
+    const e = new WheelEvent('wheel', { deltaY: 40, bubbles: true });
+    Object.defineProperty(e, 'target', { value: inner, enumerable: true });
+
+    act(() => {
+      onWheel(e);
+    });
+
+    expect(result.current.canvasTransform).toEqual(before);
+    gcs.mockRestore();
+  });
+
+  it('wheel 在可滚动子元素已触顶时仍不触发画布平移', () => {
+    const { result } = setupHook();
+    const wheelEntry = vi.mocked(mainEl.addEventListener).mock.calls.find((c) => c[0] === 'wheel');
+    const onWheel = wheelEntry?.[1] as (e: WheelEvent) => void;
+
+    const scrollEl = document.createElement('div');
+    const inner = document.createElement('span');
+    scrollEl.appendChild(inner);
+    mainEl.appendChild(scrollEl);
+
+    Object.defineProperties(scrollEl, {
+      scrollHeight: { get: () => 200, configurable: true },
+      clientHeight: { get: () => 50, configurable: true },
+      scrollTop: { get: () => 0, configurable: true },
+    });
+
+    const gcs = vi.spyOn(window, 'getComputedStyle').mockImplementation((elt: Element) => {
+      if (elt === scrollEl) {
+        return { overflowY: 'auto' } as unknown as CSSStyleDeclaration;
+      }
+      return { overflowY: 'visible' } as unknown as CSSStyleDeclaration;
+    });
+
+    const before = { ...result.current.canvasTransform };
+    const e = new WheelEvent('wheel', { deltaY: -40, bubbles: true });
+    Object.defineProperty(e, 'target', { value: inner, enumerable: true });
+
+    act(() => {
+      onWheel(e);
+    });
+
+    expect(result.current.canvasTransform).toEqual(before);
+    gcs.mockRestore();
+  });
+
+  it('在可滚动区域内按住 Ctrl 滚轮仍可缩放画布（不因子区域提前 return）', () => {
+    const { result } = setupHook();
+    const wheelEntry = vi.mocked(mainEl.addEventListener).mock.calls.find((c) => c[0] === 'wheel');
+    const onWheel = wheelEntry?.[1] as (e: WheelEvent) => void;
+
+    const scrollEl = document.createElement('div');
+    const inner = document.createElement('span');
+    scrollEl.appendChild(inner);
+    mainEl.appendChild(scrollEl);
+
+    Object.defineProperties(scrollEl, {
+      scrollHeight: { get: () => 200, configurable: true },
+      clientHeight: { get: () => 50, configurable: true },
+      scrollTop: { get: () => 150, configurable: true },
+    });
+
+    const gcs = vi.spyOn(window, 'getComputedStyle').mockImplementation((elt: Element) => {
+      if (elt === scrollEl) {
+        return { overflowY: 'auto' } as unknown as CSSStyleDeclaration;
+      }
+      return { overflowY: 'visible' } as unknown as CSSStyleDeclaration;
+    });
+
+    const e = new WheelEvent('wheel', { deltaY: -40, bubbles: true, ctrlKey: true });
+    Object.defineProperty(e, 'target', { value: inner, enumerable: true });
+
+    act(() => {
+      onWheel(e);
+    });
+
+    expect(result.current.canvasTransform.scale).not.toBe(1);
+    gcs.mockRestore();
+  });
+
   it('handlePanStart 消费 pointerdown 事件后注册 pointermove/pointerup', () => {
     const { result } = setupHook();
     const addSpy = vi.spyOn(window, 'addEventListener');
