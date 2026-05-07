@@ -7,6 +7,8 @@ import { callUniversalAI, formatAiError, maskApiKeyForLog } from '../services/ai
 import { metasoSearch } from '../services/search';
 import { deriveSearchQueryFromNoteText, spawnWebSearchCardsFromPages } from '../services/spawnWebSearchNoteCards';
 import { parseThreadWebSearchIntent } from '../utils/webSearchCommand';
+import { shouldPreflightToolbarIntent } from '../utils/toolbarIntentGate';
+import { analyzeToolbarIntentPreflight } from '../services/toolbarIntentClarification';
 import { getCanvasCenterPosition } from '../utils/canvas';
 import { combineSystemParts, getLocaleDirective, resolveAgentSystemPrompt } from '../utils/aiI18n';
 import { db } from '../db';
@@ -44,6 +46,12 @@ export function useAiActions({
   const [analyzingAgentNodeId, setAnalyzingAgentNodeId] = useState<string | null>(null);
   const [followUpParentId, setFollowUpParentId] = useState<string | null>(null);
   const [aiPrompt, setAiPrompt] = useState('');
+  const [intentClarification, setIntentClarification] = useState<{
+    original: string;
+    options: [string, string, string];
+    hint?: string;
+  } | null>(null);
+  const [isToolbarIntentPreflight, setIsToolbarIntentPreflight] = useState(false);
   const followUpGuardRef = useRef(false);
 
   const THREAD_GAP = 24;
@@ -51,8 +59,10 @@ export function useAiActions({
   const isAnyAiBusy =
     isPublishing ||
     isToolbarAiLoading ||
+    isToolbarIntentPreflight ||
     analyzingAgentNodeId !== null ||
-    followUpParentId !== null;
+    followUpParentId !== null ||
+    intentClarification !== null;
 
   const handlePublish = async () => {
     if (selectedNodes.size === 0 || isAnyAiBusy) return;
@@ -133,40 +143,96 @@ export function useAiActions({
     }
   };
 
-  const handleAiSubmit = async () => {
-    if (!aiPrompt.trim() || isAnyAiBusy) return;
+  const runToolbarAiGeneration = async (request: string) => {
+    const connectedNodeIds = new Set<string>();
+    edges.forEach((e) => {
+      connectedNodeIds.add(e.from);
+      connectedNodeIds.add(e.to);
+    });
 
+    let contextText = '';
+    const fragmentLabel = t('ai.prompts.context_fragment_label');
+    connectedNodeIds.forEach((id) => {
+      const el = nodesRef.current[id];
+      if (el) {
+        contextText += fragmentLabel + (el.innerText || '');
+      }
+    });
+
+    const text = await callUniversalAI({
+      config: aiConfig,
+      systemInstruction: getLocaleDirective(),
+      prompt: t('ai.prompts.toolbar', { context: contextText, request }),
+    });
+
+    if (text) {
+      const { x, y } = getCanvasCenterPosition(transformRef.current);
+      await db.nodes.add({ id: crypto.randomUUID(), canvasId: activeCanvasId, type: 'ai', content: text, x, y });
+      setAiPrompt('');
+    }
+  };
+
+  const handleAiSubmit = async () => {
+    const raw = aiPrompt.trim();
+    if (!raw || isPublishing || isToolbarAiLoading || isToolbarIntentPreflight || analyzingAgentNodeId !== null || followUpParentId !== null || intentClarification !== null) {
+      return;
+    }
+
+    const runWithLoading = async (request: string) => {
+      setIsToolbarAiLoading(true);
+      try {
+        await runToolbarAiGeneration(request);
+      } catch (error) {
+        const msg = formatAiError(error);
+        console.error('[Scribe AI] handleAiSubmit failed', { error: msg, provider: aiConfig.provider, model: aiConfig.model, apiKey: maskApiKeyForLog(aiConfig.apiKey) });
+        alert(`AI 生成失败\n\n${msg}\n\n请检查：1) 设置中 Provider / MiMo Key / Base URL（需含 /v1） 2) 若用浏览器，需 npm run dev 且已重启（/api/mimo 代理）；桌面端用 Tauri 可不依赖代理。\n\nF12 → Console 查看 [Scribe AI] 日志。`);
+      } finally {
+        setIsToolbarAiLoading(false);
+      }
+    };
+
+    if (!shouldPreflightToolbarIntent(raw)) {
+      await runWithLoading(raw);
+      return;
+    }
+
+    setIsToolbarIntentPreflight(true);
+    let proceedWithOriginal = false;
+    try {
+      const analysis = await analyzeToolbarIntentPreflight(raw, aiConfig, t);
+      if (analysis.ambiguous) {
+        setIntentClarification({
+          original: raw,
+          options: analysis.options,
+          hint: analysis.hint,
+        });
+      } else {
+        proceedWithOriginal = true;
+      }
+    } catch (e) {
+      const msg = formatAiError(e);
+      console.error('[Scribe AI] toolbar intent preflight failed', msg);
+      proceedWithOriginal = true;
+    } finally {
+      setIsToolbarIntentPreflight(false);
+    }
+
+    if (proceedWithOriginal) {
+      await runWithLoading(raw);
+    }
+  };
+
+  const cancelIntentClarification = () => setIntentClarification(null);
+
+  const confirmIntentClarification = async (finalRequest: string) => {
+    if (!intentClarification) return;
+    setIntentClarification(null);
     setIsToolbarAiLoading(true);
     try {
-      const connectedNodeIds = new Set<string>();
-      edges.forEach(e => {
-        connectedNodeIds.add(e.from);
-        connectedNodeIds.add(e.to);
-      });
-
-      let contextText = '';
-      const fragmentLabel = t('ai.prompts.context_fragment_label');
-      connectedNodeIds.forEach(id => {
-        const el = nodesRef.current[id];
-        if (el) {
-          contextText += fragmentLabel + (el.innerText || '');
-        }
-      });
-
-      const text = await callUniversalAI({
-        config: aiConfig,
-        systemInstruction: getLocaleDirective(),
-        prompt: t('ai.prompts.toolbar', { context: contextText, request: aiPrompt }),
-      });
-
-      if (text) {
-        const { x, y } = getCanvasCenterPosition(transformRef.current);
-        await db.nodes.add({ id: crypto.randomUUID(), canvasId: activeCanvasId, type: 'ai', content: text, x, y });
-        setAiPrompt('');
-      }
+      await runToolbarAiGeneration(finalRequest);
     } catch (error) {
       const msg = formatAiError(error);
-      console.error('[Scribe AI] handleAiSubmit failed', { error: msg, provider: aiConfig.provider, model: aiConfig.model, apiKey: maskApiKeyForLog(aiConfig.apiKey) });
+      console.error('[Scribe AI] handleAiSubmit after intent clarify failed', { error: msg, provider: aiConfig.provider, model: aiConfig.model, apiKey: maskApiKeyForLog(aiConfig.apiKey) });
       alert(`AI 生成失败\n\n${msg}\n\n请检查：1) 设置中 Provider / MiMo Key / Base URL（需含 /v1） 2) 若用浏览器，需 npm run dev 且已重启（/api/mimo 代理）；桌面端用 Tauri 可不依赖代理。\n\nF12 → Console 查看 [Scribe AI] 日志。`);
     } finally {
       setIsToolbarAiLoading(false);
@@ -308,5 +374,9 @@ export function useAiActions({
     triggerAgentAnalysis,
     handleAiSubmit,
     submitAiThreadFollowUp,
+    intentClarification,
+    isToolbarIntentPreflight,
+    cancelIntentClarification,
+    confirmIntentClarification,
   };
 }

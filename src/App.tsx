@@ -14,6 +14,7 @@ import { AISettingsModal } from './components/AISettingsModal';
 import { Sidebar } from './components/Sidebar';
 import { CanvasHistoryPopover } from './components/CanvasHistoryPopover';
 import { CanvasToolbar } from './components/CanvasToolbar';
+import { IntentClarificationModal } from './components/IntentClarificationModal';
 import type { AIConfig } from './components/AISettingsModal';
 import { Reference } from './components/Reference';
 import { ResearchLab } from './components/ResearchLab';
@@ -152,7 +153,23 @@ export default function App() {
   });
 
   // AI actions (publish, agent analysis, AI submit)
-  const { isPublishing, isToolbarAiLoading, analyzingAgentNodeId, followUpParentId, isAnyAiBusy, aiPrompt, setAiPrompt, handlePublish, triggerAgentAnalysis, handleAiSubmit, submitAiThreadFollowUp } = useAiActions({
+  const {
+    isPublishing,
+    isToolbarAiLoading,
+    isToolbarIntentPreflight,
+    analyzingAgentNodeId,
+    followUpParentId,
+    isAnyAiBusy,
+    aiPrompt,
+    setAiPrompt,
+    handlePublish,
+    triggerAgentAnalysis,
+    handleAiSubmit,
+    submitAiThreadFollowUp,
+    intentClarification,
+    cancelIntentClarification,
+    confirmIntentClarification,
+  } = useAiActions({
     aiConfig, agentConfigs, activeCanvasId, nodesRef, transformRef,
     dynamicNodes, edges, selectedNodes, setSelectedNodes, setActiveReferenceId, setActiveTab,
   });
@@ -383,8 +400,8 @@ export default function App() {
           </div>
 
         {/* AI Prompt Bar & Toolbar */}
-        <CanvasToolbar 
-          isToolbarAiLoading={isToolbarAiLoading}
+        <CanvasToolbar
+          isToolbarAiLoading={isToolbarAiLoading || isToolbarIntentPreflight}
           isInputDisabled={isAnyAiBusy}
           aiPrompt={aiPrompt} setAiPrompt={setAiPrompt}
           handleAiSubmit={handleAiSubmit} addTextNode={addTextNode} addFileNode={addFileNode}
@@ -404,6 +421,15 @@ export default function App() {
             await db.agents.put(config);
           }
         }} aiConfig={aiConfig} callAI={callUniversalAI} />}
+        <IntentClarificationModal
+          open={intentClarification !== null}
+          original={intentClarification?.original ?? ''}
+          options={intentClarification?.options ?? ['', '', '']}
+          hint={intentClarification?.hint}
+          isSubmitting={isToolbarAiLoading}
+          onCancel={cancelIntentClarification}
+          onConfirm={(finalRequest) => void confirmIntentClarification(finalRequest)}
+        />
         <AISettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} config={aiConfig} setConfig={setAiConfig} />
       </div>
     </div>

@@ -21,6 +21,14 @@ vi.mock('../../src/services/search', () => ({
   buildSearchContext: vi.fn(),
 }));
 
+const analyzeToolbarIntentPreflightMock = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({ ambiguous: false }),
+);
+
+vi.mock('../../src/services/toolbarIntentClarification', () => ({
+  analyzeToolbarIntentPreflight: (...args: unknown[]) => analyzeToolbarIntentPreflightMock(...args),
+}));
+
 import { callUniversalAI } from '../../src/services/ai';
 import { metasoSearch } from '../../src/services/search';
 
@@ -80,6 +88,8 @@ describe('useAiActions', () => {
       total: 0,
       webpages: [],
     });
+    analyzeToolbarIntentPreflightMock.mockClear();
+    analyzeToolbarIntentPreflightMock.mockResolvedValue({ ambiguous: false });
   });
 
   // --- handlePublish ---
@@ -111,15 +121,20 @@ describe('useAiActions', () => {
       const { result } = renderHook(() => useTestAiActions());
 
       act(() => {
-        result.current.setAiPrompt('Write about memory');
+        result.current.setAiPrompt(
+          'Write a long reflective paragraph about episodic memory, aging, and narrative identity so that the toolbar intent gate skips preflight.',
+        );
       });
 
       await act(async () => {
         await result.current.handleAiSubmit();
       });
 
+      expect(analyzeToolbarIntentPreflightMock).not.toHaveBeenCalled();
       expect(callUniversalAI).toHaveBeenCalledWith(
-        expect.objectContaining({ prompt: expect.stringContaining('Write about memory') })
+        expect.objectContaining({
+          prompt: expect.stringContaining('episodic memory'),
+        }),
       );
 
       const nodes = await db.nodes.toArray();
@@ -127,6 +142,23 @@ describe('useAiActions', () => {
       expect(nodes[0].type).toBe('ai');
       expect(nodes[0].content).toBe('AI generated text');
       expect(result.current.aiPrompt).toBe('');
+    });
+
+    it('命中预检闸门时先跑意图分析，无疑义则用原文调主模型', async () => {
+      const { result } = renderHook(() => useTestAiActions());
+      act(() => {
+        result.current.setAiPrompt('你怎么看？');
+      });
+      await act(async () => {
+        await result.current.handleAiSubmit();
+      });
+      expect(analyzeToolbarIntentPreflightMock).toHaveBeenCalledTimes(1);
+      expect(analyzeToolbarIntentPreflightMock).toHaveBeenCalledWith(
+        '你怎么看？',
+        expect.objectContaining({ provider: 'gemini' }),
+        expect.any(Function),
+      );
+      expect(callUniversalAI).toHaveBeenCalledTimes(1);
     });
 
     it('AI 失败时不创建节点', async () => {

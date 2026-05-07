@@ -13,7 +13,7 @@ vi.mock('react-i18next', () => ({
 }));
 
 vi.mock('lucide-react', () => {
-  const icons = ['Bot', 'Loader2', 'Send'] as const;
+  const icons = ['Loader2', 'Send'] as const;
   const out: Record<string, React.FC> = {};
   for (const name of icons) {
     out[name] = (props: Record<string, unknown>) => {

@@ -77,6 +77,17 @@ const resources = {
         "input_placeholder": "Ask AI to draft some ideas or paragraphs...",
         "loading": "AI is thinking...",
         "generated_article_title": "Generated Synthesis",
+        "intent": {
+          "analyzer_system": "You are an intent-disambiguation helper for a canvas writing assistant. The user's line may be short, a question, or pack several tasks.\n\nDecide whether at least two genuinely different helpful interpretations exist (not trivial synonyms). If one reading clearly dominates, set ambiguous to false.\n\nReply with ONLY valid JSON (no markdown fences, no extra text):\n{\"ambiguous\": false, \"options\": [], \"hint\": \"\"}\nor\n{\"ambiguous\": true, \"options\": [\"first concrete instruction\", \"second ...\", \"third ...\"], \"hint\": \"one short sentence why\"}\n\nRules:\n- If ambiguous is false: options MUST be []. hint may be \"\".\n- If ambiguous is true: options MUST be exactly three distinct, self-contained instructions the downstream model could follow, in the SAME language as the user's message.\n- Each option must be actionable (full sentence or clear imperative).",
+          "analyzer_user": "User message:\n---\n{{text}}\n---",
+          "modal_title": "Clarify your request",
+          "modal_original": "Your input",
+          "modal_choose": "Pick the interpretation that matches what you want:",
+          "extra_section": "Additional notes",
+          "extra_placeholder": "Optional: constraints, tone, audience…",
+          "confirm": "Confirm and generate",
+          "cancel": "Cancel"
+        },
         "prompts": {
           "localeDirective": "Always reply entirely in English for this session, unless the user explicitly asks for another language.",
           "publish": "Turn the following concepts, notes, and drafts into a cohesive, well-written article:\n\n{{content}}",
@@ -222,6 +233,17 @@ const resources = {
         "input_placeholder": "让 AI 构思一些想法或段落...",
         "loading": "AI 思考中...",
         "generated_article_title": "生成的合成稿",
+        "intent": {
+          "analyzer_system": "你是画布写作助手前的「意图消歧」模块。用户输入可能很短、带疑问，或一句话里塞了多件任务。\n\n判断是否存在至少两种**实质不同**、助手都可能合理解读的方向（同义改写不算）。若一种理解明显占主导，则不算歧义，ambiguous 取 false。\n\n只输出合法 JSON（不要 Markdown 代码块、不要解释）：\n{\"ambiguous\": false, \"options\": [], \"hint\": \"\"}\n或\n{\"ambiguous\": true, \"options\": [\"第一种具体可执行指令\", \"第二种…\", \"第三种…\"], \"hint\": \"一句话说明为何歧义\"}\n\n规则：\n- ambiguous 为 false 时，options 必须为 []，hint 可为空字符串。\n- ambiguous 为 true 时，options 必须恰好三条，彼此区分明确，且与**用户消息语言一致**；每条应是 downstream 模型能直接照做的完整短句或清晰祈使句。",
+          "analyzer_user": "用户原话：\n---\n{{text}}\n---",
+          "modal_title": "澄清你的意图",
+          "modal_original": "你的输入",
+          "modal_choose": "请选择最符合你本意的一种理解：",
+          "extra_section": "补充说明",
+          "extra_placeholder": "可选：补充约束、语气、受众等…",
+          "confirm": "确认并生成",
+          "cancel": "取消"
+        },
         "prompts": {
           "localeDirective": "请始终使用简体中文回复，除非用户明确要求使用其他语言。",
           "publish": "请将以下概念、笔记与草稿整合为一篇连贯、文笔流畅的文章：\n\n{{content}}",
