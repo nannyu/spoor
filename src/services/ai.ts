@@ -166,27 +166,51 @@ export async function callUniversalAI({
     if (!modelPath) {
       throw new Error('请在设置中填写本地 GGUF 模型文件的完整路径。');
     }
-    console.info(`${LOG_PREFIX} local_llama chat`, {
+    const { invoke } = await import('@tauri-apps/api/core');
+
+    let logPath: string | null = null;
+    try {
+      logPath = await invoke<string>('get_local_llama_log_path');
+    } catch {
+      // 忽略：旧版本没有这个命令
+    }
+
+    const startedAt = Date.now();
+    console.info(`${LOG_PREFIX} local_llama → invoke`, {
       modelPath: modelPath.slice(0, 80) + (modelPath.length > 80 ? '…' : ''),
+      promptChars: prompt.length,
+      systemChars: (systemInstruction ?? '').length,
       temperature,
       topP,
+      maxTokens: 256,
+      nCtx: 1024,
+      logPath,
     });
-    const { invoke } = await import('@tauri-apps/api/core');
+
     try {
-      return await invoke<string>('local_llama_chat', {
-        modelPath,
-        systemInstruction: systemInstruction ?? null,
-        userMessage: prompt,
-        temperature,
-        topP,
-        maxTokens: 1024,
-        nCtx: 4096,
-        enableThinking: config.localEnableThinking ?? false,
+      const out = await invoke<string>('local_llama_chat', {
+        payload: {
+          modelPath,
+          systemInstruction: systemInstruction ?? null,
+          userMessage: prompt,
+          temperature,
+          topP,
+          maxTokens: 256,
+          nCtx: 1024,
+          enableThinking: config.localEnableThinking ?? false,
+        },
       });
+      console.info(`${LOG_PREFIX} local_llama ← done`, {
+        elapsedMs: Date.now() - startedAt,
+        outChars: (out ?? '').length,
+      });
+      return out;
     } catch (e) {
+      const elapsedMs = Date.now() - startedAt;
       const msg = formatAiError(e);
-      console.error(`${LOG_PREFIX} local_llama_chat failed`, msg);
-      throw new Error(msg);
+      console.error(`${LOG_PREFIX} local_llama ← FAILED (${elapsedMs}ms)`, msg, { logPath });
+      const suffix = logPath ? `\n\n详细日志：${logPath}` : '';
+      throw new Error(`${msg}${suffix}`);
     }
   }
 

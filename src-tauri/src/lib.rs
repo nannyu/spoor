@@ -91,13 +91,20 @@ async fn local_llama_chat(payload: LocalLlamaChatPayload) -> Result<String, Stri
     .map_err(|e| format!("推理任务异常: {e}"))?
 }
 
+/// 返回本地 LLM 日志文件路径（每次推理的命令行/stdout/stderr/耗时都会写入此文件）。
+#[tauri::command]
+fn get_local_llama_log_path() -> String {
+  local_llama::log_path().to_string_lossy().to_string()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
     .invoke_handler(tauri::generate_handler![
       openai_compatible_chat,
       metaso_search,
-      local_llama_chat
+      local_llama_chat,
+      get_local_llama_log_path
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

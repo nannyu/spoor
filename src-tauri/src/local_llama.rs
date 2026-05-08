@@ -1,27 +1,24 @@
-//! 桌面端内置 llama.cpp 推理（GGUF）。模型常驻内存，按路径切换时重新加载。
+//! 桌面端本地推理（GGUF）—— 通过子进程调用预编译的 llama-completion.exe / llama-cli.exe
+//! 完全绕过从源码编译 CUDA 的需要；只需官方预编译二进制 + CUDA 运行时 DLL。
+//!
+//! 每次调用都会把命令行、stdout、stderr、耗时等写入 %TEMP%\scribe_llama.log，
+//! 方便用户/开发者排查问题（前端也提供 get_local_llama_log_path 命令）。
 
-use std::num::NonZeroU32;
+use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
-
-use encoding_rs::UTF_8;
-use llama_cpp_2::context::params::LlamaContextParams;
-use llama_cpp_2::llama_backend::LlamaBackend;
-use llama_cpp_2::llama_batch::LlamaBatch;
-use llama_cpp_2::model::params::LlamaModelParams;
-use llama_cpp_2::model::AddBos;
-use llama_cpp_2::model::LlamaModel;
-use llama_cpp_2::openai::OpenAIChatTemplateParams;
-use llama_cpp_2::sampling::LlamaSampler;
+use std::process::{Command, Stdio};
+use std::time::Instant;
 use serde::Deserialize;
 
-struct LlamaHolder {
-    backend: LlamaBackend,
-    path: Option<String>,
-    model: Option<LlamaModel>,
-}
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
 
-static GLOBAL: Mutex<Option<LlamaHolder>> = Mutex::new(None);
+/// Windows: 不在 GUI 应用中弹出黑色控制台窗口（CREATE_NO_WINDOW = 0x08000000）。
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+/// 日志文件最大保留字节数（超出会截断重写，避免无限增长）。
+const LOG_MAX_BYTES: u64 = 2 * 1024 * 1024; // 2 MB
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -36,167 +33,351 @@ pub struct LocalLlamaChatPayload {
     pub enable_thinking: Option<bool>,
 }
 
-fn build_messages_json(payload: &LocalLlamaChatPayload) -> Result<String, String> {
-    let mut msgs: Vec<serde_json::Value> = Vec::new();
-    if let Some(s) = &payload.system_instruction {
-        let t = s.trim();
-        if !t.is_empty() {
-            msgs.push(serde_json::json!({"role": "system", "content": t}));
-        }
-    }
-    msgs.push(serde_json::json!({"role": "user", "content": payload.user_message}));
-    serde_json::to_string(&msgs).map_err(|e| format!("messages JSON: {e}"))
+/// 日志文件路径：`%TEMP%\scribe_llama.log`（用户可点开 %TEMP% 查看）。
+pub fn log_path() -> PathBuf {
+    std::env::temp_dir().join("scribe_llama.log")
 }
 
-/// 同步执行推理（由 `spawn_blocking` 调用，避免阻塞 Tauri 异步运行时）。
-pub fn chat(payload: LocalLlamaChatPayload) -> Result<String, String> {
-    let path_raw = PathBuf::from(payload.model_path.trim());
-    if !path_raw.is_file() {
-        return Err(format!("模型文件不存在: {}", path_raw.display()));
-    }
-    let path = std::fs::canonicalize(&path_raw)
-        .map_err(|e| format!("无法解析模型路径 {}: {e}", path_raw.display()))?;
-    let path_str = path.to_string_lossy().to_string();
+/// 简单的时间戳（YYYY-MM-DD HH:MM:SS）—— 不依赖 chrono 等额外 crate。
+fn timestamp() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    // 当地时区偏移：用 chrono 太重，这里只输出 UTC 时间 + 时区标记
+    let (y, mo, d, h, mi, s) = unix_to_ymdhms(secs);
+    format!("{y:04}-{mo:02}-{d:02} {h:02}:{mi:02}:{s:02}Z")
+}
 
-    let mut guard = GLOBAL.lock().map_err(|e| format!("内部锁: {e}"))?;
-
-    if guard.is_none() {
-        let backend = LlamaBackend::init().map_err(|e| format!("llama backend 初始化失败: {e}"))?;
-        *guard = Some(LlamaHolder {
-            backend,
-            path: None,
-            model: None,
-        });
-    }
-
-    let holder = guard.as_mut().ok_or_else(|| "内部状态未就绪".to_string())?;
-
-    if holder.path.as_deref() != Some(path_str.as_str()) {
-        let model_params = LlamaModelParams::default();
-        let model = LlamaModel::load_from_file(&holder.backend, Path::new(&path_str), &model_params)
-            .map_err(|e| format!("加载 GGUF 失败: {e}"))?;
-        holder.model = Some(model);
-        holder.path = Some(path_str.clone());
-    }
-
-    let model = holder.model.as_ref().ok_or_else(|| "模型未加载".to_string())?;
-    let backend = &holder.backend;
-
-    let messages_json = build_messages_json(&payload)?;
-    let tmpl = model
-        .chat_template(None)
-        .map_err(|e| format!("读取 chat 模板失败: {e}"))?;
-
-    let chat_params = OpenAIChatTemplateParams {
-        messages_json: &messages_json,
-        tools_json: None,
-        tool_choice: None,
-        json_schema: None,
-        grammar: None,
-        reasoning_format: None,
-        chat_template_kwargs: Some("{}"),
-        add_generation_prompt: true,
-        use_jinja: true,
-        parallel_tool_calls: false,
-        enable_thinking: payload.enable_thinking.unwrap_or(false),
-        add_bos: false,
-        add_eos: false,
-        parse_tool_calls: false,
-    };
-
-    let rendered = model
-        .apply_chat_template_oaicompat(&tmpl, &chat_params)
-        .map_err(|e| format!("套用 chat 模板失败: {e}"))?;
-
-    let prompt = rendered.prompt;
-
-    let n_ctx_u = payload.n_ctx.unwrap_or(4096).clamp(512, 131072);
-    let n_ctx_nz = NonZeroU32::new(n_ctx_u).ok_or_else(|| "n_ctx 无效".to_string())?;
-
-    let mut ctx_params = LlamaContextParams::default().with_n_ctx(Some(n_ctx_nz));
-
-    if let Ok(n_threads) = std::thread::available_parallelism() {
-        let n = n_threads.get().min(8) as i32;
-        if n > 0 {
-            ctx_params = ctx_params.with_n_threads(n);
-            ctx_params = ctx_params.with_n_threads_batch(n);
-        }
-    }
-
-    let mut ctx = model
-        .new_context(backend, ctx_params)
-        .map_err(|e| format!("创建推理上下文失败: {e}"))?;
-
-    let tokens_list = model
-        .str_to_token(&prompt, AddBos::Never)
-        .map_err(|e| format!("分词失败: {e}"))?;
-
-    let max_new = payload.max_tokens.unwrap_or(1024).clamp(1, 8192);
-    let prompt_len = i32::try_from(tokens_list.len()).map_err(|_| "提示过长".to_string())?;
-    let n_len = prompt_len.saturating_add(max_new);
-
-    let n_cxt = ctx.n_ctx() as i32;
-    if n_len > n_cxt {
-        return Err(format!(
-            "上下文不足：需要约 {n_len} tokens（提示 + 生成长度），当前 n_ctx={n_cxt}。请在设置中减小请求或提高 n_ctx。"
-        ));
-    }
-    if prompt_len >= n_len {
-        return Err("提示词占用 token 超过上限".into());
-    }
-
-    let mut batch = LlamaBatch::new(512, 1);
-    let last_index = prompt_len - 1;
-    for (i, token) in (0_i32..).zip(tokens_list.into_iter()) {
-        let is_last = i == last_index;
-        batch
-            .add(token, i, &[0], is_last)
-            .map_err(|e| format!("batch add: {e}"))?;
-    }
-
-    ctx.decode(&mut batch)
-        .map_err(|e| format!("解码提示失败: {e}"))?;
-
-    let temperature = payload.temperature.unwrap_or(0.7).clamp(0.05, 4.0);
-    let top_p = payload.top_p.unwrap_or(0.9).clamp(0.0, 1.0);
-    let seed: u32 = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| (d.as_nanos() % u128::from(u32::MAX)) as u32)
-        .unwrap_or(12345);
-
-    let mut sampler = LlamaSampler::chain_simple([
-        LlamaSampler::top_p(top_p, 1),
-        LlamaSampler::temp(temperature),
-        LlamaSampler::dist(seed),
-    ]);
-
-    let mut n_cur = batch.n_tokens() as i32;
-    let mut out = String::new();
-    let mut decoder = UTF_8.new_decoder();
-
-    while n_cur <= n_len {
-        let token = sampler.sample(&ctx, batch.n_tokens() - 1);
-        sampler.accept(token);
-
-        if model.is_eog_token(token) {
+/// 把 unix epoch 秒数转成 YMD HMS（UTC）。简化版历法计算，1970~2099 内正确。
+fn unix_to_ymdhms(secs: u64) -> (u64, u64, u64, u64, u64, u64) {
+    let s = secs % 60;
+    let m = (secs / 60) % 60;
+    let h = (secs / 3600) % 24;
+    let mut days = secs / 86400;
+    let mut year: u64 = 1970;
+    loop {
+        let leap = is_leap(year);
+        let days_in_year = if leap { 366 } else { 365 };
+        if days >= days_in_year {
+            days -= days_in_year;
+            year += 1;
+        } else {
             break;
         }
+    }
+    let leap = is_leap(year);
+    let dim = [31u64, if leap { 29 } else { 28 }, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    let mut month = 1u64;
+    for &md in dim.iter() {
+        if days >= md {
+            days -= md;
+            month += 1;
+        } else {
+            break;
+        }
+    }
+    (year, month, days + 1, h, m, s)
+}
 
-        let piece = model
-            .token_to_piece(token, &mut decoder, true, None)
-            .map_err(|e| format!("token 转文本: {e}"))?;
-        out.push_str(&piece);
+fn is_leap(y: u64) -> bool {
+    (y % 4 == 0 && y % 100 != 0) || y % 400 == 0
+}
 
-        batch.clear();
-        batch
-            .add(token, n_cur, &[0], true)
-            .map_err(|e| format!("batch add: {e}"))?;
+/// 追加写日志；首次写入或文件超大时截断重写。
+fn log_write(content: &str) {
+    let path = log_path();
+    // 如果文件超过上限，重置（保留最新一次）
+    if let Ok(meta) = std::fs::metadata(&path) {
+        if meta.len() > LOG_MAX_BYTES {
+            let _ = std::fs::remove_file(&path);
+        }
+    }
+    let mut opts = std::fs::OpenOptions::new();
+    opts.append(true).create(true);
+    if let Ok(mut f) = opts.open(&path) {
+        let _ = writeln!(f, "{}", content);
+    }
+}
 
-        n_cur += 1;
+/// 把多行内容包装一段日志（带时间戳和分节符）。
+fn log_section(title: &str, body: &str) {
+    log_write(&format!(
+        "\n========== [{}] {} ==========\n{}",
+        timestamp(),
+        title,
+        body
+    ));
+}
 
-        ctx.decode(&mut batch)
-            .map_err(|e| format!("解码生成失败: {e}"))?;
+/// 查找 llama-completion.exe（首选）或 llama-cli.exe（兼容）的路径。
+/// llama-completion 是 llama.cpp 推荐用于"单次补全"的工具，输出干净不进交互模式。
+fn find_llama_cli() -> Result<PathBuf, String> {
+    if let Ok(env_path) = std::env::var("LLAMA_CLI_PATH") {
+        let p = PathBuf::from(&env_path);
+        if p.exists() {
+            return Ok(p);
+        }
     }
 
-    Ok(out.trim().to_string())
+    let exe_path = std::env::current_exe().map_err(|e| format!("无法获取可执行文件路径: {e}"))?;
+    let exe_dir = exe_path.parent().unwrap_or_else(|| Path::new("."));
+    let crate_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+
+    // llama-completion 优先（输出更干净），llama-cli 作为兼容回退
+    let candidates = vec![
+        exe_dir.join("llama-completion.exe"),
+        exe_dir.join("llama-cli.exe"),
+        exe_dir.join("llama-binaries/llama-completion.exe"),
+        exe_dir.join("llama-binaries/llama-cli.exe"),
+        exe_dir.join("bin/llama-completion.exe"),
+        exe_dir.join("bin/llama-cli.exe"),
+        crate_dir.join("../llama-binaries/llama-completion.exe"),
+        crate_dir.join("../llama-binaries/llama-cli.exe"),
+        PathBuf::from(r"D:\Tools\llama-cuda\llama-completion.exe"),
+        PathBuf::from(r"D:\Tools\llama-cuda\llama-cli.exe"),
+    ];
+
+    for c in candidates {
+        if c.exists() {
+            return Ok(c);
+        }
+    }
+
+    Err("找不到 llama-completion.exe / llama-cli.exe。请将其放在应用目录下，或设置 LLAMA_CLI_PATH 环境变量。".into())
+}
+
+/// 同步执行推理：调用 llama-completion / llama-cli 子进程
+pub fn chat(payload: LocalLlamaChatPayload) -> Result<String, String> {
+    let started = Instant::now();
+    let log_file = log_path();
+    log_section(
+        "REQUEST",
+        &format!(
+            "user_message_len={} system_len={} model_path={}",
+            payload.user_message.chars().count(),
+            payload
+                .system_instruction
+                .as_ref()
+                .map(|s| s.chars().count())
+                .unwrap_or(0),
+            payload.model_path,
+        ),
+    );
+
+    let model_path = PathBuf::from(payload.model_path.trim());
+    if !model_path.is_file() {
+        let err = format!("模型文件不存在: {}", model_path.display());
+        log_section("ERROR", &err);
+        return Err(format!("{err}\n日志: {}", log_file.display()));
+    }
+    let model_path = std::fs::canonicalize(&model_path)
+        .map_err(|e| format!("无法解析模型路径 {}: {e}", model_path.display()))?;
+
+    let llama_cli = find_llama_cli().map_err(|e| {
+        log_section("ERROR", &e);
+        format!("{e}\n日志: {}", log_file.display())
+    })?;
+    let llama_dir = llama_cli.parent().unwrap_or_else(|| Path::new(".")).to_path_buf();
+
+    let n_ctx = payload.n_ctx.unwrap_or(2048);
+    let max_tokens = payload.max_tokens.unwrap_or(512);
+    let temperature = payload.temperature.unwrap_or(0.7);
+    let top_p = payload.top_p.unwrap_or(0.9);
+
+    let mut prompt = String::new();
+    if let Some(ref sys) = payload.system_instruction {
+        let t = sys.trim();
+        if !t.is_empty() {
+            prompt.push_str(t);
+            prompt.push_str("\n\n");
+        }
+    }
+    prompt.push_str(&payload.user_message);
+
+    let n_threads = std::thread::available_parallelism()
+        .map(|p| p.get())
+        .unwrap_or(4);
+
+    // GPU 层数：从环境变量读取，默认 24（保守值，避免 OOM）。
+    // GTX 1650/1660 (4GB) 通常剩余 2.5-3GB 可用，Gemma 4B Q4_K_M 完全加载需 2.9GB；
+    // 桌面环境占用 GPU 后会爆显存。设 24 ≈ 60% 的层卸载到 GPU。
+    // 8GB+ 显存的用户：可设 LLAMA_N_GPU_LAYERS=999 全部卸载。
+    // 无独显用户：设 LLAMA_N_GPU_LAYERS=0 完全 CPU。
+    let n_gpu_layers: i32 = std::env::var("LLAMA_N_GPU_LAYERS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(24);
+
+    let prompt_file = std::env::temp_dir().join(format!(
+        "scribe_llama_prompt_{}.txt",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0)
+    ));
+    {
+        let mut f = std::fs::File::create(&prompt_file)
+            .map_err(|e| format!("创建临时 prompt 文件失败: {e}"))?;
+        f.write_all(prompt.as_bytes())
+            .map_err(|e| format!("写入 prompt 失败: {e}"))?;
+    }
+
+    let mut cmd = Command::new(&llama_cli);
+    cmd.arg("--model").arg(&model_path)
+        .arg("--ctx-size").arg(n_ctx.to_string())
+        .arg("--threads").arg(n_threads.to_string())
+        .arg("--n-gpu-layers").arg(n_gpu_layers.to_string())
+        .arg("--temp").arg(temperature.to_string())
+        .arg("--top-p").arg(top_p.to_string())
+        .arg("--predict").arg(max_tokens.to_string())
+        .arg("--no-display-prompt")
+        // --simple-io：专为子进程/受限控制台设计的简化 IO；不带 logo/提示符
+        .arg("--simple-io")
+        // -no-cnv：禁用对话/交互模式（短形式，新版 llama.cpp 必需）
+        .arg("-no-cnv")
+        // -st：单轮，处理完即退出
+        .arg("-st")
+        .arg("-f").arg(&prompt_file);
+
+    cmd.env("PATH", {
+        let mut paths = std::env::var("PATH").unwrap_or_default();
+        paths.insert_str(0, &format!("{};", llama_dir.display()));
+        paths
+    });
+
+    cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
+
+    #[cfg(windows)]
+    cmd.creation_flags(CREATE_NO_WINDOW);
+
+    log_section(
+        "COMMAND",
+        &format!(
+            "exe   : {}\nmodel : {}\nctx   : {}\npredict: {}\ngpu_layers: {}\nthreads: {}\nprompt_file: {}\nprompt_preview: {}",
+            llama_cli.display(),
+            model_path.display(),
+            n_ctx,
+            max_tokens,
+            n_gpu_layers,
+            n_threads,
+            prompt_file.display(),
+            preview(&prompt, 200),
+        ),
+    );
+
+    let mut child = cmd.spawn().map_err(|e| {
+        let err = format!("启动 llama-cli 失败: {e}\n路径: {}", llama_cli.display());
+        log_section("ERROR", &err);
+        format!("{err}\n日志: {}", log_file.display())
+    })?;
+
+    drop(child.stdin.take());
+
+    let pid = child.id();
+    let timeout_handle = std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(300));
+        #[cfg(windows)]
+        {
+            let _ = Command::new("taskkill")
+                .args(["/F", "/T", "/PID", &pid.to_string()])
+                .creation_flags(CREATE_NO_WINDOW)
+                .output();
+        }
+    });
+
+    let output = child.wait_with_output().map_err(|e| {
+        let err = format!("等待 llama-cli 完成失败: {e}");
+        log_section("ERROR", &err);
+        format!("{err}\n日志: {}", log_file.display())
+    })?;
+
+    drop(timeout_handle);
+    let _ = std::fs::remove_file(&prompt_file);
+
+    let elapsed = started.elapsed();
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+
+    log_section(
+        "RESULT",
+        &format!(
+            "exit_status: {}\nelapsed_ms: {}\nstdout_len: {}\nstderr_len: {}\n--- stdout (head 4000) ---\n{}\n--- stderr (tail 4000) ---\n{}",
+            output.status,
+            elapsed.as_millis(),
+            stdout.len(),
+            stderr.len(),
+            head(&stdout, 4000),
+            tail(&stderr, 4000),
+        ),
+    );
+
+    if !output.status.success() {
+        let stderr_tail = tail(&stderr, 2000);
+        let stdout_tail = tail(&stdout, 500);
+        return Err(format!(
+            "llama-cli 执行失败 (exit={}):\nstdout: {}\nstderr: {}\n日志: {}",
+            output.status,
+            stdout_tail,
+            stderr_tail,
+            log_file.display(),
+        ));
+    }
+
+    Ok(clean_output(&stdout))
+}
+
+fn preview(s: &str, n: usize) -> String {
+    let s = s.replace('\n', "⏎");
+    if s.chars().count() <= n {
+        s
+    } else {
+        let truncated: String = s.chars().take(n).collect();
+        format!("{}…", truncated)
+    }
+}
+
+fn head(s: &str, max: usize) -> String {
+    if s.len() <= max {
+        s.to_string()
+    } else {
+        // 找一个 char boundary 靠近 max
+        let mut end = max;
+        while end > 0 && !s.is_char_boundary(end) {
+            end -= 1;
+        }
+        format!("{}…", &s[..end])
+    }
+}
+
+fn tail(s: &str, max: usize) -> String {
+    if s.len() <= max {
+        s.to_string()
+    } else {
+        let mut start = s.len() - max;
+        while start < s.len() && !s.is_char_boundary(start) {
+            start += 1;
+        }
+        format!("…{}", &s[start..])
+    }
+}
+
+/// 清理 llama-completion 的输出：移除 `[end of text]` / `<end_of_turn>` 等结束标记
+/// 以及 trailing newlines，保留正文。
+fn clean_output(raw: &str) -> String {
+    let mut s = raw.to_string();
+    const END_MARKERS: &[&str] = &[
+        "[end of text]",
+        "<end_of_turn>",
+        "<|im_end|>",
+        "<|endoftext|>",
+        "<|eot_id|>",
+    ];
+    for m in END_MARKERS {
+        if let Some(idx) = s.find(m) {
+            s.truncate(idx);
+        }
+    }
+    s.trim().to_string()
 }

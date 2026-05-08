@@ -13,8 +13,7 @@ tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
-# llama-cpp-2 构建依赖 CMake、C++ 工具链；bindgen 需要 LLVM 的 libclang（Windows 可安装 LLVM 并设置 LIBCLANG_PATH）
-llama-cpp-2 = "0.1.146"
+# 本地推理改为子进程调用预编译 llama-cli.exe，无需从源码编译 CUDA llama.cpp
 encoding_rs = "0.8"
 tokio = { version = "1", features = ["rt-multi-thread"] }
 
@@ -26,6 +25,3 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 name = "spatial-notes"
 path = "src/main.rs"
 
-# MSVC: upstream build.rs omitted crate root on the include path; wrapper_oai.cpp needs it for `llama.cpp/...` includes.
-[patch.crates-io]
-llama-cpp-sys-2 = { path = "third_party/llama-cpp-sys-2" }

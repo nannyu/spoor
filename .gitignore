@@ -24,6 +24,13 @@ coverage/
 # Logs
 *.log
 npm-debug.log*
+scripts/cuda-build-log.txt
+
+# Stray binary file accidentally created by old PowerShell copy-target scripts
+/binaries
+
+# Deprecated debug script for the abandoned source-CUDA build path (kept locally only)
+scripts/debug-cuda-build.cmd
 
 # Environment
 .env*
