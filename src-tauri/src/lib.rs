@@ -1,4 +1,8 @@
+mod local_llama;
+
 use serde_json::Value;
+
+use local_llama::LocalLlamaChatPayload;
 
 /// OpenAI-compatible POST to `url` (e.g. Xiaomi MiMo Token Plan: https://token-plan-cn.xiaomimimo.com/v1/chat/completions).
 /// Bypasses browser CORS when running in the Tauri webview.
@@ -79,10 +83,22 @@ async fn metaso_search(api_key: String, query: String) -> Result<String, String>
     Ok(text)
 }
 
+/// 内置 llama.cpp：加载本地 GGUF，使用模型自带 chat 模板完成一轮对话（桌面端离线）。
+#[tauri::command]
+async fn local_llama_chat(payload: LocalLlamaChatPayload) -> Result<String, String> {
+  tokio::task::spawn_blocking(move || local_llama::chat(payload))
+    .await
+    .map_err(|e| format!("推理任务异常: {e}"))?
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
-    .invoke_handler(tauri::generate_handler![openai_compatible_chat, metaso_search])
+    .invoke_handler(tauri::generate_handler![
+      openai_compatible_chat,
+      metaso_search,
+      local_llama_chat
+    ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }

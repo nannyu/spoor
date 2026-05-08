@@ -7,6 +7,10 @@ export interface AIConfig {
   apiKey: string;
   baseUrl: string;
   model: string;
+  /** Tauri 本地 GGUF 绝对路径；provider 为 local_llama 时使用 */
+  localGgufPath?: string;
+  /** 可选：Thinking 变体需套用带思考块的模板时设为 true */
+  localEnableThinking?: boolean;
   metasoApiKey?: string;
 }
 
@@ -80,10 +84,19 @@ export function AISettingsModal({ isOpen, onClose, config, setConfig }: AISettin
                        openai: { model: 'gpt-4o', baseUrl: '' },
                        anthropic: { model: 'claude-3-5-sonnet-20240620', baseUrl: '' },
                        mimo: { model: 'mimo-v2.5-pro', baseUrl: MIMO_TOKEN_PLAN_BASE_URL },
-                       custom: { model: 'gpt-4o', baseUrl: '' }
+                       custom: { model: 'gpt-4o', baseUrl: '' },
+                       local_llama: { model: 'gemma-4-e4b-it', baseUrl: '' },
                      };
                      const d = defaults[newProvider] || { model: '', baseUrl: '' };
-                     setConfig({ ...config, provider: newProvider, model: d.model, baseUrl: d.baseUrl });
+                     setConfig({
+                       ...config,
+                       provider: newProvider,
+                       model: d.model,
+                       baseUrl: d.baseUrl,
+                       ...(newProvider === 'local_llama'
+                         ? { apiKey: '', localGgufPath: config.localGgufPath ?? '' }
+                         : {}),
+                     });
                    }}
                  >
                    <option value="gemini">Google Gemini</option>
@@ -91,6 +104,7 @@ export function AISettingsModal({ isOpen, onClose, config, setConfig }: AISettin
                    <option value="anthropic">Anthropic (Claude)</option>
                    <option value="mimo">MiMo (小米大模型)</option>
                    <option value="custom">Custom Endpoint</option>
+                   <option value="local_llama">{t('settings.provider_local_llama')}</option>
                  </select>
                </div>
                <div className="space-y-2">
@@ -98,23 +112,54 @@ export function AISettingsModal({ isOpen, onClose, config, setConfig }: AISettin
                  <input 
                    type="text"
                    className="w-full h-10 px-3 bg-[#FAF9F6] border border-[#E6E4DF] rounded-lg text-sm outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C] transition-all"
-                   placeholder={config.provider === 'gemini' ? 'gemini-1.5-flash' : config.provider === 'mimo' ? 'mimo-v2.5-pro' : 'gpt-4o'}
+                   placeholder={
+                     config.provider === 'local_llama'
+                       ? t('settings.model_local_placeholder')
+                       : config.provider === 'gemini'
+                         ? 'gemini-1.5-flash'
+                         : config.provider === 'mimo'
+                           ? 'mimo-v2.5-pro'
+                           : 'gpt-4o'
+                   }
                    value={config.model}
                    onChange={e => setConfig({ ...config, model: e.target.value })}
                  />
                </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-mono font-bold text-[#8c8a84] uppercase tracking-wider">{t('settings.api_key')}</label>
-              <input 
-                type="password"
-                className="w-full h-10 px-3 bg-[#FAF9F6] border border-[#E6E4DF] rounded-lg text-sm outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C] transition-all"
-                placeholder="sk-..."
-                value={config.apiKey}
-                onChange={e => setConfig({ ...config, apiKey: e.target.value })}
-              />
-            </div>
+            {config.provider === 'local_llama' ? (
+              <div className="space-y-2">
+                <label className="text-[10px] font-mono font-bold text-[#8c8a84] uppercase tracking-wider">{t('settings.local_gguf_path')}</label>
+                <input
+                  type="text"
+                  className="w-full h-10 px-3 bg-[#FAF9F6] border border-[#E6E4DF] rounded-lg text-sm outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C] transition-all font-mono"
+                  placeholder={t('settings.local_gguf_placeholder')}
+                  value={config.localGgufPath ?? ''}
+                  onChange={e => setConfig({ ...config, localGgufPath: e.target.value })}
+                />
+                <label className="flex items-center gap-2 text-[11px] text-[#5a5a54] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="rounded border-[#E6E4DF]"
+                    checked={config.localEnableThinking ?? false}
+                    onChange={e => setConfig({ ...config, localEnableThinking: e.target.checked })}
+                  />
+                  {t('settings.local_enable_thinking')}
+                </label>
+                <p className="text-[10px] text-[#8c8a84] leading-relaxed">{t('settings.local_llama_hint')}</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <label className="text-[10px] font-mono font-bold text-[#8c8a84] uppercase tracking-wider">{t('settings.api_key')}</label>
+                <input
+                  type="password"
+                  className="w-full h-10 px-3 bg-[#FAF9F6] border border-[#E6E4DF] rounded-lg text-sm outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C] transition-all"
+                  placeholder="sk-..."
+                  value={config.apiKey}
+                  onChange={e => setConfig({ ...config, apiKey: e.target.value })}
+                />
+              </div>
+            )}
 
             {(config.provider === 'custom' || config.provider === 'openai' || config.provider === 'mimo') && (
               <div className="space-y-2">

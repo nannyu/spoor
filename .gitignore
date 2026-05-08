@@ -8,6 +8,13 @@ dist/
 # Tauri build
 src-tauri/target/
 
+# Local toolchain (LLVM installer + extracted libclang for bindgen); do not commit
+.build-tools/
+.llvm-min/
+
+# Vendored llama-cpp-sys-2 patched for MSVC (copy from local cargo registry); optional to commit — large
+src-tauri/third_party/
+
 # Temp scripts
 generate-icons.cjs
 

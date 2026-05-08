@@ -71,7 +71,13 @@ const resources = {
         "metaso_key_hint": "Optional: enables real-time web search in Research Lab for richer, sourced reports.",
         "save_success": "Settings saved.",
         "close": "Close",
-        "save": "Save Configuration"
+        "save": "Save Configuration",
+        "provider_local_llama": "Local GGUF (llama.cpp, desktop)",
+        "local_gguf_path": "GGUF file path",
+        "local_gguf_placeholder": "e.g. C:\\Models\\gemma-4-e4b-it-Q4_K_M.gguf",
+        "local_enable_thinking": "Enable thinking-style chat template (for “thinking” instruction-tuned GGUFs)",
+        "local_llama_hint": "Desktop app only. First build requires LLVM (libclang) + CMake + a C++ toolchain; set LIBCLANG_PATH if bindgen cannot find libclang. CPU inference by default.",
+        "model_local_placeholder": "Display label only (e.g. gemma-4-e4b-it)"
       },
       "ai": {
         "input_placeholder": "Ask AI to draft some ideas or paragraphs...",
@@ -227,7 +233,13 @@ const resources = {
         "metaso_key_hint": "可选：配置后研究实验室将启用联网搜索，生成更丰富的引用报告。",
         "save_success": "设置已保存。",
         "close": "关闭",
-        "save": "保存配置"
+        "save": "保存配置",
+        "provider_local_llama": "本地 GGUF（llama.cpp，仅桌面）",
+        "local_gguf_path": "GGUF 模型文件路径",
+        "local_gguf_placeholder": "例如 C:\\Models\\gemma-4-e4b-it-Q4_K_M.gguf",
+        "local_enable_thinking": "使用带「思考块」的聊天模板（适用于 Thinking 版 instruct GGUF）",
+        "local_llama_hint": "仅 Tauri 桌面版可用。首次编译需安装 LLVM（libclang）、CMake 与 C++ 构建工具；若 bindgen 报错，请设置环境变量 LIBCLANG_PATH。默认使用 CPU 推理。",
+        "model_local_placeholder": "仅作显示备注（如 gemma-4-e4b-it）"
       },
       "ai": {
         "input_placeholder": "让 AI 构思一些想法或段落...",

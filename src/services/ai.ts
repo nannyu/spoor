@@ -126,17 +126,21 @@ async function postOpenAiCompatibleChat(
 }
 
 export type CallAIFn = (params: {
-  config: {
-    provider: string;
-    apiKey: string;
-    baseUrl: string;
-    model: string;
-  };
+  config: AiProviderConfig;
   prompt: string;
   systemInstruction?: string;
   temperature?: number;
   topP?: number;
 }) => Promise<string>;
+
+export type AiProviderConfig = {
+  provider: string;
+  apiKey: string;
+  baseUrl: string;
+  model: string;
+  localGgufPath?: string;
+  localEnableThinking?: boolean;
+};
 
 export async function callUniversalAI({
   config,
@@ -145,12 +149,7 @@ export async function callUniversalAI({
   temperature = 0.7,
   topP = 0.4
 }: {
-  config: {
-    provider: string;
-    apiKey: string;
-    baseUrl: string;
-    model: string;
-  };
+  config: AiProviderConfig;
   prompt: string;
   systemInstruction?: string;
   temperature?: number;
@@ -158,6 +157,38 @@ export async function callUniversalAI({
 }): Promise<string> {
   const apiKeyTrimmed = (config.apiKey ?? '').trim();
   const useUserConfig = Boolean(apiKeyTrimmed);
+
+  if (config.provider === 'local_llama') {
+    if (!isTauriRuntime()) {
+      throw new Error('本地 GGUF（内置 llama.cpp）仅在使用 Tauri 桌面版时可用，网页版请改用在线模型。');
+    }
+    const modelPath = (config.localGgufPath ?? '').trim();
+    if (!modelPath) {
+      throw new Error('请在设置中填写本地 GGUF 模型文件的完整路径。');
+    }
+    console.info(`${LOG_PREFIX} local_llama chat`, {
+      modelPath: modelPath.slice(0, 80) + (modelPath.length > 80 ? '…' : ''),
+      temperature,
+      topP,
+    });
+    const { invoke } = await import('@tauri-apps/api/core');
+    try {
+      return await invoke<string>('local_llama_chat', {
+        modelPath,
+        systemInstruction: systemInstruction ?? null,
+        userMessage: prompt,
+        temperature,
+        topP,
+        maxTokens: 1024,
+        nCtx: 4096,
+        enableThinking: config.localEnableThinking ?? false,
+      });
+    } catch (e) {
+      const msg = formatAiError(e);
+      console.error(`${LOG_PREFIX} local_llama_chat failed`, msg);
+      throw new Error(msg);
+    }
+  }
 
   if (config.provider === 'gemini') {
     const apiKey = useUserConfig ? apiKeyTrimmed : (process.env.GEMINI_API_KEY as string | undefined)?.trim();
