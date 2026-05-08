@@ -381,3 +381,249 @@ fn clean_output(raw: &str) -> String {
     }
     s.trim().to_string()
 }
+
+// ============================================================================
+//                                  Tests
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ---- clean_output ----
+
+    #[test]
+    fn clean_output_strips_known_end_markers() {
+        assert_eq!(clean_output("Hello world [end of text]"), "Hello world");
+        assert_eq!(clean_output("Hi there<end_of_turn>\nmore"), "Hi there");
+        assert_eq!(clean_output("Hi <|im_end|> rest"), "Hi");
+        assert_eq!(clean_output("Hi <|endoftext|>"), "Hi");
+        assert_eq!(clean_output("Hi <|eot_id|> tail"), "Hi");
+    }
+
+    #[test]
+    fn clean_output_passes_through_when_no_marker() {
+        assert_eq!(clean_output("plain output"), "plain output");
+        assert_eq!(clean_output(""), "");
+    }
+
+    #[test]
+    fn clean_output_trims_surrounding_whitespace() {
+        assert_eq!(clean_output("  trimmed  \n\n"), "trimmed");
+        assert_eq!(clean_output("\n\nx[end of text]\n"), "x");
+    }
+
+    #[test]
+    fn clean_output_first_marker_wins_when_multiple() {
+        // 第一个出现的标记决定截断点；后续标记自然也被一起去掉
+        let raw = "foo [end of text] bar <end_of_turn>";
+        assert_eq!(clean_output(raw), "foo");
+    }
+
+    #[test]
+    fn clean_output_handles_chinese_content() {
+        assert_eq!(clean_output("你好，世界 [end of text]"), "你好，世界");
+        assert_eq!(clean_output("我是 Gemma<end_of_turn>"), "我是 Gemma");
+    }
+
+    // ---- head / tail / preview ----
+
+    #[test]
+    fn head_returns_input_when_short_enough() {
+        assert_eq!(head("hi", 10), "hi");
+        assert_eq!(head("", 5), "");
+    }
+
+    #[test]
+    fn head_truncates_long_ascii_with_ellipsis() {
+        assert_eq!(head("abcdefghij", 5), "abcde…");
+    }
+
+    #[test]
+    fn head_respects_utf8_char_boundary() {
+        // "你好世界" 每个字 3 字节，共 12 字节。
+        // max=4 不是 boundary，应回退到 3，截到 "你"。
+        assert_eq!(head("你好世界", 4), "你…");
+        // max=11 不是 boundary，回退到 9 = "你好世"
+        assert_eq!(head("你好世界", 11), "你好世…");
+        // 完整长度 → 不截断
+        assert_eq!(head("你好世界", 12), "你好世界");
+    }
+
+    #[test]
+    fn tail_returns_input_when_short_enough() {
+        assert_eq!(tail("hi", 10), "hi");
+        assert_eq!(tail("", 5), "");
+    }
+
+    #[test]
+    fn tail_keeps_ending_with_ellipsis_prefix() {
+        assert_eq!(tail("abcdefghij", 5), "…fghij");
+    }
+
+    #[test]
+    fn tail_respects_utf8_char_boundary() {
+        // "你好世界" 12 字节；max=4，start=8 不是 boundary → 推到 9 = "界"
+        assert_eq!(tail("你好世界", 4), "…界");
+        // max=11 → start=1 不是 boundary → 推到 3 = "好世界"
+        assert_eq!(tail("你好世界", 11), "…好世界");
+    }
+
+    #[test]
+    fn preview_replaces_newlines_with_visible_marker() {
+        assert_eq!(preview("a\nb\nc", 100), "a⏎b⏎c");
+    }
+
+    #[test]
+    fn preview_truncates_by_chars_not_bytes() {
+        let s = "你好世界123";
+        // 7 chars total
+        assert_eq!(preview(s, 4), "你好世界…");
+        assert_eq!(preview(s, 7), "你好世界123");
+        assert_eq!(preview(s, 100), "你好世界123");
+    }
+
+    // ---- 历法计算 ----
+
+    #[test]
+    fn is_leap_known_years() {
+        assert!(is_leap(2000), "2000 是世纪闰年");
+        assert!(is_leap(2024));
+        assert!(is_leap(1972));
+        assert!(!is_leap(1900), "1900 不是闰年（百年但非 400 倍）");
+        assert!(!is_leap(2100));
+        assert!(!is_leap(2023));
+    }
+
+    #[test]
+    fn unix_to_ymdhms_epoch() {
+        assert_eq!(unix_to_ymdhms(0), (1970, 1, 1, 0, 0, 0));
+    }
+
+    #[test]
+    fn unix_to_ymdhms_one_day_later() {
+        assert_eq!(unix_to_ymdhms(86_400), (1970, 1, 2, 0, 0, 0));
+    }
+
+    #[test]
+    fn unix_to_ymdhms_one_hour() {
+        assert_eq!(unix_to_ymdhms(3600), (1970, 1, 1, 1, 0, 0));
+    }
+
+    #[test]
+    fn unix_to_ymdhms_known_timestamp() {
+        // 2024-01-01 00:00:00 UTC = 1704067200
+        assert_eq!(unix_to_ymdhms(1_704_067_200), (2024, 1, 1, 0, 0, 0));
+        // 2024-02-29 12:34:56 UTC = 1709210096（闰日）
+        assert_eq!(unix_to_ymdhms(1_709_210_096), (2024, 2, 29, 12, 34, 56));
+        // 2026-05-08 15:30:45 UTC = 1778254245
+        assert_eq!(unix_to_ymdhms(1_778_254_245), (2026, 5, 8, 15, 30, 45));
+    }
+
+    // ---- 日志路径 ----
+
+    #[test]
+    fn log_path_under_temp_dir() {
+        let p = log_path();
+        assert!(p.ends_with("scribe_llama.log"), "got: {}", p.display());
+        // 应该在系统临时目录下
+        assert!(p.starts_with(std::env::temp_dir()), "got: {}", p.display());
+    }
+
+    // ---- find_llama_cli：用临时假文件验证 LLAMA_CLI_PATH 优先级 ----
+    //
+    // 注意：env var 是进程全局，cargo test 默认并行；这两个用例用同一个变量名，
+    // 必须串行。我们把它们合到一个测试里手动顺序执行。
+
+    #[test]
+    fn find_llama_cli_env_var_takes_precedence() {
+        // 1) 设置一个真实存在的临时文件 → 应该被命中
+        let tmp = std::env::temp_dir().join("scribe_test_llama_cli.exe");
+        std::fs::write(&tmp, b"fake binary").expect("write tmp");
+
+        std::env::set_var("LLAMA_CLI_PATH", &tmp);
+        let found = find_llama_cli().expect("应该找到环境变量指向的文件");
+        assert_eq!(found, tmp);
+
+        // 2) 设置一个不存在的路径 → 函数应回退到默认搜索（结果取决于环境，
+        //    但至少不能 panic / 不能错误地返回这个不存在的路径）
+        let missing = std::path::PathBuf::from(r"C:\definitely\does\not\exist\llama.exe");
+        std::env::set_var("LLAMA_CLI_PATH", &missing);
+        if let Ok(p) = find_llama_cli() {
+            assert_ne!(p, missing, "不存在的 env path 不应被返回");
+        }
+        // 也接受 Err（开发机没装 llama-cli 是正常的）
+
+        std::env::remove_var("LLAMA_CLI_PATH");
+        std::fs::remove_file(&tmp).ok();
+    }
+
+    // ---- 日志写入：log_section 实际能落盘 ----
+
+    #[test]
+    fn log_section_writes_to_disk() {
+        let p = log_path();
+        // 先清掉可能已有的日志，便于断言新内容
+        std::fs::remove_file(&p).ok();
+
+        log_section("UNIT_TEST", "marker_string_xyz_123");
+
+        let content = std::fs::read_to_string(&p).expect("日志文件应被创建");
+        assert!(content.contains("UNIT_TEST"), "section title 应写入");
+        assert!(content.contains("marker_string_xyz_123"), "body 应写入");
+        // 时间戳带 'Z' 后缀
+        assert!(content.contains("Z]"), "应包含时间戳：{content}");
+    }
+
+    // ---- LocalLlamaChatPayload 反序列化：验证前端 camelCase → Rust snake_case ----
+
+    #[test]
+    fn payload_deserializes_from_camelcase_json() {
+        let json = serde_json::json!({
+            "modelPath": "D:/m.gguf",
+            "systemInstruction": "be brief",
+            "userMessage": "hi",
+            "temperature": 0.5,
+            "topP": 0.8,
+            "maxTokens": 256,
+            "nCtx": 1024,
+            "enableThinking": true,
+        });
+        let p: LocalLlamaChatPayload = serde_json::from_value(json).expect("反序列化应成功");
+        assert_eq!(p.model_path, "D:/m.gguf");
+        assert_eq!(p.system_instruction.as_deref(), Some("be brief"));
+        assert_eq!(p.user_message, "hi");
+        assert_eq!(p.temperature, Some(0.5));
+        assert_eq!(p.top_p, Some(0.8));
+        assert_eq!(p.max_tokens, Some(256));
+        assert_eq!(p.n_ctx, Some(1024));
+        assert_eq!(p.enable_thinking, Some(true));
+    }
+
+    #[test]
+    fn payload_allows_optional_fields_to_be_absent() {
+        let json = serde_json::json!({
+            "modelPath": "D:/m.gguf",
+            "userMessage": "hi",
+        });
+        let p: LocalLlamaChatPayload = serde_json::from_value(json).expect("反序列化应成功");
+        assert_eq!(p.model_path, "D:/m.gguf");
+        assert!(p.system_instruction.is_none());
+        assert!(p.temperature.is_none());
+        assert!(p.top_p.is_none());
+        assert!(p.max_tokens.is_none());
+        assert!(p.n_ctx.is_none());
+        assert!(p.enable_thinking.is_none());
+    }
+
+    #[test]
+    fn payload_rejects_snake_case_keys() {
+        // 防回归：之前踩过坑——前端如果误传 snake_case 应该拒绝
+        let json = serde_json::json!({
+            "model_path": "D:/m.gguf",
+            "user_message": "hi",
+        });
+        let r: Result<LocalLlamaChatPayload, _> = serde_json::from_value(json);
+        assert!(r.is_err(), "snake_case 字段不应被识别");
+    }
+}

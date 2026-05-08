@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const mockGenerateContent = vi.fn().mockResolvedValue({ text: 'Gemini response' });
 
@@ -6,6 +6,11 @@ vi.mock('@google/genai', () => ({
   GoogleGenAI: class MockGoogleGenAI {
     models = { generateContent: mockGenerateContent };
   },
+}));
+
+const mockInvoke = vi.fn();
+vi.mock('@tauri-apps/api/core', () => ({
+  invoke: (...args: unknown[]) => mockInvoke(...args),
 }));
 
 import { callUniversalAI } from '../../src/services/ai';
@@ -217,6 +222,184 @@ describe('callUniversalAI', () => {
           prompt: 'Hello',
         })
       ).rejects.toThrow('Forbidden');
+    });
+  });
+
+  // --- Local llama (Tauri subprocess) ---
+  describe('local_llama provider', () => {
+    const localBase = {
+      ...baseConfig,
+      provider: 'local_llama',
+      apiKey: '',
+      localGgufPath: 'D:\\Models\\m.gguf',
+    };
+
+    let savedTauri: unknown;
+
+    beforeEach(() => {
+      savedTauri = (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__;
+      (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ = { __mock: true };
+      mockInvoke.mockReset();
+    });
+
+    afterEach(() => {
+      if (savedTauri === undefined) {
+        delete (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__;
+      } else {
+        (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ = savedTauri;
+      }
+    });
+
+    it('在网页环境（无 __TAURI_INTERNALS__）时应抛错而不调用 invoke', async () => {
+      delete (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__;
+      await expect(
+        callUniversalAI({ config: localBase, prompt: 'hi' })
+      ).rejects.toThrow('Tauri 桌面版');
+      expect(mockInvoke).not.toHaveBeenCalled();
+    });
+
+    it('localGgufPath 为空时抛错（不调用任何 Tauri 命令）', async () => {
+      await expect(
+        callUniversalAI({
+          config: { ...localBase, localGgufPath: '' },
+          prompt: 'hi',
+        })
+      ).rejects.toThrow('请在设置中填写本地 GGUF');
+      expect(mockInvoke).not.toHaveBeenCalled();
+    });
+
+    it('localGgufPath 仅含空格时也视为空', async () => {
+      await expect(
+        callUniversalAI({
+          config: { ...localBase, localGgufPath: '   \t  ' },
+          prompt: 'hi',
+        })
+      ).rejects.toThrow('请在设置中填写本地 GGUF');
+    });
+
+    it('调用 local_llama_chat 时 payload 形状与字段映射正确', async () => {
+      mockInvoke
+        .mockResolvedValueOnce('D:\\TEMP\\scribe_llama.log') // get_local_llama_log_path
+        .mockResolvedValueOnce('local response'); // local_llama_chat
+
+      const result = await callUniversalAI({
+        config: { ...localBase, localEnableThinking: true },
+        prompt: 'Hello local',
+        systemInstruction: 'be brief',
+        temperature: 0.5,
+        topP: 0.8,
+      });
+
+      expect(result).toBe('local response');
+
+      // 第一次调用：拿日志路径
+      expect(mockInvoke).toHaveBeenNthCalledWith(1, 'get_local_llama_log_path');
+
+      // 第二次调用：实际推理，payload 形状必须严格匹配 Rust 端 LocalLlamaChatPayload
+      expect(mockInvoke).toHaveBeenNthCalledWith(2, 'local_llama_chat', {
+        payload: {
+          modelPath: 'D:\\Models\\m.gguf',
+          systemInstruction: 'be brief',
+          userMessage: 'Hello local',
+          temperature: 0.5,
+          topP: 0.8,
+          maxTokens: 256,
+          nCtx: 1024,
+          enableThinking: true,
+        },
+      });
+    });
+
+    it('未提供 systemInstruction 时 payload 中应为 null（不能是 undefined）', async () => {
+      mockInvoke
+        .mockResolvedValueOnce('logpath')
+        .mockResolvedValueOnce('out');
+
+      await callUniversalAI({ config: localBase, prompt: 'hi' });
+
+      const chatCall = mockInvoke.mock.calls.find((c) => c[0] === 'local_llama_chat');
+      const payload = (chatCall?.[1] as { payload: Record<string, unknown> } | undefined)?.payload;
+      expect(payload?.systemInstruction).toBeNull();
+    });
+
+    it('localEnableThinking 未设置时默认 false', async () => {
+      mockInvoke
+        .mockResolvedValueOnce('logpath')
+        .mockResolvedValueOnce('out');
+
+      await callUniversalAI({ config: localBase, prompt: 'hi' });
+
+      const chatCall = mockInvoke.mock.calls.find((c) => c[0] === 'local_llama_chat');
+      const payload = (chatCall?.[1] as { payload: Record<string, unknown> } | undefined)?.payload;
+      expect(payload?.enableThinking).toBe(false);
+    });
+
+    it('使用调用方传入的 temperature/topP；不传则用默认 0.7/0.4', async () => {
+      mockInvoke
+        .mockResolvedValueOnce('logpath')
+        .mockResolvedValueOnce('out');
+
+      await callUniversalAI({ config: localBase, prompt: 'hi' });
+
+      const chatCall = mockInvoke.mock.calls.find((c) => c[0] === 'local_llama_chat');
+      const payload = (chatCall?.[1] as { payload: Record<string, unknown> } | undefined)?.payload;
+      expect(payload?.temperature).toBe(0.7);
+      expect(payload?.topP).toBe(0.4);
+    });
+
+    it('推理失败时错误消息附带日志路径', async () => {
+      mockInvoke
+        .mockResolvedValueOnce('D:\\TEMP\\scribe_llama.log')
+        .mockRejectedValueOnce(new Error('cudaMalloc failed: out of memory'));
+
+      await expect(
+        callUniversalAI({ config: localBase, prompt: 'hi' })
+      ).rejects.toThrow(/out of memory[\s\S]*详细日志[\s\S]*scribe_llama\.log/);
+    });
+
+    it('get_local_llama_log_path 调用失败时不应中断主流程', async () => {
+      // 第一次（拿日志路径）失败，第二次（实际推理）成功
+      mockInvoke
+        .mockRejectedValueOnce(new Error('command not found'))
+        .mockResolvedValueOnce('still works');
+
+      const result = await callUniversalAI({ config: localBase, prompt: 'hi' });
+      expect(result).toBe('still works');
+    });
+
+    it('日志路径不可得且推理也失败时，错误消息不应带空 suffix', async () => {
+      mockInvoke
+        .mockRejectedValueOnce(new Error('no log cmd'))
+        .mockRejectedValueOnce(new Error('inference exploded'));
+
+      await expect(
+        callUniversalAI({ config: localBase, prompt: 'hi' })
+      ).rejects.toThrow(/^inference exploded$/);
+    });
+
+    it('Tauri 端返回非 Error 异常（字符串/对象）也能正确格式化', async () => {
+      mockInvoke
+        .mockResolvedValueOnce('logpath')
+        .mockRejectedValueOnce('plain string error from rust');
+
+      await expect(
+        callUniversalAI({ config: localBase, prompt: 'hi' })
+      ).rejects.toThrow(/plain string error from rust[\s\S]*详细日志/);
+    });
+
+    it('modelPath 前后含空格时应被 trim 后再下发', async () => {
+      mockInvoke
+        .mockResolvedValueOnce('logpath')
+        .mockResolvedValueOnce('out');
+
+      await callUniversalAI({
+        config: { ...localBase, localGgufPath: '   D:\\Models\\m.gguf  \t' },
+        prompt: 'hi',
+      });
+
+      const chatCall = mockInvoke.mock.calls.find((c) => c[0] === 'local_llama_chat');
+      const payload = (chatCall?.[1] as { payload: Record<string, unknown> } | undefined)?.payload;
+      expect(payload?.modelPath).toBe('D:\\Models\\m.gguf');
     });
   });
 
