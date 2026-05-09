@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useSeedData } from '../../src/hooks/useSeedData';
+import { resetBuiltinAgentsInDb } from '../../src/dev/resetBuiltinAgents';
 import { db } from '../../src/db';
+import i18n from '../../src/i18n';
 
 describe('useSeedData', () => {
   beforeEach(async () => {
@@ -78,5 +80,29 @@ describe('useSeedData', () => {
     // 因为 nodeCount=0 且 totalCount<=6，种子逻辑仍会创建 nodes 和 articles
     const nodes = await db.nodes.toArray();
     expect(nodes.length).toBeGreaterThanOrEqual(3);
+  });
+
+  /**
+   * 开发者本地同步：等同于从 IndexedDB 删除内置行后再刷新，`useSeedData` 应按当前语言重写字段。
+   * @see `globalThis.__SCRIBE_RESET_BUILTIN_AGENTS`（仅 dev）。
+   */
+  it('清空内置 Agent 后为缺失 ID 按 i18n 重灌默认值', async () => {
+    await i18n.changeLanguage('en');
+    await db.agents.put({
+      id: 'futurist',
+      name: 'The Futurist (stale)',
+      role: 'Visionary (stale)',
+      prompt: 'stale',
+      temperature: 0.9,
+      creativity: 0.9,
+    });
+    await resetBuiltinAgentsInDb();
+    renderHook(() => useSeedData());
+    await new Promise((r) => setTimeout(r, 300));
+
+    const row = await db.agents.get('futurist');
+    expect(row?.name).toBe(i18n.t('agents.defaults.futurist.name'));
+    expect(row?.role).toBe(i18n.t('agents.defaults.futurist.role'));
+    expect(row?.prompt).toBe(i18n.t('agents.defaults.futurist.prompt'));
   });
 });
