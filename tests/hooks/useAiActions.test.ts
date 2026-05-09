@@ -239,6 +239,47 @@ describe('useAiActions', () => {
 
       expect(callUniversalAI).not.toHaveBeenCalled();
     });
+
+    it('传入 temperature、topP，且 system 含 Markdown 知识块', async () => {
+      const agent: AgentConfig = {
+        id: 'a1',
+        name: 'Test',
+        role: 'R',
+        prompt: 'You are test',
+        temperature: 0.3,
+        creativity: 0.9,
+        knowledgeMarkdownFiles: [{ name: 'doc.md', content: 'Hello knowledge' }],
+      };
+
+      const { result } = renderHook(() =>
+        useTestAiActions({
+          agentConfigs: [agent],
+          dynamicNodes: [
+            { id: 'agent-node', type: 'agent', agentConfigId: 'a1', x: 0, y: 0, canvasId: 'default' },
+          ],
+        }),
+      );
+
+      act(() => {
+        const el = document.createElement('div');
+        el.appendChild(document.createTextNode('context body'));
+        result.current.nodesRef.current.ctx1 = el;
+      });
+
+      await act(async () => {
+        await result.current.triggerAgentAnalysis('a1', 'agent-node', 'ctx1');
+      });
+
+      expect(callUniversalAI).toHaveBeenCalledTimes(1);
+      expect(callUniversalAI).toHaveBeenCalledWith(
+        expect.objectContaining({
+          temperature: 0.3,
+          topP: 0.9,
+          systemInstruction: expect.stringMatching(/Markdown knowledge base[\s\S]*doc\.md[\s\S]*Hello knowledge/),
+          prompt: expect.stringMatching(/context body/),
+        }),
+      );
+    });
   });
 
   describe('加载状态标志', () => {

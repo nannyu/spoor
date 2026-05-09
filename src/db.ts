@@ -34,6 +34,12 @@ export interface Article {
   type: string;
 }
 
+/** Markdown 知识：文件内容持久化在 IndexedDB，调用模型时整段注入 system（非 RAG）。 */
+export interface AgentMarkdownKnowledgeFile {
+  name: string;
+  content: string;
+}
+
 export interface AgentConfig {
   id: string;
   name: string;
@@ -42,6 +48,7 @@ export interface AgentConfig {
   temperature?: number;
   creativity?: number;
   color?: string;
+  knowledgeMarkdownFiles?: AgentMarkdownKnowledgeFile[];
 }
 
 export interface Edge {

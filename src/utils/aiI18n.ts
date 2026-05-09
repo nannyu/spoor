@@ -1,6 +1,7 @@
 import i18n from '../i18n';
 import type { AgentConfig } from '../db';
 import { LEGACY_AGENT_PROMPTS, SYSTEM_AGENT_IDS, type SystemAgentId } from '../constants/defaultAgents';
+import { formatAgentMarkdownKnowledgeBlock } from './agentMarkdownKnowledge';
 
 function norm(s: string): string {
   return s.replace(/\s+/g, ' ').trim();
@@ -64,4 +65,17 @@ export function resolveAgentSystemPrompt(agent: AgentConfig): string {
     return i18n.t(`agents.defaults.${id}.prompt`);
   }
   return agent.prompt ?? '';
+}
+
+/**
+ * 人设场景的完整 system：语言指令 + 解析后的系统提示词（可选 fallback）+ Markdown 知识块。
+ */
+export function buildAgentSystemInstruction(agent: AgentConfig, options?: { fallbackPrompt?: string }): string {
+  const resolved = resolveAgentSystemPrompt(agent).trim();
+  const promptPart = resolved || options?.fallbackPrompt?.trim() || undefined;
+  return combineSystemParts(
+    getLocaleDirective(),
+    promptPart,
+    formatAgentMarkdownKnowledgeBlock(agent),
+  );
 }

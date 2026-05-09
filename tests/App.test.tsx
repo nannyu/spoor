@@ -72,7 +72,7 @@ vi.mock('react-i18next', () => ({
         'agents.persona_name': '人格名称',
         'agents.role_specialty': '角色专长',
         'agents.system_prompt': '系统提示词',
-        'agents.knowledge_base': '知识集群 (预览)',
+        'agents.knowledge_base': '知识集群',
         'agents.model_params': '模型参数',
         'agents.temp': '采样温度',
         'agents.creativity': '创造力',

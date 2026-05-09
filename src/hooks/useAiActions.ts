@@ -10,7 +10,7 @@ import { parseThreadWebSearchIntent } from '../utils/webSearchCommand';
 import { shouldPreflightToolbarIntent } from '../utils/toolbarIntentGate';
 import { analyzeToolbarIntentPreflight } from '../services/toolbarIntentClarification';
 import { getCanvasCenterPosition } from '../utils/canvas';
-import { combineSystemParts, getLocaleDirective, resolveAgentSystemPrompt } from '../utils/aiI18n';
+import { buildAgentSystemInstruction, combineSystemParts, getLocaleDirective } from '../utils/aiI18n';
 import { db } from '../db';
 
 interface UseAiActionsParams {
@@ -119,10 +119,9 @@ export function useAiActions({
       const text = await callUniversalAI({
         config: aiConfig,
         prompt: t('ai.prompts.agentContext', { content: contextText }),
-        systemInstruction: combineSystemParts(
-          getLocaleDirective(),
-          resolveAgentSystemPrompt(agentConfig),
-        ),
+        systemInstruction: buildAgentSystemInstruction(agentConfig),
+        temperature: agentConfig.temperature ?? 0.7,
+        topP: agentConfig.creativity ?? 0.4,
       });
 
       if (text) {

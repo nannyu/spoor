@@ -10,11 +10,22 @@ import {
   X,
   FileText,
   Loader2,
+  Trash2,
 } from 'lucide-react';
-import type { AgentConfig } from '../db';
+import type { AgentConfig, AgentMarkdownKnowledgeFile } from '../db';
 import type { CallAIFn } from '../types';
 import { formatAiError } from '../services/ai';
-import { combineSystemParts, getLocaleDirective, resolveAgentLocalizedName, resolveAgentLocalizedRole, resolveAgentSystemPrompt } from '../utils/aiI18n';
+import {
+  buildAgentSystemInstruction,
+  getLocaleDirective,
+  resolveAgentLocalizedName,
+  resolveAgentLocalizedRole,
+  resolveAgentSystemPrompt,
+} from '../utils/aiI18n';
+import {
+  AGENT_KNOWLEDGE_MAX_FILE_BYTES,
+  isAgentMarkdownFilename,
+} from '../utils/agentMarkdownKnowledge';
 
 export interface AgentsStudioProps {
   agentConfigs: AgentConfig[];
@@ -40,6 +51,7 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
   const [isSandboxLoading, setIsSandboxLoading] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const knowledgeFileInputRef = useRef<HTMLInputElement>(null);
 
   const activeAgent = agentConfigs.find((a) => a.id === activeAgentId) || agentConfigs[0];
 
@@ -66,16 +78,78 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
     setActiveAgentId(newId);
   };
 
-  const handleUpdateActiveAgent = (field: string, value: string | number) => {
-    if (!activeAgentId) return;
-    setAgentConfigs(agentConfigs.map((a) => a.id === activeAgentId ? { ...a, [field]: value } : a));
-    
+  const touchSaveStatus = () => {
     setSaveStatus('Saving...');
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
       setSaveStatus('Saved');
       setTimeout(() => setSaveStatus(''), 2000);
     }, 800);
+  };
+
+  const handleUpdateActiveAgent = (field: string, value: string | number) => {
+    if (!activeAgentId) return;
+    setAgentConfigs(agentConfigs.map((a) => (a.id === activeAgentId ? { ...a, [field]: value } : a)));
+    touchSaveStatus();
+  };
+
+  const setActiveAgentKnowledgeFiles = (next: AgentMarkdownKnowledgeFile[] | undefined) => {
+    if (!activeAgentId) return;
+    setAgentConfigs(
+      agentConfigs.map((a) =>
+        a.id === activeAgentId ? { ...a, knowledgeMarkdownFiles: next?.length ? next : undefined } : a,
+      ),
+    );
+    touchSaveStatus();
+  };
+
+  const openKnowledgeFilePicker = () => knowledgeFileInputRef.current?.click();
+
+  const readOneFileAsText = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result ?? ''));
+      reader.onerror = () => reject(new Error('read'));
+      reader.readAsText(file, 'UTF-8');
+    });
+
+  const handleKnowledgeFilesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const list = e.target.files;
+    e.target.value = '';
+    if (!list?.length || !activeAgentId || !activeAgent) return;
+
+    const errors: string[] = [];
+    const merged = new Map((activeAgent.knowledgeMarkdownFiles ?? []).map((f) => [f.name, f]));
+
+    for (const file of Array.from(list)) {
+      if (!isAgentMarkdownFilename(file.name)) {
+        errors.push(t('agents.knowledge_not_markdown', { name: file.name }));
+        continue;
+      }
+      if (file.size > AGENT_KNOWLEDGE_MAX_FILE_BYTES) {
+        errors.push(t('agents.knowledge_file_too_large', { name: file.name }));
+        continue;
+      }
+      try {
+        const content = await readOneFileAsText(file);
+        merged.set(file.name, { name: file.name, content });
+      } catch {
+        errors.push(t('agents.knowledge_read_failed', { name: file.name }));
+      }
+    }
+
+    if (errors.length) {
+      alert(errors.join('\n'));
+    }
+    if (merged.size > 0) {
+      setActiveAgentKnowledgeFiles(Array.from(merged.values()));
+    }
+  };
+
+  const removeKnowledgeFile = (fileName: string) => {
+    if (!activeAgent) return;
+    const next = (activeAgent.knowledgeMarkdownFiles ?? []).filter((f) => f.name !== fileName);
+    setActiveAgentKnowledgeFiles(next.length ? next : undefined);
   };
 
   const handleEnhancePrompt = async () => {
@@ -90,6 +164,8 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
           role: resolveAgentLocalizedRole(activeAgent),
           prompt: resolveAgentSystemPrompt(activeAgent),
         }),
+        temperature: activeAgent.temperature ?? 0.7,
+        topP: activeAgent.creativity ?? 0.4,
       });
       
       let enhanced = newPrompt.trim();
@@ -117,12 +193,11 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
       const responseText = await callAI({
         config: aiConfig,
         prompt: userMsg,
-        systemInstruction: combineSystemParts(
-          getLocaleDirective(),
-          resolveAgentSystemPrompt(activeAgent) || t('agents.studio.fallback_assistant'),
-        ),
-        temperature: activeAgent.temperature || 0.7,
-        topP: activeAgent.creativity || 0.4
+        systemInstruction: buildAgentSystemInstruction(activeAgent, {
+          fallbackPrompt: t('agents.studio.fallback_assistant'),
+        }),
+        temperature: activeAgent.temperature ?? 0.7,
+        topP: activeAgent.creativity ?? 0.4,
       });
       setSandboxMessages(prev => [...prev, { role: 'model', text: responseText }]);
     } catch (error) {
@@ -283,24 +358,66 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="md:col-span-2 p-6 bg-white border border-[#E6E4DF] rounded-xl space-y-4 shadow-sm">
+                      <input
+                        ref={knowledgeFileInputRef}
+                        type="file"
+                        accept=".md,.markdown,text/markdown,text/x-markdown"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => void handleKnowledgeFilesChange(e)}
+                      />
                       <div className="flex justify-between items-center">
-                        <h4 className="font-sans font-bold text-[#1a1a1a]">Custom Knowledge Base</h4>
-                        <button className="text-xs text-[#C2410C] font-bold hover:underline">Manage Files</button>
+                        <h4 className="font-sans font-bold text-[#1a1a1a]">{t('agents.knowledge_custom_title')}</h4>
+                        <button
+                          type="button"
+                          onClick={openKnowledgeFilePicker}
+                          className="text-xs text-[#C2410C] font-bold hover:underline"
+                        >
+                          {t('agents.knowledge_manage_files')}
+                        </button>
                       </div>
-                  <div className="space-y-2 opacity-50 pointer-events-none">
-                    <div className="flex items-center justify-between p-3 bg-[#F4F1ED] rounded-lg border border-[#E6E4DF]">
-                      <div className="flex items-center gap-3">
-                        <FileText className="w-4 h-4 text-[#8c8a84]" />
-                        <span className="text-sm font-sans font-medium text-[#1a1a1a]">knowledge_base_concept.pdf</span>
+                      <p className="text-[11px] text-[#8c8a84] font-sans leading-relaxed">{t('agents.knowledge_hint')}</p>
+                      <div className="space-y-2 min-h-[3rem]">
+                        {(activeAgent.knowledgeMarkdownFiles ?? []).length === 0 ? (
+                          <p className="text-sm text-[#8c8a84] font-sans py-2">{t('agents.knowledge_empty')}</p>
+                        ) : (
+                          (activeAgent.knowledgeMarkdownFiles ?? []).map((f) => (
+                            <div
+                              key={f.name}
+                              className="flex items-center justify-between gap-2 p-3 bg-[#F4F1ED] rounded-lg border border-[#E6E4DF]"
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <FileText className="w-4 h-4 text-[#8c8a84] shrink-0" />
+                                <span className="text-sm font-sans font-medium text-[#1a1a1a] truncate" title={f.name}>
+                                  {f.name}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="text-[10px] text-[#8c8a84] font-mono">
+                                  {t('agents.knowledge_chars', { count: f.content.length })}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => removeKnowledgeFile(f.name)}
+                                  className="p-1.5 rounded-md text-[#8c8a84] hover:text-[#ef4444] hover:bg-[#fee2e2] transition-colors"
+                                  aria-label={t('agents.knowledge_remove_file', { name: f.name })}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                        )}
                       </div>
-                      <span className="text-[10px] text-[#8c8a84] font-mono">1.2 MB</span>
-                    </div>
-                  </div>
-                  <div className="pt-4 border-t border-[#E6E4DF] flex items-center justify-center">
-                    <button className="flex items-center gap-2 text-[#C2410C] hover:text-[#9a3412] font-sans text-sm font-bold transition-colors">
-                      <Plus className="w-4 h-4" /> {t('agents.knowledge_base').split(' (')[0]}
-                    </button>
-                  </div>
+                      <div className="pt-4 border-t border-[#E6E4DF] flex items-center justify-center">
+                        <button
+                          type="button"
+                          onClick={openKnowledgeFilePicker}
+                          className="flex items-center gap-2 text-[#C2410C] hover:text-[#9a3412] font-sans text-sm font-bold transition-colors"
+                        >
+                          <Plus className="w-4 h-4" /> {t('agents.knowledge_add_md')}
+                        </button>
+                      </div>
                     </div>
                     <div className="p-6 bg-white text-[#1a1a1a] border border-[#E6E4DF] rounded-xl flex flex-col justify-between shadow-sm">
                       <div>
@@ -335,7 +452,7 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
                         </div>
                       </div>
                       <div className="text-[10px] font-mono text-[#8c8a84] mt-6">
-                          Optimized for specific personas
+                        {t('agents.model_params_footer')}
                       </div>
                     </div>
                   </div>
