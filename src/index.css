@@ -6,6 +6,17 @@
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
 }
 
+@layer base {
+  /* Hide scrollbars while keeping wheel / touch / keyboard scroll (WebView + desktop). */
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @layer utilities {
   .paper-texture {
     background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBeFUe1Z_LYXcdCYLvjT4ouawVQVL-V44Q0SMo_g3m0iP3sb14qgm5KqL8D5fd6kuWSWK_UvHWGk5y6Db6_h_CKdqaRTMt41n9H_LXcZxA7k06ELWjOfB9ywZ7TUx7IG5Avy4ZPmyo5W0WDoTluv9KFzK1vs4fW6UTiSgbk6O_WIeMi74RWOEqDLr9_P_sAIOUR-KShB8ZpGNPpv2-Y5Z_hWMxVpF5Z1QkqRGXQtM8EFeEUq3S00rn18UXLIO5dNbnrdBvvfGWP5rQ');

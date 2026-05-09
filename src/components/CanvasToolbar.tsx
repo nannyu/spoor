@@ -12,7 +12,7 @@ import {
 import type { AgentConfig } from '../db';
 import { db } from '../db';
 import { getCanvasCenterPosition } from '../utils/canvas';
-import { resolveAgentLocalizedName, resolveAgentLocalizedRole } from '../utils/aiI18n';
+import { resolveAgentLocalizedName } from '../utils/aiI18n';
 
 export interface CanvasToolbarProps {
   isToolbarAiLoading: boolean;
@@ -65,12 +65,9 @@ export function CanvasToolbar({
                   <button key={agent.id} onClick={async () => {
                     const { x, y } = getCanvasCenterPosition(transformRef.current);
                     await db.nodes.add({ id: crypto.randomUUID(), canvasId: activeCanvasId, type: 'agent', agentConfigId: agent.id, x, y });
-                  }} className="text-left px-3 py-2 text-sm text-[#1a1a1a] hover:bg-[#F4F1ED] rounded-lg mb-1 flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-[#C2410C]"></div>
-                    <div>
-                      <div className="font-bold">{resolveAgentLocalizedName(agent)}</div>
-                      <div className="text-[10px] text-[#5a5a54] leading-tight">{resolveAgentLocalizedRole(agent)}</div>
-                    </div>
+                  }} className="text-left px-3 py-2 text-sm text-[#1a1a1a] hover:bg-[#F4F1ED] rounded-lg mb-1 flex items-center gap-2 min-w-0">
+                    <div className="w-2 h-2 rounded-full bg-[#C2410C] shrink-0"></div>
+                    <span className="font-bold truncate">{resolveAgentLocalizedName(agent)}</span>
                   </button>
                 ))}
               </div>

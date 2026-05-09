@@ -249,9 +249,8 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
                   <div className="w-10 h-10 rounded-lg bg-[#EAE7E2] flex items-center justify-center">
                     <Bot className={`w-5 h-5 ${activeAgentId === agent.id ? 'text-[#C2410C]' : 'text-[#8c8a84]'}`} />
                   </div>
-                  <div>
-                    <h4 className={`font-bold ${activeAgentId === agent.id ? 'text-[#1a1a1a]' : 'text-[#5a5a54]'}`}>{resolveAgentLocalizedName(agent)}</h4>
-                    <span className="text-[10px] bg-[#E6E4DF] text-[#5a5a54] px-1.5 py-0.5 rounded uppercase tracking-wider font-mono">{resolveAgentLocalizedRole(agent)}</span>
+                  <div className="min-w-0">
+                    <h4 className={`font-bold truncate ${activeAgentId === agent.id ? 'text-[#1a1a1a]' : 'text-[#5a5a54]'}`}>{resolveAgentLocalizedName(agent)}</h4>
                   </div>
                 </div>
               </div>
