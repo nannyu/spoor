@@ -144,25 +144,40 @@ export function useAiActions({
   };
 
   const runToolbarAiGeneration = async (request: string) => {
-    const connectedNodeIds = new Set<string>();
-    edges.forEach((e) => {
-      connectedNodeIds.add(e.from);
-      connectedNodeIds.add(e.to);
-    });
+    if (selectedNodes.size === 0) {
+      const text = await callUniversalAI({
+        config: aiConfig,
+        systemInstruction: combineSystemParts(
+          t('ai.prompts.toolbarBarePersona'),
+          getLocaleDirective(),
+        ),
+        prompt: request,
+      });
+
+      if (text) {
+        const { x, y } = getCanvasCenterPosition(transformRef.current);
+        await db.nodes.add({ id: crypto.randomUUID(), canvasId: activeCanvasId, type: 'ai', content: text, x, y });
+        setAiPrompt('');
+      }
+      return;
+    }
 
     let contextText = '';
     const fragmentLabel = t('ai.prompts.context_fragment_label');
-    connectedNodeIds.forEach((id) => {
+    for (const id of Array.from(selectedNodes)) {
       const el = nodesRef.current[id];
       if (el) {
         contextText += fragmentLabel + (el.innerText || '');
       }
-    });
+    }
 
     const text = await callUniversalAI({
       config: aiConfig,
-      systemInstruction: getLocaleDirective(),
-      prompt: t('ai.prompts.toolbar', { context: contextText, request }),
+      systemInstruction: combineSystemParts(
+        t('ai.prompts.toolbarWithNotesSystem'),
+        getLocaleDirective(),
+      ),
+      prompt: t('ai.prompts.toolbarWithNotesUser', { context: contextText, request }),
     });
 
     if (text) {

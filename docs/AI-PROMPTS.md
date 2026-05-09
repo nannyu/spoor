@@ -14,8 +14,10 @@
 |------|------|
 | **触发** | 侧边栏「合成」/`handlePublish`，需选中若干节点 |
 | **代码** | `src/hooks/useAiActions.ts` → `handlePublish` |
-| **系统提示词** | *无* |
-| **用户提示词** | 固定前缀 + 所选节点文本拼接： |
+| **系统提示词** | [`getLocaleDirective()`](src/utils/aiI18n.ts)（界面语言：`localeDirective`） |
+| **用户提示词** | `ai.prompts.publish`（中英文资源）+ `{{content}}` 所选节点文本： |
+
+英文结构示例：
 
 ```
 Turn the following concepts, notes, and drafts into a cohesive, well-written article:
@@ -47,18 +49,34 @@ Context to analyze:
 
 | 项目 | 内容 |
 |------|------|
-| **触发** | 用户在底部输入框提交 / `handleAiSubmit` |
-| **代码** | `src/hooks/useAiActions.ts` → `handleAiSubmit` |
-| **系统提示词** | *无* |
-| **用户提示词** | 所有「至少出现在一条边上」的节点的文本片段 + 用户输入： |
+| **触发** | 用户在底部输入框提交 / `handleAiSubmit` → `runToolbarAiGeneration` |
+| **代码** | `src/hooks/useAiActions.ts` |
+
+按 **是否在画布上勾选便签（`selectedNodes`）** 分流（与连线 `edges` 无关）：
+
+### 未勾选任何便签
+
+| 项目 | 内容 |
+|------|------|
+| **系统提示词** | `combineSystemParts(ai.prompts.toolbarBarePersona, getLocaleDirective())` — 简明对话助手 + 界面语言 |
+| **用户提示词** | 底部输入框原文（无上下文前缀） |
+
+### 已勾选一类或多类便签
+
+| 项目 | 内容 |
+|------|------|
+| **上下文** | 与合成文章同源：对每个已勾选节点的 DOM 读取 `innerText`，前置 `ai.prompts.context_fragment_label`，拼成 `{{context}}` |
+| **系统提示词** | `combineSystemParts(ai.prompts.toolbarWithNotesSystem, getLocaleDirective())` — 要求结合节选与用户提问作答 |
+| **用户提示词** | `ai.prompts.toolbarWithNotesUser`，其中 `{{context}}` / `{{request}}` 分别为上文节选与底部输入 |
+
+英文用户提示词形如：
 
 ```
-Context from connected notes across the canvas:
-[Context Fragment]: {节点1 innerText}
-[Context Fragment]: {节点2 innerText}
+Excerpts from the user's selected notes:
+[Context Fragment]: {节点 innerText}
 …
 
-User request: {用户输入的 aiPrompt}
+User message: {用户输入}
 ```
 
 ---

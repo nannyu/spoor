@@ -31,6 +31,7 @@ vi.mock('../../src/services/toolbarIntentClarification', () => ({
 
 import { callUniversalAI } from '../../src/services/ai';
 import { metasoSearch } from '../../src/services/search';
+import i18n from '../../src/i18n';
 
 const baseAiConfig: AIConfig = {
   provider: 'gemini',
@@ -80,6 +81,7 @@ describe('useAiActions', () => {
     await db.nodes.clear();
     await db.articles.clear();
     await db.edges.clear();
+    await i18n.changeLanguage('en');
     vi.mocked(callUniversalAI).mockClear();
     vi.mocked(callUniversalAI).mockResolvedValue('AI generated text');
     vi.mocked(metasoSearch).mockClear();
@@ -142,6 +144,53 @@ describe('useAiActions', () => {
       expect(nodes[0].type).toBe('ai');
       expect(nodes[0].content).toBe('AI generated text');
       expect(result.current.aiPrompt).toBe('');
+    });
+
+    it('无勾选所选节点时不带入便签：prompt 为用户原文且 system 含简明对话设定', async () => {
+      const longSkipPreflight =
+        'Write a long reflective paragraph about rivers and deltas so toolbar intent gate skips preflight without question marks.';
+      const { result } = renderHook(() => useTestAiActions({ selectedNodes: new Set() }));
+
+      act(() => {
+        result.current.setAiPrompt(longSkipPreflight);
+      });
+
+      await act(async () => {
+        await result.current.handleAiSubmit();
+      });
+
+      expect(callUniversalAI).toHaveBeenCalledWith(
+        expect.objectContaining({
+          prompt: longSkipPreflight,
+          systemInstruction: expect.stringMatching(/concise conversational[\s\S]*Always reply entirely in English/i),
+        }),
+      );
+    });
+
+    it('勾选节点时拼装所选正文，system 为综合节选与用户问题的说明', async () => {
+      const longSkipPreflight =
+        'Write at length about cloud patterns and precipitation types so toolbar intent gate skips without question marks.';
+      const hook = renderHook(() =>
+        useTestAiActions({ selectedNodes: new Set(['n1']), edges: [{ from: 'n1', to: 'x' }] }),
+      );
+
+      act(() => {
+        const noteEl = document.createElement('div');
+        noteEl.innerText = 'EXCERPT_FROM_SELECTED_NOTE';
+        hook.result.current.nodesRef.current['n1'] = noteEl;
+        hook.result.current.setAiPrompt(longSkipPreflight);
+      });
+
+      await act(async () => {
+        await hook.result.current.handleAiSubmit();
+      });
+
+      expect(callUniversalAI).toHaveBeenCalledWith(
+        expect.objectContaining({
+          prompt: expect.stringMatching(/EXCERPT_FROM_SELECTED_NOTE[\s\S]*precipitation types/i),
+          systemInstruction: expect.stringMatching(/selected notes[\s\S]*Always reply entirely in English/i),
+        }),
+      );
     });
 
     it('命中预检闸门时先跑意图分析，无疑义则用原文调主模型', async () => {

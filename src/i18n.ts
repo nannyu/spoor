@@ -98,7 +98,9 @@ const resources = {
           "localeDirective": "Always reply entirely in English for this session, unless the user explicitly asks for another language.",
           "publish": "Turn the following concepts, notes, and drafts into a cohesive, well-written article:\n\n{{content}}",
           "agentContext": "Context to analyze:\n{{content}}",
-          "toolbar": "Context from connected notes across the canvas:\n{{context}}\n\nUser request: {{request}}",
+          "toolbarBarePersona": "You are a concise conversational assistant: short, direct answers unless the user asks for more depth.",
+          "toolbarWithNotesSystem": "The user selected notes on the canvas whose text is included below. Answer by integrating this material with the user's message: use the excerpts when relevant, note if something is missing, and stay focused on what they asked.",
+          "toolbarWithNotesUser": "Excerpts from the user's selected notes:\n{{context}}\n\nUser message: {{request}}",
           "context_fragment_label": "\n[Context Fragment]: ",
           "threadFollowUp": "You are continuing a dialogue on the canvas. The assistant’s previous reply was:\n\n---\n{{previous}}\n---\n\nThe user’s new message:\n{{request}}\n\nRespond as a thoughtful continuation. Address the follow-up directly; keep the same voice and depth as before unless the user asks otherwise."
         }
@@ -260,7 +262,9 @@ const resources = {
           "localeDirective": "请始终使用简体中文回复，除非用户明确要求使用其他语言。",
           "publish": "请将以下概念、笔记与草稿整合为一篇连贯、文笔流畅的文章：\n\n{{content}}",
           "agentContext": "待分析上下文：\n{{content}}",
-          "toolbar": "画布上已连接笔记的上下文：\n{{context}}\n\n用户需求：{{request}}",
+          "toolbarBarePersona": "你是一个简明对话助手：回答简短、切题，除非用户明确要求展开。",
+          "toolbarWithNotesSystem": "用户勾选后的便签节选已附在下方。请综合这些节选与用户的问题作答：与节选相关处要扣住原文，信息不足时简要说明，并始终围绕用户想问的内容。",
+          "toolbarWithNotesUser": "来自用户所选便签的节选：\n{{context}}\n\n用户消息：{{request}}",
           "context_fragment_label": "\n【上下文片段】：",
           "threadFollowUp": "你正在画布上延续一段对话。助手上一轮回复如下：\n\n---\n{{previous}}\n---\n\n用户的新消息：\n{{request}}\n\n请承接上文，直接回应这条追问；语气与深度与之前保持一致，除非用户另有要求。"
         }
