@@ -26,12 +26,19 @@ export interface Canvas {
   updatedAt: number;
 }
 
+export type ArticleCategory = 'journal' | 'image' | 'map';
+
 export interface Article {
   id: string;
   title: string;
   content: string;
   date: string;
   type: string;
+  author?: string;
+  tags?: string[];
+  privateNotes?: string;
+  category?: ArticleCategory;
+  linkedCanvasIds?: string[];
 }
 
 /** Markdown 知识：文件内容持久化在 IndexedDB，调用模型时整段注入 system（非 RAG）。 */

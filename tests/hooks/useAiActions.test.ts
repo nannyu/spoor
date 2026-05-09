@@ -6,6 +6,11 @@ import { db } from '../../src/db';
 import type { AgentConfig, CanvasNode } from '../../src/db';
 import type { AIConfig } from '../../src/components/AISettingsModal';
 
+/** Stable vi.fn() across re-renders so assertions stay valid after async handlers trigger state updates. */
+function stableMockFn<T extends (...args: any[]) => any>(): T {
+  return useRef(vi.fn()).current as T;
+}
+
 vi.mock('../../src/services/ai', () => ({
   callUniversalAI: vi.fn().mockResolvedValue('AI generated text'),
   formatAiError: (e: unknown) => (e instanceof Error ? e.message : String(e)),
@@ -49,8 +54,8 @@ function useTestAiActions(opts?: {
   aiConfigOverrides?: Partial<AIConfig>;
 }) {
   const [selectedNodes, setSelectedNodes] = useState<Set<string>>(opts?.selectedNodes ?? new Set());
-  const setActiveReferenceId = vi.fn();
-  const setActiveTab = vi.fn();
+  const setActiveReferenceId = stableMockFn<(id: string) => void>();
+  const setActiveTab = stableMockFn<(tab: string) => void>();
 
   const nodesRef = useRef<Record<string, HTMLElement | null>>({});
   const transformRef = useRef({ x: 0, y: 0, scale: 1 });
@@ -104,6 +109,34 @@ describe('useAiActions', () => {
       });
 
       expect(callUniversalAI).not.toHaveBeenCalled();
+    });
+
+    it('有选中节点时合成并写入 articles（含扩展字段）', async () => {
+      const { result } = renderHook(() => useTestAiActions());
+
+      act(() => {
+        result.current.setSelectedNodes(new Set(['n1']));
+        const el = document.createElement('div');
+        el.innerText = 'Hello publish body';
+        result.current.nodesRef.current.n1 = el;
+      });
+
+      await act(async () => {
+        await result.current.handlePublish();
+      });
+
+      expect(callUniversalAI).toHaveBeenCalledTimes(1);
+      expect(result.current.setActiveTab).toHaveBeenCalledWith('reference');
+      expect(result.current.setActiveReferenceId).toHaveBeenCalled();
+
+      const rows = await db.articles.toArray();
+      expect(rows).toHaveLength(1);
+      expect(rows[0].content).toBe('AI generated text');
+      expect(rows[0].category).toBe('journal');
+      expect(rows[0].tags).toEqual([]);
+      expect(rows[0].linkedCanvasIds).toEqual([]);
+      expect(rows[0].author).toBe('');
+      expect(rows[0].type).toMatch(/^GEN-/);
     });
   });
 

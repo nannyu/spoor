@@ -113,6 +113,16 @@ export default function App() {
     localStorage.setItem('active_canvas_id', activeCanvasId);
   }, [activeCanvasId]);
 
+  useEffect(() => {
+    if (articles.length === 0) {
+      if (activeReferenceId !== '') setActiveReferenceId('');
+      return;
+    }
+    if (!articles.some((a) => a.id === activeReferenceId)) {
+      setActiveReferenceId(articles[0].id);
+    }
+  }, [articles, activeReferenceId, setActiveReferenceId]);
+
   useSeedData();
 
   /**
@@ -417,7 +427,17 @@ export default function App() {
         </main>
         )}
 
-        {activeTab === 'reference' && <Reference articles={articles} activeReferenceId={activeReferenceId} setActiveReferenceId={setActiveReferenceId} />}
+        {activeTab === 'reference' && (
+          <Reference
+            articles={articles}
+            activeReferenceId={activeReferenceId}
+            setActiveReferenceId={setActiveReferenceId}
+            onOpenCanvas={(canvasId) => {
+              setActiveCanvasId(canvasId);
+              setActiveTab('personal');
+            }}
+          />
+        )}
         {activeTab === 'lab' && <ResearchLab aiConfig={aiConfig} callAI={callUniversalAI} />}
         {/* Agents in Agents Studio need consistent write access */}
         {activeTab === 'agents' && <AgentsStudio agentConfigs={agentConfigs} setAgentConfigs={async (newConfigs) => {

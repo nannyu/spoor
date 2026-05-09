@@ -87,7 +87,11 @@ export function useAiActions({
         title: t('ai.generated_article_title'),
         content: text || '',
         date: new Date().getFullYear().toString(),
-        type: 'GEN-' + Math.floor(Math.random() * 1000)
+        type: 'GEN-' + Math.floor(Math.random() * 1000),
+        category: 'journal' as const,
+        tags: [] as string[],
+        linkedCanvasIds: [] as string[],
+        author: '',
       };
 
       await db.articles.add(newArticle);

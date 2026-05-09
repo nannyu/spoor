@@ -62,7 +62,10 @@ export function useSeedData() {
             title: 'Spatial Encoding in Reconstructive Memory',
             content: 'The human mind does not merely store experiences as isolated visual or auditory files. Instead, it constructs architectural spaces where these memories represent structural loads...',
             date: '1994',
-            type: 'REF-042'
+            type: 'REF-042',
+            category: 'journal',
+            tags: [],
+            linkedCanvasIds: [],
           });
 
           await db.nodes.bulkPut([
