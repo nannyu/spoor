@@ -57,12 +57,12 @@ describe('useSeedData', () => {
       updatedAt: Date.now(),
     });
     await db.agents.bulkPut([
-      { id: 'challenger', name: 'The Challenger', role: 'Debater', prompt: '', temperature: 0.7, creativity: 0.4 },
-      { id: 'interviewer', name: 'AI Interviewer', role: 'Journalist', prompt: '', temperature: 0.7, creativity: 0.4 },
-      { id: 'synthesizer', name: 'The Synthesizer', role: 'Connector', prompt: '', temperature: 0.8, creativity: 0.7 },
-      { id: 'stylist', name: 'The Stylist', role: 'Editor', prompt: '', temperature: 0.6, creativity: 0.5 },
-      { id: 'futurist', name: 'The Futurist', role: 'Visionary', prompt: '', temperature: 0.9, creativity: 0.9 },
-      { id: 'pragmatist', name: 'The Pragmatist', role: 'Realist', prompt: '', temperature: 0.4, creativity: 0.2 },
+      { id: 'challenger', name: 'The Touchstone', role: 'Debater', prompt: '', temperature: 0.7, creativity: 0.4 },
+      { id: 'interviewer', name: 'The Mirror of Insight', role: 'Journalist', prompt: '', temperature: 0.7, creativity: 0.4 },
+      { id: 'synthesizer', name: 'The Weaver', role: 'Connector', prompt: '', temperature: 0.8, creativity: 0.7 },
+      { id: 'stylist', name: 'The Smoothing Iron', role: 'Editor', prompt: '', temperature: 0.6, creativity: 0.5 },
+      { id: 'futurist', name: 'The Star-Gazer', role: 'Visionary', prompt: '', temperature: 0.9, creativity: 0.9 },
+      { id: 'pragmatist', name: 'The Heartwood', role: 'Realist', prompt: '', temperature: 0.4, creativity: 0.2 },
     ]);
 
     renderHook(() => useSeedData());

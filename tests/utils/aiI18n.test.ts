@@ -74,9 +74,9 @@ describe('resolveAgentLocalizedName / Role / SystemPrompt', () => {
       prompt: promptEn,
     });
 
-    expect(resolveAgentSystemPrompt(agent)).toContain('Pragmatist');
+    expect(resolveAgentSystemPrompt(agent)).toContain('Heartwood');
 
     await i18n.changeLanguage('zh');
-    expect(resolveAgentSystemPrompt(agent)).toContain('务实派');
+    expect(resolveAgentSystemPrompt(agent)).toContain('实心木');
   });
 });

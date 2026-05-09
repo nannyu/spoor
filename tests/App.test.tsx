@@ -671,11 +671,10 @@ describe('App 组件', () => {
     it('显示默认的系统代理列表', async () => {
       const user = userEvent.setup();
       await goToAgents(user);
-      // The Challenger 出现在列表和编辑器中，使用 getAllByText
-      const challengerMatches = screen.getAllByText('The Challenger');
-      expect(challengerMatches.length).toBeGreaterThanOrEqual(1);
-      expect(screen.getByText('AI Interviewer')).toBeInTheDocument();
-      expect(screen.getByText('The Synthesizer')).toBeInTheDocument();
+      const touchstoneMatches = screen.getAllByText('The Touchstone');
+      expect(touchstoneMatches.length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByText('The Mirror of Insight')).toBeInTheDocument();
+      expect(screen.getByText('The Weaver')).toBeInTheDocument();
     });
 
     it('显示代理角色标签', async () => {
@@ -696,11 +695,9 @@ describe('App 组件', () => {
       const user = userEvent.setup();
       await goToAgents(user);
       const searchInput = document.querySelector('input[placeholder="搜索人格..."]') as HTMLInputElement;
-      await user.type(searchInput, 'Challenger');
-      // The Challenger 出现在列表和编辑器中
-      expect(screen.getAllByText('The Challenger').length).toBeGreaterThanOrEqual(1);
-      // 其他代理应该被过滤掉
-      expect(screen.queryByText('AI Interviewer')).not.toBeInTheDocument();
+      await user.type(searchInput, 'Touchstone');
+      expect(screen.getAllByText('The Touchstone').length).toBeGreaterThanOrEqual(1);
+      expect(screen.queryByText('The Mirror of Insight')).not.toBeInTheDocument();
     });
 
     it('点击代理选中并显示配置编辑器', async () => {
