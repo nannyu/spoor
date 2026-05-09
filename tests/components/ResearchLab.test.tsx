@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 import { ResearchLab } from '../../src/components/ResearchLab';
+import { db } from '../../src/db';
 
 // Mock i18next
 vi.mock('react-i18next', () => ({
@@ -15,6 +16,7 @@ vi.mock('react-i18next', () => ({
         'lab.report': 'Synthesized Report',
         'lab.new_research': 'New Research',
         'lab.past_sessions': 'Past Sessions',
+        'lab.no_past_sessions': 'No completed research yet.',
         'lab.agent_title': 'Deep Research Agent',
         'lab.searching': 'Searching the web...',
         'lab.search_complete': `${opts?.count ?? 0} web sources found`,
@@ -63,8 +65,9 @@ const baseConfig = {
 };
 
 describe('ResearchLab', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    await db.researchSessions.clear();
   });
 
   it('renders idle state with input', () => {
@@ -72,6 +75,43 @@ describe('ResearchLab', () => {
     render(<ResearchLab aiConfig={baseConfig} callAI={callAI} />);
     expect(screen.getByText('What would you like to investigate?')).toBeTruthy();
     expect(screen.getByPlaceholderText('Search topic...')).toBeTruthy();
+  });
+
+  it('shows empty history message when no sessions in db', () => {
+    const callAI = vi.fn();
+    render(<ResearchLab aiConfig={baseConfig} callAI={callAI} />);
+    expect(screen.getByText('No completed research yet.')).toBeTruthy();
+  });
+
+  it('lists sessions from db and opens report on row click', async () => {
+    const callAI = vi.fn();
+    await db.researchSessions.add({
+      id: 'sess-1',
+      query: 'Memory palace history',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      researchPlan: [{ title: 'Step 1', desc: 'D' }],
+      researchReport: {
+        intro: 'Saved intro text',
+        points: [{ title: 'Point A', text: 'Body A' }],
+        conclusion: 'Saved conclusion',
+      },
+      sourceCount: 0,
+      searchStatus: 'idle',
+    });
+
+    render(<ResearchLab aiConfig={baseConfig} callAI={callAI} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('research-session-sess-1')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByTestId('research-session-sess-1'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Memory palace history')).toBeTruthy();
+      expect(screen.getByText('Saved intro text')).toBeTruthy();
+    });
   });
 
   it('calls callAI without search context when no metasoApiKey', async () => {
@@ -206,6 +246,173 @@ describe('ResearchLab', () => {
     expect(reportPrompt).toContain('user-approved research plan');
     expect(reportPrompt).toContain('Edited step one');
     expect(reportPrompt).toContain('memory loss');
+  });
+
+  it('persists completed research session to IndexedDB', async () => {
+    const planJson = JSON.stringify([
+      { title: 'Step 1', desc: 'Desc 1' },
+      { title: 'Step 2', desc: 'Desc 2' },
+      { title: 'Step 3', desc: 'Desc 3' },
+    ]);
+    const reportJson = JSON.stringify({
+      intro: 'Persisted intro',
+      points: [{ title: 'P1', text: 'T1' }],
+      conclusion: 'Persisted done',
+    });
+    const callAI = vi.fn().mockResolvedValueOnce(planJson).mockResolvedValueOnce(reportJson);
+
+    render(<ResearchLab aiConfig={baseConfig} callAI={callAI} />);
+
+    fireEvent.change(screen.getByPlaceholderText('Search topic...'), { target: { value: 'persist query' } });
+    fireEvent.submit(screen.getByPlaceholderText('Search topic...').closest('form')!);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Step 1 title')).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Approve & Execute/i }));
+
+    await waitFor(() => {
+      expect(callAI).toHaveBeenCalledTimes(2);
+    });
+
+    await waitFor(async () => {
+      const rows = await db.researchSessions.toArray();
+      expect(rows).toHaveLength(1);
+      expect(rows[0].query).toBe('persist query');
+      expect(rows[0].researchReport.intro).toBe('Persisted intro');
+      expect(rows[0].searchStatus).toBe('idle');
+    });
+  });
+
+  it('persists searchStatus found and sourceCount when Metaso returns webpages on execute', async () => {
+    mockMetasoSearch.mockResolvedValue({
+      credits: 1,
+      total: 3,
+      webpages: [
+        { title: 'A', link: 'https://a.com', snippet: 'Sa', score: '', date: '' },
+        { title: 'B', link: 'https://b.com', snippet: 'Sb', score: '', date: '' },
+        { title: 'C', link: 'https://c.com', snippet: 'Sc', score: '', date: '' },
+      ],
+    });
+    const planJson = JSON.stringify([
+      { title: 'Step 1', desc: 'D1' },
+      { title: 'Step 2', desc: 'D2' },
+      { title: 'Step 3', desc: 'D3' },
+    ]);
+    const reportJson = JSON.stringify({
+      intro: 'Web intro',
+      points: [{ title: 'P', text: 'T' }],
+      conclusion: 'C',
+    });
+    const callAI = vi.fn().mockResolvedValueOnce(planJson).mockResolvedValueOnce(reportJson);
+
+    render(<ResearchLab aiConfig={{ ...baseConfig, metasoApiKey: 'sk-m' }} callAI={callAI} />);
+
+    fireEvent.change(screen.getByPlaceholderText('Search topic...'), { target: { value: 'metaso topic' } });
+    fireEvent.submit(screen.getByPlaceholderText('Search topic...').closest('form')!);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Step 1 title')).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Approve & Execute/i }));
+
+    await waitFor(() => {
+      expect(callAI).toHaveBeenCalledTimes(2);
+    });
+
+    await waitFor(async () => {
+      const rows = await db.researchSessions.toArray();
+      expect(rows).toHaveLength(1);
+      expect(rows[0].searchStatus).toBe('found');
+      expect(rows[0].sourceCount).toBe(3);
+      expect(rows[0].researchReport.intro).toBe('Web intro');
+    });
+  });
+
+  it('still shows report when persisting session fails', async () => {
+    const addSpy = vi.spyOn(db.researchSessions, 'add').mockRejectedValueOnce(new Error('disk full'));
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+      const planJson = JSON.stringify([
+        { title: 'Step 1', desc: 'Desc 1' },
+        { title: 'Step 2', desc: 'Desc 2' },
+        { title: 'Step 3', desc: 'Desc 3' },
+      ]);
+      const reportJson = JSON.stringify({
+        intro: 'Shown even if save fails',
+        points: [],
+        conclusion: 'End',
+      });
+      const callAI = vi.fn().mockResolvedValueOnce(planJson).mockResolvedValueOnce(reportJson);
+
+      render(<ResearchLab aiConfig={baseConfig} callAI={callAI} />);
+
+      fireEvent.change(screen.getByPlaceholderText('Search topic...'), { target: { value: 'q' } });
+      fireEvent.submit(screen.getByPlaceholderText('Search topic...').closest('form')!);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Step 1 title')).toBeTruthy();
+      });
+      fireEvent.click(screen.getByRole('button', { name: /Approve & Execute/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText('Shown even if save fails')).toBeTruthy();
+      });
+
+      expect(errSpy).toHaveBeenCalledWith(
+        '[Scribe AI] ResearchLab failed to persist session',
+        expect.any(Error),
+      );
+
+      const rows = await db.researchSessions.toArray();
+      expect(rows).toHaveLength(0);
+    } finally {
+      addSpy.mockRestore();
+      errSpy.mockRestore();
+    }
+  });
+
+  it('ignores second Approve while executeResearch is in flight', async () => {
+    const planJson = JSON.stringify([
+      { title: 'Step 1', desc: 'D1' },
+      { title: 'Step 2', desc: 'D2' },
+      { title: 'Step 3', desc: 'D3' },
+    ]);
+    const reportJson = JSON.stringify({ intro: 'Done', points: [], conclusion: 'C' });
+
+    let releaseReport!: (v: string) => void;
+    const reportGate = new Promise<string>((res) => {
+      releaseReport = res;
+    });
+
+    const callAI = vi.fn().mockResolvedValueOnce(planJson).mockImplementationOnce(() => reportGate);
+
+    render(<ResearchLab aiConfig={baseConfig} callAI={callAI} />);
+
+    fireEvent.change(screen.getByPlaceholderText('Search topic...'), { target: { value: 't' } });
+    fireEvent.submit(screen.getByPlaceholderText('Search topic...').closest('form')!);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Step 1 title')).toBeTruthy();
+    });
+
+    const approveBtn = screen.getByRole('button', { name: /Approve & Execute/i });
+    fireEvent.click(approveBtn);
+    fireEvent.click(approveBtn);
+
+    await waitFor(() => {
+      expect(callAI).toHaveBeenCalledTimes(2);
+    });
+
+    releaseReport(reportJson);
+
+    await waitFor(async () => {
+      const rows = await db.researchSessions.toArray();
+      expect(rows).toHaveLength(1);
+    });
+
+    expect(callAI).toHaveBeenCalledTimes(2);
   });
 
   it('calls AI to revise plan from the revision textarea', async () => {

@@ -65,12 +65,38 @@ export interface Edge {
   to: string;
 }
 
+/** 深度研究实验室：一次已完成研究的本地快照（独立于 articles）。 */
+export interface ResearchPlanStepRecord {
+  title: string;
+  desc: string;
+}
+
+export interface ResearchReportRecord {
+  intro: string;
+  points: { title: string; text: string }[];
+  conclusion: string;
+}
+
+export type ResearchSessionSearchStatus = 'idle' | 'searching' | 'found' | 'fallback';
+
+export interface ResearchSession {
+  id: string;
+  query: string;
+  createdAt: number;
+  updatedAt: number;
+  researchPlan: ResearchPlanStepRecord[];
+  researchReport: ResearchReportRecord;
+  sourceCount: number;
+  searchStatus: ResearchSessionSearchStatus;
+}
+
 export class MyDatabase extends Dexie {
   nodes!: Table<CanvasNode>;
   articles!: Table<Article>;
   agents!: Table<AgentConfig>;
   edges!: Table<Edge>;
   canvases!: Table<Canvas>;
+  researchSessions!: Table<ResearchSession>;
 
   constructor() {
     super('CortexLocalDB');
@@ -85,6 +111,10 @@ export class MyDatabase extends Dexie {
       nodes: '++id, type, agentConfigId, canvasId',
       edges: '++id, from, to, canvasId',
       canvases: '++id, name, createdAt'
+    });
+
+    this.version(3).stores({
+      researchSessions: 'id, createdAt',
     });
   }
 }

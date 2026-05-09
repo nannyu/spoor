@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { db, MyDatabase } from '../src/db';
-import type { CanvasNode, Canvas, Article, AgentConfig, Edge } from '../src/db';
+import type { CanvasNode, Canvas, Article, AgentConfig, Edge, ResearchSession } from '../src/db';
 
 describe('MyDatabase', () => {
   beforeEach(async () => {
@@ -9,6 +9,7 @@ describe('MyDatabase', () => {
     await db.agents.clear();
     await db.edges.clear();
     await db.canvases.clear();
+    await db.researchSessions.clear();
   });
 
   // --- 节点 (nodes) ---
@@ -309,6 +310,36 @@ describe('MyDatabase', () => {
     });
   });
 
+  // --- 深度研究会话 (researchSessions) ---
+  describe('researchSessions 表', () => {
+    it('能添加并按 createdAt 倒序列出', async () => {
+      const s1: ResearchSession = {
+        id: 's1',
+        query: 'Older topic',
+        createdAt: 1000,
+        updatedAt: 1000,
+        researchPlan: [{ title: 'A', desc: 'a' }],
+        researchReport: { intro: 'i', points: [], conclusion: 'c' },
+        sourceCount: 0,
+        searchStatus: 'idle',
+      };
+      const s2: ResearchSession = {
+        id: 's2',
+        query: 'Newer topic',
+        createdAt: 2000,
+        updatedAt: 2000,
+        researchPlan: [{ title: 'B', desc: 'b' }],
+        researchReport: { intro: 'i2', points: [{ title: 'P', text: 'T' }], conclusion: 'c2' },
+        sourceCount: 2,
+        searchStatus: 'found',
+      };
+      await db.researchSessions.bulkAdd([s1, s2]);
+      const ordered = await db.researchSessions.orderBy('createdAt').reverse().toArray();
+      expect(ordered.map((r) => r.id)).toEqual(['s2', 's1']);
+      expect(ordered[0].query).toBe('Newer topic');
+    });
+  });
+
   // --- 数据库结构完整性 ---
   describe('数据库结构', () => {
     it('导出的 db 实例是 MyDatabase 的实例', () => {
@@ -319,9 +350,9 @@ describe('MyDatabase', () => {
       expect(db.name).toBe('CortexLocalDB');
     });
 
-    it('包含所有 5 张表', () => {
+    it('包含所有 6 张表', () => {
       expect(db.tables.map(t => t.name).sort()).toEqual(
-        ['agents', 'articles', 'canvases', 'edges', 'nodes']
+        ['agents', 'articles', 'canvases', 'edges', 'nodes', 'researchSessions']
       );
     });
   });

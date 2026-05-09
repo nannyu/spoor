@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { formatAiError } from '../services/ai';
 import { getLocaleDirective } from '../utils/aiI18n';
 import { metasoSearch, buildSearchContext } from '../services/search';
+import { db, type ResearchSession, type ResearchSessionSearchStatus } from '../db';
 import {
   Terminal,
   Cpu,
@@ -26,6 +28,27 @@ const RESEARCH_PLAN_FALLBACK: ResearchPlanStep[] = [
   { title: 'Thematic Networking', desc: 'Cross-reference dialogue with established metaphors.' },
   { title: 'Synthesis & Drafting', desc: 'Generate a comprehensive deep-dive report.' },
 ];
+
+const RESEARCH_HISTORY_LIMIT = 50;
+
+function formatSessionListDate(createdAt: number, language: string): string {
+  const d = new Date(createdAt);
+  const now = Date.now();
+  const diffMs = now - d.getTime();
+  const diffDays = Math.floor(diffMs / 86400000);
+  const safeDays = Math.max(0, diffDays);
+  const loc = language.toLowerCase().startsWith('zh') ? 'zh-CN' : 'en-US';
+  try {
+    if (safeDays < 7) {
+      const rtf = new Intl.RelativeTimeFormat(loc, { numeric: 'auto' });
+      if (safeDays === 0) return rtf.format(0, 'day');
+      return rtf.format(-safeDays, 'day');
+    }
+  } catch {
+    /* fall through */
+  }
+  return d.toLocaleDateString(loc, { month: 'short', day: 'numeric', year: 'numeric' });
+}
 
 function normalizeResearchPlan(raw: unknown): ResearchPlanStep[] {
   if (!Array.isArray(raw)) return [];
@@ -52,8 +75,14 @@ export interface ResearchLabProps {
   callAI: CallAIFn;
 }
 
+type WebSearchOutcome = {
+  context: string;
+  sourceCount: number;
+  searchStatus: ResearchSessionSearchStatus;
+};
+
 export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [phase, setPhase] = useState<'idle' | 'planning' | 'plan_ready' | 'researching' | 'completed'>('idle');
   const [query, setQuery] = useState('');
   const [activeStep, setActiveStep] = useState(0);
@@ -65,30 +94,53 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
   const [sourceCount, setSourceCount] = useState(0);
   const [planRevisionNote, setPlanRevisionNote] = useState('');
   const [planRevising, setPlanRevising] = useState(false);
+  const executeResearchInFlightRef = useRef(false);
+
+  const pastSessions = useLiveQuery(
+    () => db.researchSessions.orderBy('createdAt').reverse().limit(RESEARCH_HISTORY_LIMIT).toArray(),
+    []
+  ) ?? [];
+
+  const openHistorySession = (session: ResearchSession) => {
+    setQuery(session.query);
+    setResearchPlan(session.researchPlan.map((s) => ({ title: s.title, desc: s.desc })));
+    setResearchReport({
+      intro: session.researchReport.intro,
+      points: session.researchReport.points ?? [],
+      conclusion: session.researchReport.conclusion,
+    });
+    setSourceCount(session.sourceCount);
+    setSearchStatus(session.searchStatus);
+    setPhase('completed');
+  };
 
   /**
-   * Attempt a Metaso web search; returns a context string or empty string on
-   * failure / missing key (silent degradation).
+   * Attempt a Metaso web search; returns context string and status for prompts and persistence.
    */
-  const tryWebSearch = async (searchQuery: string): Promise<string> => {
+  const tryWebSearch = async (searchQuery: string): Promise<WebSearchOutcome> => {
     const apiKey = aiConfig.metasoApiKey?.trim();
-    if (!apiKey) return '';
+    if (!apiKey) {
+      setSearchStatus('idle');
+      setSourceCount(0);
+      return { context: '', sourceCount: 0, searchStatus: 'idle' };
+    }
 
     setSearchStatus('searching');
     try {
       const results = await metasoSearch(searchQuery, { apiKey });
       const context = buildSearchContext(results);
       if (context) {
-        setSourceCount(results.webpages?.length ?? 0);
+        const count = results.webpages?.length ?? 0;
+        setSourceCount(count);
         setSearchStatus('found');
-        return context;
+        return { context, sourceCount: count, searchStatus: 'found' };
       }
       setSearchStatus('fallback');
-      return '';
+      return { context: '', sourceCount: 0, searchStatus: 'fallback' };
     } catch (e) {
       console.warn('[Scribe AI] Metaso search failed, degrading to offline mode', formatAiError(e));
       setSearchStatus('fallback');
-      return '';
+      return { context: '', sourceCount: 0, searchStatus: 'fallback' };
     }
   };
 
@@ -97,7 +149,7 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
     setSearchStatus('idle');
     setPlanRevisionNote('');
 
-    const searchContext = await tryWebSearch(query);
+    const { context: searchContext } = await tryWebSearch(query);
 
     try {
       const prompt = searchContext
@@ -165,45 +217,82 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
   };
 
   const executeResearch = async () => {
-    setPhase('researching');
-    setActiveStep(0);
-    const timer1 = setTimeout(() => setActiveStep(1), 2000);
-    const timer2 = setTimeout(() => setActiveStep(2), 4000);
-
-    const searchContext = await tryWebSearch(query);
-
-    const planContext =
-      researchPlan.length > 0
-        ? `\n\nThe user-approved research plan (your report must follow this structure: align the "points" array with these steps in order and honor each step's goals in the analysis):\n${JSON.stringify(researchPlan, null, 2)}`
-        : '';
-
+    if (executeResearchInFlightRef.current) return;
+    executeResearchInFlightRef.current = true;
     try {
-      const prompt = searchContext
-        ? `${t('lab.ai_research_report', { query })}${planContext}\n\nUse the following web search results as primary sources for your report. Cite sources where appropriate.\n\n${searchContext}`
-        : `${t('lab.ai_research_report', { query })}${planContext}`;
+      setPhase('researching');
+      setActiveStep(0);
+      const timer1 = setTimeout(() => setActiveStep(1), 2000);
+      const timer2 = setTimeout(() => setActiveStep(2), 4000);
 
-      const text = await callAI({
-        config: aiConfig,
-        systemInstruction: getLocaleDirective(),
-        prompt,
-      });
-      const jsonStr = text?.replace(/```json|```/g, '').trim() || '{}';
-      const report = JSON.parse(jsonStr);
-      setResearchReport(report);
-    } catch (e) {
-      console.error('[Scribe AI] ResearchLab executeResearch failed', formatAiError(e));
-      setResearchReport({
+      const { context: searchContext, sourceCount: persistedSourceCount, searchStatus: persistedSearchStatus } =
+        await tryWebSearch(query);
+
+      const planContext =
+        researchPlan.length > 0
+          ? `\n\nThe user-approved research plan (your report must follow this structure: align the "points" array with these steps in order and honor each step's goals in the analysis):\n${JSON.stringify(researchPlan, null, 2)}`
+          : '';
+
+      const fallbackReport = {
         intro: "Based on the analysis of your interconnected drafts and referenced literature, there are interesting narrative connections.",
         points: [
           { title: "The Metaphor of the Blueprint", text: "The protagonist is not just losing memories, but losing the 'blueprint' of their own mind." }
         ],
         conclusion: "Actionable Next Steps: Rewrite chapter 4 to emphasize the architectural distortion."
-      });
+      };
+
+      let finalReport = fallbackReport;
+
+      try {
+        const prompt = searchContext
+          ? `${t('lab.ai_research_report', { query })}${planContext}\n\nUse the following web search results as primary sources for your report. Cite sources where appropriate.\n\n${searchContext}`
+          : `${t('lab.ai_research_report', { query })}${planContext}`;
+
+        const text = await callAI({
+          config: aiConfig,
+          systemInstruction: getLocaleDirective(),
+          prompt,
+        });
+        const jsonStr = text?.replace(/```json|```/g, '').trim() || '{}';
+        const report = JSON.parse(jsonStr);
+        setResearchReport(report);
+        finalReport = report;
+      } catch (e) {
+        console.error('[Scribe AI] ResearchLab executeResearch failed', formatAiError(e));
+        setResearchReport(fallbackReport);
+        finalReport = fallbackReport;
+      } finally {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+        setActiveStep(3);
+        try {
+          const now = Date.now();
+          await db.researchSessions.add({
+            id: crypto.randomUUID(),
+            query,
+            createdAt: now,
+            updatedAt: now,
+            researchPlan: researchPlan.map((s) => ({ title: s.title, desc: s.desc })),
+            researchReport: {
+              intro: finalReport.intro ?? '',
+              points: Array.isArray(finalReport.points)
+                ? finalReport.points.map((p: { title?: string; text?: string }) => ({
+                    title: String(p?.title ?? ''),
+                    text: String(p?.text ?? ''),
+                  }))
+                : [],
+              conclusion: finalReport.conclusion ?? '',
+            },
+            sourceCount: persistedSourceCount,
+            searchStatus: persistedSearchStatus,
+          });
+        } catch (persistErr) {
+          console.error('[Scribe AI] ResearchLab failed to persist session', persistErr);
+        }
+        setPhase('completed');
+      }
     } finally {
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-      setActiveStep(3);
-      setPhase('completed');
+      executeResearchInFlightRef.current = false;
     }
   };
 
@@ -221,16 +310,26 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
            {phase === 'idle' ? (
              <>
                <h3 className="font-sans text-xs font-bold text-[#8c8a84] uppercase tracking-wider mb-4">{t('lab.past_sessions')}</h3>
-               <div className="space-y-2">
-                  <div className="p-3 bg-white border border-[#E6E4DF] rounded cursor-pointer hover:border-[#C2410C]/50 transition-colors shadow-sm">
-                     <div className="text-[#8c8a84] text-[10px] mb-1">Yesterday</div>
-                     <div className="text-sm font-sans font-medium text-[#1a1a1a]">Architectural motifs in 20th-century asylums</div>
-                  </div>
-                  <div className="p-3 bg-white border border-[#E6E4DF] rounded cursor-pointer hover:border-[#C2410C]/50 transition-colors shadow-sm">
-                     <div className="text-[#8c8a84] text-[10px] mb-1">Oct 12</div>
-                     <div className="text-sm font-sans font-medium text-[#1a1a1a]">Evolution of memory palace techniques</div>
-                  </div>
-               </div>
+               {pastSessions.length === 0 ? (
+                 <p className="text-xs text-[#8c8a84] font-sans leading-relaxed">{t('lab.no_past_sessions')}</p>
+               ) : (
+                 <div className="space-y-2">
+                   {pastSessions.map((session) => (
+                     <button
+                       key={session.id}
+                       type="button"
+                       data-testid={`research-session-${session.id}`}
+                       onClick={() => openHistorySession(session)}
+                       className="w-full text-left p-3 bg-white border border-[#E6E4DF] rounded cursor-pointer hover:border-[#C2410C]/50 transition-colors shadow-sm"
+                     >
+                       <div className="text-[#8c8a84] text-[10px] mb-1 font-sans">
+                         {formatSessionListDate(session.createdAt, i18n.language)}
+                       </div>
+                       <div className="text-sm font-sans font-medium text-[#1a1a1a] line-clamp-3">{session.query}</div>
+                     </button>
+                   ))}
+                 </div>
+               )}
              </>
            ) : (
              <>

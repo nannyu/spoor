@@ -91,6 +91,7 @@ vi.mock('react-i18next', () => ({
         'lab.report': '综合报告',
         'lab.new_research': '新研究',
         'lab.past_sessions': '历史会话',
+        'lab.no_past_sessions': '暂无已完成的研究。完成一次研究后会显示在这里。',
         'lab.agent_title': '深度研究智能体',
         'reference.index_title': '档案索引',
         'reference.search_refs': '搜索参考文献...',
@@ -166,7 +167,7 @@ describe('App 组件', () => {
     await db.agents.clear();
     await db.edges.clear();
     await db.canvases.clear();
-    // 清空 localStorage
+    await db.researchSessions.clear();
     localStorage.clear();
   });
 
@@ -800,6 +801,12 @@ describe('App 组件', () => {
       const user = userEvent.setup();
       await goToLab(user);
       expect(screen.getByText('历史会话')).toBeInTheDocument();
+    });
+
+    it('idle 无历史记录时显示空态文案', async () => {
+      const user = userEvent.setup();
+      await goToLab(user);
+      expect(screen.getByText('暂无已完成的研究。完成一次研究后会显示在这里。')).toBeInTheDocument();
     });
 
     it('idle 阶段显示提交箭头按钮', async () => {
