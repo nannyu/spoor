@@ -209,9 +209,9 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
   );
 
   return (
-    <div className="flex-1 flex bg-[#FAF9F6] overflow-hidden relative">
+    <div className="flex-1 flex min-h-0 bg-[#FAF9F6] overflow-hidden relative">
       {/* Pane 1: Persona List */}
-      <section className="w-64 flex flex-col border-r border-[#E6E4DF] bg-white z-10">
+      <section className="w-64 shrink-0 flex flex-col min-h-0 border-r border-[#E6E4DF] bg-white z-10">
         <div className="p-4 border-b border-[#E6E4DF] flex items-center gap-2">
           <div className="relative flex-1 min-w-0">
             <input
@@ -234,7 +234,7 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
             <Plus className="w-5 h-5" />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           <div className="divide-y divide-[#E6E4DF]">
             {filteredAgents.map((agent) => (
               <div 
@@ -261,7 +261,7 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
       </section>
 
       {/* Pane 2: Workspace/Editor */}
-      <section className="flex-1 flex flex-col overflow-y-auto relative">
+      <section className="flex-1 flex flex-col min-h-0 overflow-y-auto relative">
         {activeAgent ? (
           <>
             <div className="sticky top-0 bg-[#FAF9F6]/80 backdrop-blur-md px-10 py-6 border-b border-[#E6E4DF] flex flex-col sm:flex-row justify-between items-start sm:items-end z-10 gap-4">

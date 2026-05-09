@@ -219,7 +219,7 @@ export function Reference({
       : [];
 
   return (
-    <div className="flex-1 flex bg-[#FAF9F6] paper-texture overflow-hidden">
+    <div className="flex-1 flex min-h-0 bg-[#FAF9F6] paper-texture overflow-hidden">
       {!isFullScreen && (
         <div className="w-64 border-r border-[#E6E4DF] bg-white flex flex-col z-10 shadow-sm relative shrink-0">
           <div className="p-4 border-b border-[#E6E4DF] bg-[#F4F1ED]/50 flex-shrink-0">

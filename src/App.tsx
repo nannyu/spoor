@@ -262,9 +262,9 @@ export default function App() {
   };
 
   return (
-    <div className="bg-[#FAF9F6] font-serif text-[#1a1a1a] min-h-screen overflow-hidden flex flex-col paper-texture">
+    <div className="bg-[#FAF9F6] font-serif text-[#1a1a1a] h-screen max-h-screen overflow-hidden flex flex-col paper-texture">
       
-      <div className="flex flex-1" onPointerDown={() => { if (connectingFrom) setConnectingFrom(null); }}>
+      <div className="flex flex-1 min-h-0 overflow-hidden" onPointerDown={() => { if (connectingFrom) setConnectingFrom(null); }}>
         {/* SideNavBar */}
         <Sidebar 
           isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen}
@@ -278,7 +278,7 @@ export default function App() {
         {activeTab === 'personal' && (
         <main 
           ref={mainRef} 
-          className="flex-1 relative overflow-hidden bg-[#FAF9F6] paper-texture"
+          className="flex-1 min-h-0 relative overflow-hidden bg-[#FAF9F6] paper-texture"
           onDragOver={(e) => {
             e.preventDefault();
             e.stopPropagation();

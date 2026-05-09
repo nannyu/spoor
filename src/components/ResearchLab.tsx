@@ -296,7 +296,7 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
   };
 
   return (
-    <div className="flex-1 flex bg-[#FAF9F6] paper-texture text-[#1a1a1a] overflow-hidden">
+    <div className="flex-1 flex min-h-0 bg-[#FAF9F6] paper-texture text-[#1a1a1a] overflow-hidden">
       {/* Side Panel: History & Status */}
       <div className="w-64 border-r border-[#E6E4DF] flex flex-col bg-[#F4F1ED]/50 z-10 shrink-0">
         <div className="flex-1 overflow-y-auto p-4">

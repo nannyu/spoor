@@ -54,7 +54,7 @@ export function Sidebar({
   };
 
   return (
-    <aside className={`hidden md:flex flex-col py-6 space-y-2 bg-[#F4F1ED] h-screen border-r border-[#E6E4DF] sticky top-0 transition-all duration-300 overflow-y-auto scrollbar-hide ${isSidebarOpen ? 'w-48' : 'w-20 items-center'}`}>
+    <aside className={`hidden md:flex flex-col py-6 space-y-2 bg-[#F4F1ED] h-full min-h-0 shrink-0 border-r border-[#E6E4DF] transition-all duration-300 overflow-y-auto scrollbar-hide ${isSidebarOpen ? 'w-48' : 'w-20 items-center'}`}>
 
       <div className="mb-6 px-4">
         <div className={`flex flex-col ${isSidebarOpen ? 'items-start' : 'items-center'} gap-2`}>
