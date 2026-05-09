@@ -8,6 +8,7 @@ import { VideoNode } from './VideoNode';
 import { DocumentNode } from './DocumentNode';
 import { AgentNode } from './AgentNode';
 
+/** 画布对某些 `type` 挂载的控件与各分支对应关系见 `src/constants/nodeCapabilities.ts`。 */
 interface NodeRendererProps {
   node: CanvasNode;
   editingNodeId: string | null;

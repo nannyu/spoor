@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Loader2, Send } from 'lucide-react';
 import Markdown from 'react-markdown';
@@ -16,8 +16,17 @@ export function AiNode({
 }: AiNodeProps) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState('');
+  const followUpTaRef = useRef<HTMLTextAreaElement>(null);
 
   const showFollowUp = onSubmitFollowUp && !node.followUpSent;
+
+  useLayoutEffect(() => {
+    const el = followUpTaRef.current;
+    if (!el || !showFollowUp) return;
+    el.style.height = 'auto';
+    const cap = 160;
+    el.style.height = `${Math.min(Math.max(el.scrollHeight, 36), cap)}px`;
+  }, [draft, showFollowUp]);
 
   const handleSubmit = () => {
     const msg = draft.trim();
@@ -76,9 +85,10 @@ export function AiNode({
       )}
 
       {showFollowUp ? (
-        <div className="mt-3 pt-3 border-t border-[#E6E4DF] shrink-0">
+        <div className="mt-2 shrink-0">
           <div className="relative">
             <textarea
+              ref={followUpTaRef}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => {
@@ -89,8 +99,8 @@ export function AiNode({
               }}
               disabled={!!isFollowUpDisabled}
               placeholder={t('nodes.ai_follow_up_placeholder')}
-              rows={2}
-              className="w-full resize-y min-h-[72px] rounded-lg border border-[#E6E4DF] bg-white/90 pl-3 pr-11 py-2 pb-9 text-xs text-[#1a1a1a] placeholder:text-[#a8a6a0] focus:outline-none focus:ring-1 focus:ring-[#C2410C]/40 disabled:opacity-50"
+              rows={1}
+              className="w-full resize-none overflow-y-auto scrollbar-hide rounded-lg border border-[#E6E4DF]/90 bg-white/80 pl-3 pr-10 py-1.5 text-xs leading-snug text-[#1a1a1a] placeholder:text-[#a8a6a0] focus:outline-none focus:ring-1 focus:ring-[#C2410C]/30 disabled:opacity-50"
             />
             <button
               type="button"
@@ -99,12 +109,12 @@ export function AiNode({
               disabled={!!isFollowUpDisabled || !draft.trim()}
               title={t('nodes.ai_follow_up_send')}
               aria-label={t('nodes.ai_follow_up_send')}
-              className="absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-[#C2410C] text-white shadow-sm transition-colors hover:bg-[#a33508] disabled:pointer-events-none disabled:opacity-40"
+              className="absolute bottom-1 right-1.5 flex items-center justify-center rounded-md p-1 text-[#C2410C] transition-colors hover:bg-[#EAE7E2]/80 hover:text-[#a33508] disabled:pointer-events-none disabled:opacity-40"
             >
               {isFollowUpLoading ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
               ) : (
-                <Send className="h-3.5 w-3.5" aria-hidden strokeWidth={2} />
+                <Send className="h-4 w-4" aria-hidden strokeWidth={2} />
               )}
             </button>
           </div>

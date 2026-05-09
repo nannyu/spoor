@@ -8,8 +8,9 @@ import {
   Loader2,
   PenLine,
 } from 'lucide-react';
-import { DraggableNode } from './components/canvas/DraggableNode';
+import { nodeSupportsCycleLayout } from './constants/nodeCapabilities';
 import { CanvasEdgeLines } from './components/canvas/CanvasEdgeLines';
+import { DraggableNode } from './components/canvas/DraggableNode';
 import { AISettingsModal } from './components/AISettingsModal';
 import { Sidebar } from './components/Sidebar';
 import { CanvasHistoryPopover } from './components/CanvasHistoryPopover';
@@ -368,21 +369,21 @@ export default function App() {
                     onDelete={() => removeNodeId(node.id)} scale={canvasTransform.scale}
                     rotation={rotation}
                     onCycleLayout={
-                      node.type === 'ai'
-                        ? undefined
-                        : () => {
+                      nodeSupportsCycleLayout(node.type)
+                        ? () => {
                             const currentLayout = node.layout || 0;
                             db.nodes.update(node.id, { layout: (currentLayout + 1) % 4 });
                           }
+                        : undefined
                     }
-                  isSelected={selectedNodes.has(node.id)}
-                  isEditing={editingNodeId === node.id}
-                  onToggleSelect={() => toggleNodeSelection(node.id)}
-                  allowPalette={true}
-                  onDragEnd={handleNodeDragEnd}
-                  onResizeEnd={(size) => {
-                    db.nodes.update(node.id, size);
-                  }}
+                    isSelected={selectedNodes.has(node.id)}
+                    isEditing={editingNodeId === node.id}
+                    onToggleSelect={() => toggleNodeSelection(node.id)}
+                    allowPalette={true}
+                    onDragEnd={handleNodeDragEnd}
+                    onResizeEnd={(size) => {
+                      db.nodes.update(node.id, size);
+                    }}
                 >
                   <NodeRenderer
                     node={node}
