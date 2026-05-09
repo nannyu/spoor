@@ -43,13 +43,11 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
   const { t } = useTranslation();
   const [activeAgentId, setActiveAgentId] = useState<string | null>(agentConfigs[0]?.id || null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [saveStatus, setSaveStatus] = useState('');
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [isSandboxOpen, setIsSandboxOpen] = useState(false);
   const [sandboxMessages, setSandboxMessages] = useState<{role: 'user' | 'model'; text: string}[]>([]);
   const [sandboxInput, setSandboxInput] = useState('');
   const [isSandboxLoading, setIsSandboxLoading] = useState(false);
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const knowledgeFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -77,19 +75,9 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
     setActiveAgentId(newId);
   };
 
-  const touchSaveStatus = () => {
-    setSaveStatus('Saving...');
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(() => {
-      setSaveStatus('Saved');
-      setTimeout(() => setSaveStatus(''), 2000);
-    }, 800);
-  };
-
   const handleUpdateActiveAgent = (field: string, value: string | number) => {
     if (!activeAgentId) return;
     setAgentConfigs(agentConfigs.map((a) => (a.id === activeAgentId ? { ...a, [field]: value } : a)));
-    touchSaveStatus();
   };
 
   const setActiveAgentKnowledgeFiles = (next: AgentMarkdownKnowledgeFile[] | undefined) => {
@@ -99,7 +87,6 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
         a.id === activeAgentId ? { ...a, knowledgeMarkdownFiles: next?.length ? next : undefined } : a,
       ),
     );
-    touchSaveStatus();
   };
 
   const openKnowledgeFilePicker = () => knowledgeFileInputRef.current?.click();
@@ -225,9 +212,25 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
     <div className="flex-1 flex bg-[#FAF9F6] overflow-hidden relative">
       {/* Pane 1: Persona List */}
       <section className="w-64 flex flex-col border-r border-[#E6E4DF] bg-white z-10">
-        <div className="p-6 border-b border-[#E6E4DF] flex items-center justify-between">
-          <h3 className="font-serif text-xl font-bold text-[#1a1a1a]">{t('agents.personas')}</h3>
-          <button onClick={handleAddAgent} className="text-[#C2410C] hover:bg-[#F4F1ED] p-1 rounded-full transition-colors flex items-center justify-center">
+        <div className="p-4 border-b border-[#E6E4DF] flex items-center gap-2">
+          <div className="relative flex-1 min-w-0">
+            <input
+              className="w-full pl-9 pr-3 py-2 text-xs font-sans bg-white border border-[#E6E4DF] rounded-lg focus:ring-1 focus:ring-[#C2410C] focus:border-[#C2410C] outline-none"
+              placeholder={t('agents.search_personas')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              type="search"
+              autoComplete="off"
+              aria-label={t('agents.search_personas')}
+            />
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#8c8a84] pointer-events-none" />
+          </div>
+          <button
+            type="button"
+            onClick={handleAddAgent}
+            aria-label={t('agents.new_persona')}
+            className="text-[#C2410C] hover:bg-[#F4F1ED] p-1 rounded-full transition-colors flex items-center justify-center shrink-0"
+          >
             <Plus className="w-5 h-5" />
           </button>
         </div>
@@ -255,18 +258,6 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
             ))}
           </div>
         </div>
-        <div className="p-4 border-t border-[#E6E4DF] bg-[#F4F1ED]/30">
-          <div className="relative">
-            <input 
-              className="w-full pl-9 pr-4 py-2 text-xs font-sans bg-white border border-[#E6E4DF] rounded-lg focus:ring-1 focus:ring-[#C2410C] focus:border-[#C2410C] outline-none" 
-              placeholder={t('agents.search_personas')} 
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              type="text"
-            />
-            <Search className="w-4 h-4 absolute left-3 top-2 text-[#8c8a84]" />
-          </div>
-        </div>
       </section>
 
       {/* Pane 2: Workspace/Editor */}
@@ -275,11 +266,6 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
           <>
             <div className="sticky top-0 bg-[#FAF9F6]/80 backdrop-blur-md px-10 py-6 border-b border-[#E6E4DF] flex flex-col sm:flex-row justify-between items-start sm:items-end z-10 gap-4">
               <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[10px] font-mono font-bold text-[#C2410C] uppercase tracking-widest">{t('agents.active_config')}</span>
-                  <span className={`w-1.5 h-1.5 rounded-full ${saveStatus === 'Saved' ? 'bg-green-500' : saveStatus === 'Saving...' ? 'bg-yellow-400 animate-pulse' : 'bg-[#C2410C]'}`}></span>
-                  {saveStatus && <span className={`text-[10px] font-mono ${saveStatus === 'Saved' ? 'text-green-600' : 'text-yellow-600'}`}>{saveStatus}</span>}
-                </div>
                 <input
                   type="text"
                   className="font-serif text-3xl font-bold text-[#1a1a1a] bg-transparent border-0 border-b border-transparent hover:border-[#E6E4DF] focus:border-[#C2410C] focus:ring-0 outline-none w-full max-w-2xl py-1 px-0 transition-colors placeholder:text-[#8c8a84] placeholder:font-normal"

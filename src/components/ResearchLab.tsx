@@ -7,7 +7,6 @@ import { metasoSearch, buildSearchContext } from '../services/search';
 import { db, type ResearchSession, type ResearchSessionSearchStatus } from '../db';
 import {
   Terminal,
-  Cpu,
   Microscope,
   ArrowRight,
   ListChecks,
@@ -300,12 +299,6 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
     <div className="flex-1 flex bg-[#FAF9F6] paper-texture text-[#1a1a1a] overflow-hidden">
       {/* Side Panel: History & Status */}
       <div className="w-64 border-r border-[#E6E4DF] flex flex-col bg-[#F4F1ED]/50 z-10 shrink-0">
-        <div className="p-4 border-b border-[#E6E4DF]">
-          <div className="flex items-center gap-2 text-[#C2410C] font-mono text-xs uppercase tracking-widest font-bold">
-            <Cpu className="w-4 h-4" />
-            {t('lab.agent_title')}
-          </div>
-        </div>
         <div className="flex-1 overflow-y-auto p-4">
            {phase === 'idle' ? (
              <>
@@ -334,7 +327,7 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
            ) : (
              <>
                <div className="flex justify-between items-center mb-4">
-                 <span className="font-mono text-xs text-[#8c8a84] uppercase font-bold tracking-wider">Sources Utilized</span>
+                 <span className="font-mono text-xs text-[#8c8a84] uppercase font-bold tracking-wider">{t('lab.sources_utilized')}</span>
                  {phase === 'completed' && <button onClick={() => {setPhase('idle'); setQuery(''); setSearchStatus('idle'); setSourceCount(0);}} className="text-[#C2410C] text-xs hover:underline font-bold">{t('lab.new_research')}</button>}
                </div>
 
@@ -360,14 +353,14 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
 
                <div className="space-y-3">
                   <div className={`bg-white border border-[#E6E4DF] p-3 rounded text-sm relative shadow-sm transition-all ${activeStep >= 1 ? 'opacity-100' : 'opacity-0 translate-y-4'}`}>
-                     <div className="text-[10px] text-[#4ade80] mb-1 font-mono flex items-center gap-1 font-bold"><Check className="w-3 h-3"/> Processed</div>
-                     <div className="text-[#1a1a1a] font-serif font-bold">Ch 4: The Archive</div>
-                     <div className="text-[#5a5a54] text-xs mt-1 font-sans">Found 3 metaphors for 'decay'.</div>
+                     <div className="text-[10px] text-[#4ade80] mb-1 font-mono flex items-center gap-1 font-bold"><Check className="w-3 h-3"/> {t('lab.processed')}</div>
+                     <div className="text-[#1a1a1a] font-serif font-bold">{t('lab.demo_source_card_1_title')}</div>
+                     <div className="text-[#5a5a54] text-xs mt-1 font-sans">{t('lab.demo_source_card_1_desc')}</div>
                   </div>
                   <div className={`bg-white border border-[#E6E4DF] p-3 rounded text-sm relative shadow-sm transition-all ${activeStep >= 2 ? 'opacity-100' : 'opacity-0 translate-y-4'}`}>
-                     <div className="text-[10px] text-[#4ade80] mb-1 font-mono flex items-center gap-1 font-bold"><Check className="w-3 h-3"/> Processed</div>
-                     <div className="text-[#1a1a1a] font-serif font-bold">REF-042: Spatial Encoding</div>
-                     <div className="text-[#5a5a54] text-xs mt-1 font-sans">Linked theory of trauma and blueprints.</div>
+                     <div className="text-[10px] text-[#4ade80] mb-1 font-mono flex items-center gap-1 font-bold"><Check className="w-3 h-3"/> {t('lab.processed')}</div>
+                     <div className="text-[#1a1a1a] font-serif font-bold">{t('lab.demo_source_card_2_title')}</div>
+                     <div className="text-[#5a5a54] text-xs mt-1 font-sans">{t('lab.demo_source_card_2_desc')}</div>
                   </div>
                </div>
              </>
@@ -384,7 +377,7 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
               </div>
               <h1 className="text-4xl font-serif font-bold mb-4 text-center text-[#1a1a1a]">{t('lab.investigate')}</h1>
               <p className="text-[#5a5a54] text-center mb-8 font-sans text-lg">
-                 Enter a broad topic or specific thesis. The agent will formulate a research plan, cross-reference archives, and generate a synthesized report.
+                 {t('lab.idle_intro')}
               </p>
 
               <form onSubmit={handleStart} className="w-full relative group">
@@ -406,8 +399,8 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
               </form>
 
               <div className="mt-8 flex gap-3 text-xs font-mono text-[#5a5a54]">
-                 <span className="bg-white px-3 py-1 rounded-full border border-[#E6E4DF] shadow-sm"># spatial-encoding</span>
-                 <span className="bg-white px-3 py-1 rounded-full border border-[#E6E4DF] shadow-sm"># character-arcs</span>
+                 <span className="bg-white px-3 py-1 rounded-full border border-[#E6E4DF] shadow-sm">{t('lab.suggested_tag_1')}</span>
+                 <span className="bg-white px-3 py-1 rounded-full border border-[#E6E4DF] shadow-sm">{t('lab.suggested_tag_2')}</span>
               </div>
            </div>
          )}
@@ -415,7 +408,7 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
          {(phase === 'planning' || phase === 'plan_ready') && (
            <div className="flex-1 p-12 overflow-y-auto w-full max-w-5xl mx-auto">
               <div className="mb-8 border-b border-[#E6E4DF] pb-8">
-                 <div className="text-[#C2410C] font-mono text-xs mb-2">TARGET INQUIRY</div>
+                 <div className="text-[#C2410C] font-mono text-xs mb-2">{t('lab.target_inquiry')}</div>
                  <h2 className="text-3xl font-serif font-bold text-[#1a1a1a]">{query}</h2>
               </div>
 
@@ -433,7 +426,7 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
                   <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
                      <div className="flex items-center gap-3 mb-2">
                         <ListChecks className="w-6 h-6 text-[#4ade80]" />
-                        <h3 className="text-xl font-sans font-bold text-[#1a1a1a]">Recommended Research Plan</h3>
+                        <h3 className="text-xl font-sans font-bold text-[#1a1a1a]">{t('lab.recommended_plan_title')}</h3>
                      </div>
                      <p className="text-[#5a5a54] text-sm font-sans mb-6">{t('lab.plan_edit_hint')}</p>
 
@@ -521,11 +514,11 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
                  <div className="space-y-4 text-[#8c8a84]">
                    <div className="flex items-center gap-3">
                      <CheckCircle2 className="w-4 h-4 text-[#4ade80]" />
-                     <span className="text-[#1a1a1a]">Persistence Layer Active (Dexie/IndexedDB).</span>
+                     <span className="text-[#1a1a1a]">{t('lab.log_persistence')}</span>
                    </div>
                    <div className="flex items-center gap-3">
                      <CheckCircle2 className="w-4 h-4 text-[#4ade80]" />
-                     <span className="text-[#1a1a1a]">Initialized research environment.</span>
+                     <span className="text-[#1a1a1a]">{t('lab.log_env_ready')}</span>
                    </div>
 
                    {/* Web search step */}
@@ -548,26 +541,27 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
                        {searchStatus === 'searching' && t('lab.searching')}
                        {searchStatus === 'found' && t('lab.search_complete', { count: sourceCount })}
                        {searchStatus === 'fallback' && t('lab.search_fallback')}
-                       {searchStatus === 'idle' && (aiConfig.metasoApiKey ? 'Preparing web search...' : 'Offline mode — no Metaso API key configured.')}
+                       {searchStatus === 'idle' &&
+                         (aiConfig.metasoApiKey ? t('lab.search_preparing') : t('lab.search_offline_no_key'))}
                      </span>
                    </div>
 
                    <div className="flex items-center gap-3">
                      {activeStep >= 1 ? <CheckCircle2 className="w-4 h-4 text-[#4ade80]" /> : <Loader2 className="w-4 h-4 animate-spin text-[#C2410C]" />}
-                     <span className={activeStep >= 1 ? "text-[#1a1a1a]" : "text-[#5a5a54]"}>Scanning internal drafts (4/4 complete)...</span>
+                     <span className={activeStep >= 1 ? "text-[#1a1a1a]" : "text-[#5a5a54]"}>{t('lab.executing_scan_drafts')}</span>
                    </div>
 
                    {activeStep >= 1 && (
                      <div className="flex items-center gap-3">
                        {activeStep >= 2 ? <CheckCircle2 className="w-4 h-4 text-[#4ade80]" /> : <Loader2 className="w-4 h-4 animate-spin text-[#C2410C]" />}
-                       <span className={activeStep >= 2 ? "text-[#1a1a1a]" : "text-[#5a5a54]"}>Cross-referencing "Spatial Encoding" index (REF-042)...</span>
+                       <span className={activeStep >= 2 ? "text-[#1a1a1a]" : "text-[#5a5a54]"}>{t('lab.executing_cross_ref')}</span>
                      </div>
                    )}
 
                    {activeStep >= 2 && (
                      <div className="flex items-center gap-3">
                        <Loader2 className="w-4 h-4 animate-spin text-[#C2410C]" />
-                       <span className="text-[#5a5a54]">Synthesizing final analytical report...</span>
+                       <span className="text-[#5a5a54]">{t('lab.executing_synthesize')}</span>
                      </div>
                    )}
                  </div>
@@ -587,10 +581,10 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
                         <h1 className="font-serif text-[44px] font-bold leading-tight mb-4">{query || t('lab.report')}</h1>
                         <div className="h-0.5 w-20 bg-[#1a1a1a] mx-auto"></div>
                         {searchStatus === 'found' && (
-                          <p className="text-xs text-[#8c8a84] mt-3 font-mono">Based on {sourceCount} web sources + LLM synthesis</p>
+                          <p className="text-xs text-[#8c8a84] mt-3 font-mono">{t('lab.report_footer_web', { count: sourceCount })}</p>
                         )}
                         {searchStatus === 'fallback' && (
-                          <p className="text-xs text-[#a16207] mt-3 font-mono">Offline mode — LLM-only synthesis</p>
+                          <p className="text-xs text-[#a16207] mt-3 font-mono">{t('lab.report_footer_offline')}</p>
                         )}
                      </div>
 
@@ -605,7 +599,7 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
                         ))}
 
                         <div className="bg-[#fff9e6] border-l-4 border-[#C2410C] p-5 text-[#5a5a54] font-sans text-sm my-8 shadow-sm rounded-r">
-                           <strong className="text-[#1a1a1a]">Agent Recommendation & Conclusion:</strong> {researchReport.conclusion}
+                           <strong className="text-[#1a1a1a]">{t('lab.conclusion_label')}</strong> {researchReport.conclusion}
                         </div>
                      </div>
                   </div>

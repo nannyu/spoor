@@ -167,6 +167,8 @@ describe('i18n 国际化模块', () => {
 
     it('lab 翻译完整', () => {
       expect(i18n.t('lab.investigate')).toBe('您想调查什么？');
+      expect(i18n.t('lab.idle_intro')).toContain('智能体');
+      expect(i18n.t('lab.suggested_tag_1')).toContain('空间编码');
       expect(i18n.t('lab.approve')).toBe('批准并执行');
       expect(i18n.t('lab.plan_revision_apply')).toContain('AI');
       expect(i18n.t('lab.ai_revise_plan', { query: '问题', plan: '[]', instruction: '改' })).toContain('问题');

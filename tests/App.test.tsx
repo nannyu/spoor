@@ -63,7 +63,6 @@ vi.mock('react-i18next', () => ({
         'ai.loading': 'AI 思考中...',
         'agents.personas': '人格设定',
         'agents.new_persona': '新建人格',
-        'agents.active_config': '当前配置',
         'agents.test_sandbox': '测试沙盒',
         'agents.close_sandbox': '关闭沙盒',
         'agents.enhance_prompt': 'AI 优化提示词',
@@ -92,7 +91,34 @@ vi.mock('react-i18next', () => ({
         'lab.new_research': '新研究',
         'lab.past_sessions': '历史会话',
         'lab.no_past_sessions': '暂无已完成的研究。完成一次研究后会显示在这里。',
-        'lab.agent_title': '深度研究智能体',
+        'lab.idle_intro': '可以输入宽泛主题或具体论点。智能体会拟定研究计划、对照档案与资料并生成综合报告。',
+        'lab.suggested_tag_1': '# 空间编码',
+        'lab.suggested_tag_2': '# 人物弧光',
+        'lab.sources_utilized': '已用来源',
+        'lab.processed': '已处理',
+        'lab.demo_source_card_1_title': '第四章：档案室',
+        'lab.demo_source_card_1_desc': '找到 3 处与「衰败」相关的隐喻。',
+        'lab.demo_source_card_2_title': '参考文献 042：空间编码',
+        'lab.demo_source_card_2_desc': '串联创伤理论与蓝图意象。',
+        'lab.target_inquiry': '研究主题',
+        'lab.recommended_plan_title': '推荐研究计划',
+        'lab.plan_edit_hint': '可直接编辑各步标题与说明。',
+        'lab.plan_revision_placeholder': '说明希望如何修改大纲…',
+        'lab.plan_revision_apply': '让 AI 按说明更新大纲',
+        'lab.plan_revision_applying': '正在更新大纲…',
+        'lab.searching': '正在联网搜索...',
+        'lab.search_complete': `已获取 ${opts?.count ?? 0} 条网络来源`,
+        'lab.search_fallback': '搜索不可用，使用离线模式',
+        'lab.log_persistence': '持久层已就绪（Dexie / IndexedDB）。',
+        'lab.log_env_ready': '研究环境已初始化。',
+        'lab.search_preparing': '正在准备联网搜索…',
+        'lab.search_offline_no_key': '离线模式 — 未配置 Metaso API 密钥。',
+        'lab.executing_scan_drafts': '正在扫描内部草稿（4/4）…',
+        'lab.executing_cross_ref': '正在对照「空间编码」索引（REF-042）…',
+        'lab.executing_synthesize': '正在综合最终分析报告…',
+        'lab.report_footer_web': `基于 ${opts?.count ?? 0} 条网络来源与 LLM 综合`,
+        'lab.report_footer_offline': '离线模式 — 仅由 LLM 综合',
+        'lab.conclusion_label': '智能体建议与结论：',
         'reference.index_title': '档案索引',
         'reference.search_refs': '搜索参考文献...',
         'reference.citation': '引用文献',
@@ -662,10 +688,11 @@ describe('App 组件', () => {
       await user.click(agentsLink);
     };
 
-    it('切换到 AI 助手标签后显示人格设定标题', async () => {
+    it('切换到 AI 助手标签后顶部为搜索人格栏且无「人格设定」标题', async () => {
       const user = userEvent.setup();
       await goToAgents(user);
-      expect(screen.getByText('人格设定')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('搜索人格...')).toBeInTheDocument();
+      expect(screen.queryByText('人格设定')).not.toBeInTheDocument();
     });
 
     it('显示默认的系统代理列表', async () => {
@@ -704,7 +731,6 @@ describe('App 组件', () => {
       const user = userEvent.setup();
       await goToAgents(user);
       // 第一个代理默认已选中，直接验证编辑器
-      expect(screen.getByText('当前配置')).toBeInTheDocument();
       expect(screen.getByText('身份与基调')).toBeInTheDocument();
     });
 
@@ -745,12 +771,10 @@ describe('App 组件', () => {
     it('点击新建人格按钮添加新代理', async () => {
       const user = userEvent.setup();
       await goToAgents(user);
-      // 点击 + 按钮（在人格设定标题旁边）
-      const addBtns = document.querySelectorAll('button');
-      const addBtn = Array.from(addBtns).find(btn => {
-        const svg = btn.querySelector('svg[data-testid="icon-Plus"]');
-        return svg && btn.closest('section')?.querySelector('h3')?.textContent?.includes('人格设定');
-      });
+      const sidebar = screen.getByPlaceholderText('搜索人格...').closest('section');
+      const addBtn = Array.from(sidebar?.querySelectorAll('button') ?? []).find((btn) =>
+        btn.querySelector('svg[data-testid="icon-Plus"]'),
+      );
       expect(addBtn).toBeDefined();
       await user.click(addBtn!);
       // 新人格应出现在列表中
@@ -782,12 +806,6 @@ describe('App 组件', () => {
       const user = userEvent.setup();
       await goToLab(user);
       expect(screen.getByText('您想调查什么？')).toBeInTheDocument();
-    });
-
-    it('研究实验室显示深度研究智能体标题', async () => {
-      const user = userEvent.setup();
-      await goToLab(user);
-      expect(screen.getByText('深度研究智能体')).toBeInTheDocument();
     });
 
     it('输入框有正确的 placeholder', async () => {
