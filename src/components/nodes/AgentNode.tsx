@@ -47,9 +47,6 @@ export function AgentNode({
           </button>
         ) : null}
       </div>
-      <div className="text-xs text-[#5a5a54] mt-2 border-t border-[#E6E4DF] pt-2 relative z-10">
-        {t('nodes.connect_notes')}
-      </div>
       {isAnalyzing ? (
         <div
           className="absolute inset-0 z-20 flex items-center justify-center rounded-lg bg-white/75 backdrop-blur-[1px] pointer-events-none"

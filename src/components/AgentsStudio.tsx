@@ -56,7 +56,6 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
   const activeAgent = agentConfigs.find((a) => a.id === activeAgentId) || agentConfigs[0];
 
   const displayName = activeAgent ? resolveAgentLocalizedName(activeAgent) : '';
-  const displayRole = activeAgent ? resolveAgentLocalizedRole(activeAgent) : '';
   const displayPrompt = activeAgent ? resolveAgentSystemPrompt(activeAgent) : '';
 
   useEffect(() => {
@@ -281,7 +280,14 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
                   <span className={`w-1.5 h-1.5 rounded-full ${saveStatus === 'Saved' ? 'bg-green-500' : saveStatus === 'Saving...' ? 'bg-yellow-400 animate-pulse' : 'bg-[#C2410C]'}`}></span>
                   {saveStatus && <span className={`text-[10px] font-mono ${saveStatus === 'Saved' ? 'text-green-600' : 'text-yellow-600'}`}>{saveStatus}</span>}
                 </div>
-                <h1 className="font-serif text-3xl font-bold text-[#1a1a1a]">{displayName || t('agents.new_persona')}</h1>
+                <input
+                  type="text"
+                  className="font-serif text-3xl font-bold text-[#1a1a1a] bg-transparent border-0 border-b border-transparent hover:border-[#E6E4DF] focus:border-[#C2410C] focus:ring-0 outline-none w-full max-w-2xl py-1 px-0 transition-colors placeholder:text-[#8c8a84] placeholder:font-normal"
+                  value={displayName}
+                  onChange={(e) => handleUpdateActiveAgent('name', e.target.value)}
+                  placeholder={t('agents.new_persona')}
+                  aria-label={t('agents.persona_name')}
+                />
               </div>
               <div className="flex gap-3">
                 <button 
@@ -304,26 +310,6 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
                   <div className="flex items-center gap-4">
                     <div className="w-1 h-8 bg-[#C2410C] rounded-full"></div>
                     <h3 className="text-xl font-serif font-bold text-[#1a1a1a]">{t('agents.identity_tone')}</h3>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-mono font-bold text-[#8c8a84] uppercase tracking-wider">{t('agents.persona_name')}</label>
-                      <input 
-                        className="w-full p-3 font-sans text-sm bg-white border border-[#E6E4DF] rounded-lg focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C] outline-none transition-colors" 
-                        type="text" 
-                        value={displayName}
-                        onChange={e => handleUpdateActiveAgent('name', e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-mono font-bold text-[#8c8a84] uppercase tracking-wider">{t('agents.role_specialty')}</label>
-                      <input 
-                        className="w-full p-3 font-sans text-sm bg-white border border-[#E6E4DF] rounded-lg focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C] outline-none transition-colors" 
-                        type="text" 
-                        value={displayRole}
-                        onChange={e => handleUpdateActiveAgent('role', e.target.value)}
-                      />
-                    </div>
                   </div>
                   <div className="space-y-2">
                     <div className="flex justify-between items-end">

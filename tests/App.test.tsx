@@ -46,7 +46,6 @@ vi.mock('react-i18next', () => ({
         'nodes.ai_loading': '合成中...',
         'nodes.empty_note': '空笔记。点击编辑。',
         'nodes.type_something': '输入内容...',
-        'nodes.connect_notes': '连接笔记进行分析。',
         'settings.title': '设置',
         'settings.profile': '个人资料',
         'settings.ai_config': 'AI 配置',
@@ -708,11 +707,12 @@ describe('App 组件', () => {
       expect(screen.getByText('身份与基调')).toBeInTheDocument();
     });
 
-    it('选中代理后显示人格名称和角色专长输入', async () => {
+    it('选中代理后顶部标题为人格名称可编辑输入', async () => {
       const user = userEvent.setup();
       await goToAgents(user);
-      expect(screen.getByText('人格名称')).toBeInTheDocument();
-      expect(screen.getByText('角色专长')).toBeInTheDocument();
+      const titleInput = screen.getByLabelText('人格名称');
+      expect(titleInput).toBeInstanceOf(HTMLInputElement);
+      expect(screen.queryByText('角色专长')).not.toBeInTheDocument();
     });
 
     it('选中代理后显示系统提示词', async () => {
