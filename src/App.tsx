@@ -367,10 +367,14 @@ export default function App() {
                     initialWidth={node.width} initialHeight={node.height}
                     onDelete={() => removeNodeId(node.id)} scale={canvasTransform.scale}
                     rotation={rotation}
-                    onCycleLayout={() => {
-                    const currentLayout = node.layout || 0;
-                    db.nodes.update(node.id, { layout: (currentLayout + 1) % 4 });
-                  }}
+                    onCycleLayout={
+                      node.type === 'ai'
+                        ? undefined
+                        : () => {
+                            const currentLayout = node.layout || 0;
+                            db.nodes.update(node.id, { layout: (currentLayout + 1) % 4 });
+                          }
+                    }
                   isSelected={selectedNodes.has(node.id)}
                   isEditing={editingNodeId === node.id}
                   onToggleSelect={() => toggleNodeSelection(node.id)}
