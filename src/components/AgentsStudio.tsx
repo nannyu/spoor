@@ -235,7 +235,7 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
           </button>
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto">
-          <div className="divide-y divide-[#E6E4DF]">
+          <div>
             {filteredAgents.map((agent) => (
               <div 
                 key={agent.id}
