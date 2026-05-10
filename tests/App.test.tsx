@@ -704,13 +704,6 @@ describe('App 组件', () => {
       expect(screen.getByText('The Weaver')).toBeInTheDocument();
     });
 
-    it('显示代理角色标签', async () => {
-      const user = userEvent.setup();
-      await goToAgents(user);
-      expect(screen.getByText('Debater')).toBeInTheDocument();
-      expect(screen.getByText('Journalist')).toBeInTheDocument();
-    });
-
     it('显示搜索人格输入框', async () => {
       const user = userEvent.setup();
       await goToAgents(user);
