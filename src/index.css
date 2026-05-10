@@ -63,6 +63,16 @@
   .markdown-body pre { @apply bg-black/5 rounded p-3 mb-3 overflow-x-auto; }
   .markdown-body blockquote { @apply border-l-4 border-black/10 pl-4 italic mb-3; }
 
+  .note-glass-markdown .markdown-body {
+    @apply font-sans text-[18px] font-normal leading-[1.6] text-[#464652];
+  }
+  .note-glass-markdown .markdown-body :where(h1, h2, h3) {
+    @apply text-[#1b1b1c] font-newsreader;
+  }
+  .note-glass-markdown .markdown-body h1 { @apply text-2xl font-semibold mb-3 mt-0; }
+  .note-glass-markdown .markdown-body h2 { @apply text-xl font-semibold mb-2 mt-4; }
+  .note-glass-markdown .markdown-body h3 { @apply text-lg font-semibold mb-2 mt-3; }
+
   .doc-content h1 { font-size: 1.5em; font-weight: bold; margin: 0.8em 0 0.4em; }
   .doc-content h2 { font-size: 1.3em; font-weight: bold; margin: 0.6em 0 0.3em; }
   .doc-content h3 { font-size: 1.1em; font-weight: bold; margin: 0.5em 0 0.2em; }

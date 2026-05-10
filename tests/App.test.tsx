@@ -42,6 +42,7 @@ vi.mock('react-i18next', () => ({
         'nodes.theme': '核心主题',
         'nodes.note': '笔记',
         'nodes.observation': '观察',
+        'nodes.thought_node': '思绪节点',
         'nodes.ai_refinement': 'AI 优化',
         'nodes.ai_loading': '合成中...',
         'nodes.empty_note': '空笔记。点击编辑。',
