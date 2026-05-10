@@ -45,6 +45,7 @@ vi.mock('react-i18next', () => ({
         'lab.plan_revision_placeholder': 'Revision instructions...',
         'lab.plan_revision_apply': 'Update outline with AI',
         'lab.plan_revision_applying': 'Updating outline...',
+        'lab.ai_need_web_classifier': 'Classifier {{query}}',
         'lab.ai_decompose_question': 'Decompose question: {{query}}',
         'lab.ai_revise_decompose': 'Revise decompose for {{query}}. Plan: {{plan}}. Instruction: {{instruction}}',
         'lab.ai_research_report': 'Generate report for: {{query}}',
@@ -213,7 +214,7 @@ describe('ResearchLab', () => {
         { title: 'Step 1', desc: 'Desc 1' },
         { title: 'Step 2', desc: 'Desc 2' },
         { title: 'Step 3', desc: 'Desc 3' },
-      ])
+      ]),
     );
     render(<ResearchLab aiConfig={baseConfig} callAI={callAI} />);
 
@@ -225,12 +226,12 @@ describe('ResearchLab', () => {
       expect(callAI).toHaveBeenCalledTimes(1);
     });
 
-    // Should NOT have called metasoSearch (no key)
+    // No Metaso key → no need_web classifier call
     expect(mockMetasoSearch).not.toHaveBeenCalled();
 
-    // callAI prompt should NOT contain search context
     const prompt = callAI.mock.calls[0][0].prompt;
     expect(prompt).not.toContain('[Source]');
+    expect(prompt).not.toContain('Classifier');
     expect(prompt).toContain('memory loss');
   });
 
@@ -241,13 +242,15 @@ describe('ResearchLab', () => {
       webpages: [{ title: 'Research', link: 'https://r.com', snippet: 'Findings', score: 'high', date: '2026-01-01' }],
     });
 
-    const callAI = vi.fn().mockResolvedValue(
-      JSON.stringify([
-        { title: 'Step 1', desc: 'Desc' },
-        { title: 'Step 2', desc: 'Desc' },
-        { title: 'Step 3', desc: 'Desc' },
-      ])
-    );
+    const callAI = vi.fn()
+      .mockResolvedValueOnce('{"need_web":true}')
+      .mockResolvedValue(
+        JSON.stringify([
+          { title: 'Step 1', desc: 'Desc' },
+          { title: 'Step 2', desc: 'Desc' },
+          { title: 'Step 3', desc: 'Desc' },
+        ]),
+      );
 
     render(<ResearchLab aiConfig={{ ...baseConfig, metasoApiKey: 'sk-metaso-test' }} callAI={callAI} />);
 
@@ -260,25 +263,57 @@ describe('ResearchLab', () => {
     });
 
     await waitFor(() => {
-      expect(callAI).toHaveBeenCalledTimes(1);
+      expect(callAI).toHaveBeenCalledTimes(2);
     });
 
-    // callAI prompt SHOULD contain search context
-    const prompt = callAI.mock.calls[0][0].prompt;
+    expect((callAI.mock.calls[0][0].prompt as string)).toContain('Classifier');
+
+    // callAI: classifier then plan; plan prompt SHOULD contain search context
+    const prompt = callAI.mock.calls[1][0].prompt;
     expect(prompt).toContain('[Source]');
     expect(prompt).toContain('Findings');
+  });
+
+  it('does not call metaso when classifier returns need_web false', async () => {
+    const callAI = vi.fn()
+      .mockResolvedValueOnce('{"need_web":false}')
+      .mockResolvedValue(
+        JSON.stringify([
+          { title: 'Step 1', desc: 'Desc' },
+          { title: 'Step 2', desc: 'Desc' },
+          { title: 'Step 3', desc: 'Desc' },
+        ]),
+      );
+
+    render(<ResearchLab aiConfig={{ ...baseConfig, metasoApiKey: 'sk-metaso-test' }} callAI={callAI} />);
+
+    const input = screen.getByPlaceholderText('Search topic...');
+    fireEvent.change(input, { target: { value: 'meaning of life' } });
+    fireEvent.submit(input.closest('form')!);
+
+    await waitFor(() => {
+      expect(callAI).toHaveBeenCalledTimes(2);
+    });
+
+    expect(mockMetasoSearch).not.toHaveBeenCalled();
+
+    const planPrompt = callAI.mock.calls[1][0].prompt as string;
+    expect(planPrompt).not.toContain('[Source]');
+    expect(planPrompt).toContain('meaning of life');
   });
 
   it('degrades gracefully when metasoSearch fails', async () => {
     mockMetasoSearch.mockRejectedValue(new Error('Network error'));
 
-    const callAI = vi.fn().mockResolvedValue(
-      JSON.stringify([
-        { title: 'Step 1', desc: 'Desc' },
-        { title: 'Step 2', desc: 'Desc' },
-        { title: 'Step 3', desc: 'Desc' },
-      ])
-    );
+    const callAI = vi.fn()
+      .mockResolvedValueOnce('{"need_web":true}')
+      .mockResolvedValue(
+        JSON.stringify([
+          { title: 'Step 1', desc: 'Desc' },
+          { title: 'Step 2', desc: 'Desc' },
+          { title: 'Step 3', desc: 'Desc' },
+        ]),
+      );
 
     const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -289,7 +324,7 @@ describe('ResearchLab', () => {
     fireEvent.submit(input.closest('form')!);
 
     await waitFor(() => {
-      expect(callAI).toHaveBeenCalledTimes(1);
+      expect(callAI).toHaveBeenCalledTimes(2);
     });
 
     // Should have warned about search failure
@@ -299,7 +334,7 @@ describe('ResearchLab', () => {
     );
 
     // callAI prompt should NOT contain search context (graceful fallback)
-    const prompt = callAI.mock.calls[0][0].prompt;
+    const prompt = callAI.mock.calls[1][0].prompt;
     expect(prompt).not.toContain('[Source]');
 
     consoleSpy.mockRestore();
@@ -398,7 +433,10 @@ describe('ResearchLab', () => {
       points: [{ title: 'P', text: 'T' }],
       conclusion: 'C',
     });
-    const callAI = vi.fn().mockResolvedValueOnce(planJson).mockResolvedValueOnce(reportJson);
+    const callAI = vi.fn()
+      .mockResolvedValueOnce('{"need_web":true}')
+      .mockResolvedValueOnce(planJson)
+      .mockResolvedValueOnce(reportJson);
 
     render(<ResearchLab aiConfig={{ ...baseConfig, metasoApiKey: 'sk-m' }} callAI={callAI} />);
 
@@ -411,7 +449,7 @@ describe('ResearchLab', () => {
     fireEvent.click(screen.getByRole('button', { name: /Approve & Execute/i }));
 
     await waitFor(() => {
-      expect(callAI).toHaveBeenCalledTimes(2);
+      expect(callAI).toHaveBeenCalledTimes(3);
     });
 
     await waitFor(async () => {
@@ -423,6 +461,8 @@ describe('ResearchLab', () => {
       expect(rows[0].searchWebpages?.[0]?.link).toBe('https://a.com');
       expect(rows[0].researchReport.intro).toBe('Web intro');
     });
+
+    expect(mockMetasoSearch).toHaveBeenCalledTimes(2);
   });
 
   it('still shows report when persisting session fails', async () => {

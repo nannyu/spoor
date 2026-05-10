@@ -148,6 +148,28 @@ type WebSearchOutcome = {
   webpages: ResearchSessionWebpageSnapshot[];
 };
 
+const EMPTY_WEB_OUTCOME: WebSearchOutcome = {
+  context: '',
+  sourceCount: 0,
+  searchStatus: 'idle',
+  webpages: [],
+};
+
+/** Parse `{"need_web":boolean}` from classifier output; default true if ambiguous (prefer fetching sources). */
+function parseNeedWebDecision(text: string): boolean {
+  try {
+    const raw = parseLenientLlmJson(text ?? '');
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+      const v = (raw as Record<string, unknown>).need_web;
+      if (v === true) return true;
+      if (v === false) return false;
+    }
+  } catch {
+    /* fall through */
+  }
+  return true;
+}
+
 export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
   const { t, i18n } = useTranslation();
   const [phase, setPhase] = useState<'idle' | 'planning' | 'plan_ready' | 'researching' | 'completed'>('idle');
@@ -165,6 +187,8 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
   const [searchSources, setSearchSources] = useState<ResearchSessionWebpageSnapshot[]>([]);
   const [sourceDetail, setSourceDetail] = useState<ResearchSessionWebpageSnapshot | null>(null);
   const executeResearchInFlightRef = useRef(false);
+  /** When Metaso key is set: classifier result for current session (whether to call web search). */
+  const labNeedWebRef = useRef(true);
 
   const pastSessions = useLiveQuery(
     () => db.researchSessions.orderBy('createdAt').reverse().limit(RESEARCH_HISTORY_LIMIT).toArray(),
@@ -202,6 +226,58 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
     } catch (e) {
       console.error('[Scribe AI] ResearchLab delete session failed', formatAiError(e));
     }
+  };
+
+  const classifyNeedWebSearch = async (searchQuery: string): Promise<boolean> => {
+    try {
+      const prompt = t('lab.ai_need_web_classifier', { query: searchQuery });
+      const text = await callAI({
+        config: aiConfig,
+        systemInstruction: getLocaleDirective(),
+        prompt,
+      });
+      return parseNeedWebDecision(String(text ?? ''));
+    } catch (e) {
+      console.warn('[Scribe AI] ResearchLab need_web classification failed', formatAiError(e));
+      return true;
+    }
+  };
+
+  /**
+   * If Metaso key is set: run lightweight classifier once per session start; only search when need_web.
+   * If no key: no classifier; returns empty outcome (same as before).
+   */
+  const resolveWebSearchOutcome = async (searchQuery: string): Promise<WebSearchOutcome> => {
+    const apiKey = aiConfig.metasoApiKey?.trim();
+    if (!apiKey) {
+      return tryWebSearch(searchQuery);
+    }
+    const needWeb = await classifyNeedWebSearch(searchQuery);
+    labNeedWebRef.current = needWeb;
+    if (!needWeb) {
+      setSearchStatus('idle');
+      setSourceCount(0);
+      setSearchSources([]);
+      return { ...EMPTY_WEB_OUTCOME };
+    }
+    return tryWebSearch(searchQuery);
+  };
+
+  /**
+   * Execute-phase search: reuse session classifier; skip Metaso when model chose reasoning-only.
+   */
+  const resolveWebSearchForExecute = async (searchQuery: string): Promise<WebSearchOutcome> => {
+    const apiKey = aiConfig.metasoApiKey?.trim();
+    if (!apiKey) {
+      return tryWebSearch(searchQuery);
+    }
+    if (!labNeedWebRef.current) {
+      setSearchStatus('idle');
+      setSourceCount(0);
+      setSearchSources([]);
+      return { ...EMPTY_WEB_OUTCOME };
+    }
+    return tryWebSearch(searchQuery);
   };
 
   /**
@@ -250,8 +326,9 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
     setSearchSources([]);
     setSourceDetail(null);
     setPlanRevisionNote('');
+    labNeedWebRef.current = true;
 
-    const { context: searchContext } = await tryWebSearch(query);
+    const { context: searchContext } = await resolveWebSearchOutcome(query);
 
     try {
       const prompt = searchContext
@@ -332,7 +409,7 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
         sourceCount: persistedSourceCount,
         searchStatus: persistedSearchStatus,
         webpages: persistedSearchWebpages,
-      } = await tryWebSearch(query);
+      } = await resolveWebSearchForExecute(query);
 
       const planContext =
         researchPlan.length > 0
@@ -463,6 +540,7 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
                        setSearchSources([]);
                        setReportGenerationFailed(false);
                        setSourceDetail(null);
+                       labNeedWebRef.current = true;
                      }}
                      className="text-[#C2410C] text-xs hover:underline font-bold"
                    >
