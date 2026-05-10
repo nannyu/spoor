@@ -174,7 +174,10 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
   const { t, i18n } = useTranslation();
   const [phase, setPhase] = useState<'idle' | 'planning' | 'plan_ready' | 'researching' | 'completed'>('idle');
   const [query, setQuery] = useState('');
-  const [activeStep, setActiveStep] = useState(0);
+  /** Real execute pipeline: await resolveWebSearchForExecute → await callAI(report). */
+  const [researchExecStage, setResearchExecStage] = useState<'resolving_context' | 'generating_report'>(
+    'resolving_context',
+  );
   const [researchPlan, setResearchPlan] = useState<ResearchPlanStep[]>([]);
   const [researchReport, setResearchReport] = useState<{intro: string, points: {title: string, text: string}[], conclusion: string}>({
     intro: '', points: [], conclusion: ''
@@ -400,9 +403,7 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
       setPhase('researching');
       setReportGenerationFailed(false);
       setSourceDetail(null);
-      setActiveStep(0);
-      const timer1 = setTimeout(() => setActiveStep(1), 2000);
-      const timer2 = setTimeout(() => setActiveStep(2), 4000);
+      setResearchExecStage('resolving_context');
 
       const {
         context: searchContext,
@@ -410,6 +411,8 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
         searchStatus: persistedSearchStatus,
         webpages: persistedSearchWebpages,
       } = await resolveWebSearchForExecute(query);
+
+      setResearchExecStage('generating_report');
 
       const planContext =
         researchPlan.length > 0
@@ -441,9 +444,6 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
         setResearchReport(fallbackReport);
         finalReport = fallbackReport;
       } finally {
-        clearTimeout(timer1);
-        clearTimeout(timer2);
-        setActiveStep(3);
         if (executionSucceeded) {
           try {
             const now = Date.now();
@@ -582,7 +582,9 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
                          aria-label={t('lab.source_view_detail')}
                          onClick={() => setSourceDetail(wp)}
                          className={`${cardShell} ${
-                           phase === 'researching' && activeStep < 2 ? 'opacity-90' : ''
+                           phase === 'researching' && researchExecStage === 'resolving_context'
+                             ? 'opacity-90'
+                             : ''
                          }`}
                        >
                          <div className="text-[10px] text-[#4ade80] mb-1 font-mono flex items-center gap-1 font-bold">
@@ -756,15 +758,6 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
                  </div>
 
                  <div className="space-y-4 text-[#8c8a84]">
-                   <div className="flex items-center gap-3">
-                     <CheckCircle2 className="w-4 h-4 text-[#4ade80]" />
-                     <span className="text-[#1a1a1a]">{t('lab.log_persistence')}</span>
-                   </div>
-                   <div className="flex items-center gap-3">
-                     <CheckCircle2 className="w-4 h-4 text-[#4ade80]" />
-                     <span className="text-[#1a1a1a]">{t('lab.log_env_ready')}</span>
-                   </div>
-
                    {/* Web search step */}
                    <div className="flex items-center gap-3">
                      {searchStatus === 'found' ? (
@@ -791,23 +784,39 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
                    </div>
 
                    <div className="flex items-center gap-3">
-                     {activeStep >= 1 ? <CheckCircle2 className="w-4 h-4 text-[#4ade80]" /> : <Loader2 className="w-4 h-4 animate-spin text-[#C2410C]" />}
-                     <span className={activeStep >= 1 ? "text-[#1a1a1a]" : "text-[#5a5a54]"}>{t('lab.executing_scan_drafts')}</span>
+                     {researchExecStage === 'resolving_context' ? (
+                       <Loader2 className="w-4 h-4 animate-spin text-[#C2410C] shrink-0" aria-hidden />
+                     ) : (
+                       <CheckCircle2 className="w-4 h-4 text-[#4ade80] shrink-0" aria-hidden />
+                     )}
+                     <span
+                       className={
+                         researchExecStage === 'resolving_context' ? 'text-[#5a5a54]' : 'text-[#1a1a1a]'
+                       }
+                     >
+                       {t('lab.stage_resolving_context')}
+                     </span>
                    </div>
 
-                   {activeStep >= 1 && (
-                     <div className="flex items-center gap-3">
-                       {activeStep >= 2 ? <CheckCircle2 className="w-4 h-4 text-[#4ade80]" /> : <Loader2 className="w-4 h-4 animate-spin text-[#C2410C]" />}
-                       <span className={activeStep >= 2 ? "text-[#1a1a1a]" : "text-[#5a5a54]"}>{t('lab.executing_cross_ref')}</span>
-                     </div>
-                   )}
-
-                   {activeStep >= 2 && (
-                     <div className="flex items-center gap-3">
-                       <Loader2 className="w-4 h-4 animate-spin text-[#C2410C]" />
-                       <span className="text-[#5a5a54]">{t('lab.executing_synthesize')}</span>
-                     </div>
-                   )}
+                   <div className="flex items-center gap-3">
+                     {researchExecStage === 'generating_report' ? (
+                       <Loader2 className="w-4 h-4 animate-spin text-[#C2410C] shrink-0" aria-hidden />
+                     ) : (
+                       <span
+                         className="w-4 h-4 shrink-0 rounded-full border-2 border-[#E6E4DF]"
+                         aria-hidden
+                       />
+                     )}
+                     <span
+                       className={
+                         researchExecStage === 'generating_report'
+                           ? 'text-[#1a1a1a]'
+                           : 'text-[#8c8a84]'
+                       }
+                     >
+                       {t('lab.stage_generating_report')}
+                     </span>
+                   </div>
                  </div>
               </div>
            </div>
