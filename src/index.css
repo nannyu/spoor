@@ -73,6 +73,60 @@
   .note-glass-markdown .markdown-body h2 { @apply text-xl font-semibold mb-2 mt-4; }
   .note-glass-markdown .markdown-body h3 { @apply text-lg font-semibold mb-2 mt-3; }
 
+  .note-receipt-markdown .markdown-body {
+    @apply font-mono text-[13px] leading-[1.4] text-[#2c281f];
+    text-shadow: 0 0 1px rgba(44, 40, 31, 0.2);
+  }
+  .note-receipt-markdown .markdown-body :where(h1, h2, h3) {
+    @apply font-semibold text-[#1b1b1c];
+    text-shadow: 0 0 1px rgba(44, 40, 31, 0.2);
+  }
+  .note-receipt-markdown .markdown-body h1 { @apply text-lg mb-2 mt-1; }
+  .note-receipt-markdown .markdown-body h2 { @apply text-base mb-2 mt-3; }
+  .note-receipt-markdown .markdown-body h3 { @apply text-sm mb-1 mt-2; }
+  .note-receipt-markdown .markdown-body p { @apply mb-3 leading-relaxed; }
+  .note-receipt-markdown .markdown-body a { @apply text-[#44664e] underline; }
+
+  .receipt-jagged-top {
+    height: 12px;
+    width: 100%;
+    background: linear-gradient(-45deg, transparent 6px, #fcf8f9 6px) bottom left,
+      linear-gradient(45deg, transparent 6px, #fcf8f9 6px) bottom left;
+    background-size: 12px 12px;
+    background-repeat: repeat-x;
+  }
+  .receipt-jagged-bottom {
+    height: 12px;
+    width: 100%;
+    background: linear-gradient(-45deg, #fcf8f9 6px, transparent 6px) top right,
+      linear-gradient(45deg, #fcf8f9 6px, transparent 6px) top right;
+    background-size: 12px 12px;
+    background-repeat: repeat-x;
+  }
+  .receipt-note-shadow {
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.1), 0 10px 15px -5px rgba(0, 0, 0, 0.05),
+      5px 0 15px -5px rgba(0, 0, 0, 0.02), -5px 0 15px -5px rgba(0, 0, 0, 0.02);
+  }
+  .receipt-barcode {
+    height: 40px;
+    width: 100%;
+    background-image: repeating-linear-gradient(
+      90deg,
+      #1b1b1c,
+      #1b1b1c 2px,
+      transparent 2px,
+      transparent 4px,
+      #1b1b1c 4px,
+      #1b1b1c 5px,
+      transparent 5px,
+      transparent 8px,
+      #1b1b1c 8px,
+      #1b1b1c 12px,
+      transparent 12px,
+      transparent 14px
+    );
+  }
+
   .doc-content h1 { font-size: 1.5em; font-weight: bold; margin: 0.8em 0 0.4em; }
   .doc-content h2 { font-size: 1.3em; font-weight: bold; margin: 0.6em 0 0.3em; }
   .doc-content h3 { font-size: 1.1em; font-weight: bold; margin: 0.5em 0 0.2em; }

@@ -147,7 +147,7 @@ vi.mock('lucide-react', () => {
   const iconNames = [
     'MessageSquare', 'Terminal', 'Network', 'Search', 'Bell', 'Settings', 'Plus',
     'BookOpen', 'Users', 'Library', 'Microscope', 'Sparkles', 'Maximize2', 'Minimize2',
-    'Quote', 'Brain', 'Bot', 'Wand2', 'Send', 'SlidersHorizontal', 'History', 'ZoomIn',
+    'Quote', 'Brain', 'Bot', 'Coffee', 'Wand2', 'Send', 'SlidersHorizontal', 'History', 'ZoomIn',
     'Focus', 'Image', 'FilePlus', 'Trash2', 'Link2', 'X', 'Camera', 'ChevronLeft',
     'ChevronRight', 'Check', 'Cpu', 'ArrowRight', 'ListChecks', 'CheckCircle2',
     'Loader2', 'PenLine', 'Edit3', 'FileText', 'Globe',

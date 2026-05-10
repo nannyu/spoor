@@ -382,7 +382,9 @@ export default function App() {
                       nodeSupportsCycleLayout(node.type)
                         ? () => {
                             const currentLayout = node.layout || 0;
-                            db.nodes.update(node.id, { layout: (currentLayout + 1) % 4 });
+                            const layoutCycleMod =
+                              node.type === 'note' || node.type === 'text' ? 5 : 4;
+                            db.nodes.update(node.id, { layout: (currentLayout + 1) % layoutCycleMod });
                           }
                         : undefined
                     }
