@@ -15,6 +15,9 @@ vi.mock('react-i18next', () => ({
         'lab.suggested_tag_1': '# spatial-encoding',
         'lab.suggested_tag_2': '# character-arcs',
         'lab.sources_utilized': 'Sources utilized',
+        'lab.sources_none_hint': 'No sources yet.',
+        'lab.source_open_new_tab': 'Open source',
+        'lab.source_untitled': 'Untitled',
         'lab.processed': 'Processed',
         'lab.demo_source_card_1_title': 'Ch 4: The Archive',
         'lab.demo_source_card_1_desc': "Found 3 metaphors for 'decay'.",
@@ -27,6 +30,8 @@ vi.mock('react-i18next', () => ({
         'lab.report': 'Synthesized Report',
         'lab.new_research': 'New Research',
         'lab.past_sessions': 'Past Sessions',
+        'lab.delete_session': 'Delete session',
+        'lab.delete_session_confirm': 'Remove?',
         'lab.no_past_sessions': 'No completed research yet.',
         'lab.searching': 'Searching the web...',
         'lab.search_complete': `${opts?.count ?? 0} web sources found`,
@@ -47,6 +52,8 @@ vi.mock('react-i18next', () => ({
         'lab.executing_synthesize': 'Synthesizing final analytical report…',
         'lab.report_footer_web': 'Based on {{count}} web sources + LLM synthesis',
         'lab.report_footer_offline': 'Offline mode — LLM-only synthesis',
+        'lab.report_failed_banner': 'Report generation failed.',
+        'lab.retry_generate_report': 'Retry report generation',
         'lab.conclusion_label': 'Agent recommendation and conclusion:',
         'nodes.ai_loading': 'Synthesizing...',
       };
@@ -132,6 +139,67 @@ describe('ResearchLab', () => {
       expect(screen.getByText('Memory palace history')).toBeTruthy();
       expect(screen.getByText('Saved intro text')).toBeTruthy();
     });
+  });
+
+  it('deletes a session from IndexedDB after confirm', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    try {
+      const callAI = vi.fn();
+      await db.researchSessions.add({
+        id: 'sess-del',
+        query: 'To delete',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        researchPlan: [{ title: 'S', desc: 'D' }],
+        researchReport: { intro: 'I', points: [], conclusion: 'C' },
+        sourceCount: 0,
+        searchStatus: 'idle',
+      });
+
+      render(<ResearchLab aiConfig={baseConfig} callAI={callAI} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('research-session-delete-sess-del')).toBeTruthy();
+      });
+
+      fireEvent.click(screen.getByTestId('research-session-delete-sess-del'));
+
+      await waitFor(async () => {
+        expect(await db.researchSessions.count()).toBe(0);
+      });
+      expect(confirmSpy).toHaveBeenCalled();
+    } finally {
+      confirmSpy.mockRestore();
+    }
+  });
+
+  it('does not delete a session when confirm is dismissed', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    try {
+      const callAI = vi.fn();
+      await db.researchSessions.add({
+        id: 'sess-keep',
+        query: 'Keep me',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        researchPlan: [{ title: 'S', desc: 'D' }],
+        researchReport: { intro: 'I', points: [], conclusion: 'C' },
+        sourceCount: 0,
+        searchStatus: 'idle',
+      });
+
+      render(<ResearchLab aiConfig={baseConfig} callAI={callAI} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('research-session-delete-sess-keep')).toBeTruthy();
+      });
+
+      fireEvent.click(screen.getByTestId('research-session-delete-sess-keep'));
+
+      expect(await db.researchSessions.count()).toBe(1);
+    } finally {
+      confirmSpy.mockRestore();
+    }
   });
 
   it('calls callAI without search context when no metasoApiKey', async () => {
@@ -301,6 +369,7 @@ describe('ResearchLab', () => {
       expect(rows[0].query).toBe('persist query');
       expect(rows[0].researchReport.intro).toBe('Persisted intro');
       expect(rows[0].searchStatus).toBe('idle');
+      expect(rows[0].searchWebpages).toEqual([]);
     });
   });
 
@@ -345,6 +414,8 @@ describe('ResearchLab', () => {
       expect(rows).toHaveLength(1);
       expect(rows[0].searchStatus).toBe('found');
       expect(rows[0].sourceCount).toBe(3);
+      expect(rows[0].searchWebpages?.length).toBe(3);
+      expect(rows[0].searchWebpages?.[0]?.link).toBe('https://a.com');
       expect(rows[0].researchReport.intro).toBe('Web intro');
     });
   });
@@ -470,6 +541,55 @@ describe('ResearchLab', () => {
     await waitFor(() => {
       expect(screen.getByLabelText('Step 1 title')).toHaveValue('Only one step');
     });
+  });
+
+  it('does not persist session when report JSON is invalid; retry generates and persists', async () => {
+    const planJson = JSON.stringify([
+      { title: 'Step 1', desc: 'D1' },
+      { title: 'Step 2', desc: 'D2' },
+      { title: 'Step 3', desc: 'D3' },
+    ]);
+    const fixedReport = JSON.stringify({
+      intro: 'Recovered intro',
+      points: [{ title: 'P', text: 'T' }],
+      conclusion: 'Done',
+    });
+    const callAI = vi
+      .fn()
+      .mockResolvedValueOnce(planJson)
+      .mockResolvedValueOnce('NOT VALID JSON { broken')
+      .mockResolvedValueOnce(fixedReport);
+
+    render(<ResearchLab aiConfig={baseConfig} callAI={callAI} />);
+
+    fireEvent.change(screen.getByPlaceholderText('Search topic...'), { target: { value: 'retry topic' } });
+    fireEvent.submit(screen.getByPlaceholderText('Search topic...').closest('form')!);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Step 1 title')).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Approve & Execute/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('lab-retry-report')).toBeTruthy();
+    });
+
+    let rows = await db.researchSessions.toArray();
+    expect(rows).toHaveLength(0);
+
+    fireEvent.click(screen.getByTestId('lab-retry-report'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Recovered intro')).toBeTruthy();
+    });
+
+    await waitFor(async () => {
+      rows = await db.researchSessions.toArray();
+      expect(rows).toHaveLength(1);
+      expect(rows[0].researchReport.intro).toBe('Recovered intro');
+    });
+
+    expect(callAI).toHaveBeenCalledTimes(3);
   });
 
   it('uses fallback plan when model returns empty or invalid JSON', async () => {

@@ -79,6 +79,13 @@ export interface ResearchReportRecord {
 
 export type ResearchSessionSearchStatus = 'idle' | 'searching' | 'found' | 'fallback';
 
+/** Minimal webpage snapshot stored with a research session (sidebar sources). */
+export interface ResearchSessionWebpageSnapshot {
+  title: string;
+  link: string;
+  snippet: string;
+}
+
 export interface ResearchSession {
   id: string;
   query: string;
@@ -88,6 +95,8 @@ export interface ResearchSession {
   researchReport: ResearchReportRecord;
   sourceCount: number;
   searchStatus: ResearchSessionSearchStatus;
+  /** URLs/snippets from the last Metaso search used for this run (optional on legacy rows). */
+  searchWebpages?: ResearchSessionWebpageSnapshot[];
 }
 
 export class MyDatabase extends Dexie {

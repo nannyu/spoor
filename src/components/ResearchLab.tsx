@@ -3,8 +3,14 @@ import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { formatAiError } from '../services/ai';
 import { getLocaleDirective } from '../utils/aiI18n';
+import { parseLenientLlmJson } from '../utils/llmJson';
 import { metasoSearch, buildSearchContext } from '../services/search';
-import { db, type ResearchSession, type ResearchSessionSearchStatus } from '../db';
+import {
+  db,
+  type ResearchSession,
+  type ResearchSessionSearchStatus,
+  type ResearchSessionWebpageSnapshot,
+} from '../db';
 import {
   Terminal,
   Microscope,
@@ -17,6 +23,8 @@ import {
   Globe,
   AlertTriangle,
   Sparkles,
+  ExternalLink,
+  Trash2,
 } from 'lucide-react';
 import type { CallAIFn } from '../types';
 
@@ -63,6 +71,63 @@ function normalizeResearchPlan(raw: unknown): ResearchPlanStep[] {
   return out;
 }
 
+export type ResearchReportBody = {
+  intro: string;
+  points: { title: string; text: string }[];
+  conclusion: string;
+};
+
+function normalizeResearchReport(raw: unknown): ResearchReportBody {
+  if (!raw || typeof raw !== 'object') {
+    return { intro: '', points: [], conclusion: '' };
+  }
+  const o = raw as Record<string, unknown>;
+  const intro = String(o.intro ?? '').trim();
+  const conclusion = String(o.conclusion ?? '').trim();
+  const points: { title: string; text: string }[] = [];
+  if (Array.isArray(o.points)) {
+    for (const p of o.points) {
+      if (!p || typeof p !== 'object') continue;
+      const rec = p as Record<string, unknown>;
+      points.push({
+        title: String(rec.title ?? '').trim(),
+        text: String(rec.text ?? '').trim(),
+      });
+    }
+  }
+  return { intro, points, conclusion };
+}
+
+function researchReportParseFallback(language: string): ResearchReportBody {
+  const zh = language.toLowerCase().startsWith('zh');
+  if (zh) {
+    return {
+      intro:
+        '未能解析模型返回的报告：输出不是合法 JSON，或字符串中含有未转义的英文双引号、真实换行等。',
+      points: [
+        {
+          title: '常见原因',
+          text:
+            '要点段落过长时在字符串里插入了真实换行；正文里使用了未转义的英文双引号；在 JSON 前后写了说明文字；数组或对象末尾带了尾随逗号等。',
+        },
+      ],
+      conclusion:
+        '请尝试缩短检索摘要、更换模型后重试。若多次失败，可在控制台查看 JSON 报错位置（character position）以核对模型原始输出。',
+    };
+  }
+  return {
+    intro:
+      'The model returned malformed JSON (often unescaped quotes or raw newlines inside strings, trailing commas, or extra prose outside the object).',
+    points: [
+      {
+        title: 'What happened',
+        text: 'The previous English “blueprint / chapter 4” copy was a fixed fallback after parse failure — not your topic.',
+      },
+    ],
+    conclusion: 'Retry with a stricter JSON model or shorter web-search context; check the console for the exact parse position.',
+  };
+}
+
 export interface ResearchLabProps {
   aiConfig: {
     provider: string;
@@ -78,6 +143,7 @@ type WebSearchOutcome = {
   context: string;
   sourceCount: number;
   searchStatus: ResearchSessionSearchStatus;
+  webpages: ResearchSessionWebpageSnapshot[];
 };
 
 export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
@@ -89,10 +155,12 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
   const [researchReport, setResearchReport] = useState<{intro: string, points: {title: string, text: string}[], conclusion: string}>({
     intro: '', points: [], conclusion: ''
   });
+  const [reportGenerationFailed, setReportGenerationFailed] = useState(false);
   const [searchStatus, setSearchStatus] = useState<'idle' | 'searching' | 'found' | 'fallback'>('idle');
   const [sourceCount, setSourceCount] = useState(0);
   const [planRevisionNote, setPlanRevisionNote] = useState('');
   const [planRevising, setPlanRevising] = useState(false);
+  const [searchSources, setSearchSources] = useState<ResearchSessionWebpageSnapshot[]>([]);
   const executeResearchInFlightRef = useRef(false);
 
   const pastSessions = useLiveQuery(
@@ -110,7 +178,18 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
     });
     setSourceCount(session.sourceCount);
     setSearchStatus(session.searchStatus);
+    setSearchSources(session.searchWebpages ?? []);
+    setReportGenerationFailed(false);
     setPhase('completed');
+  };
+
+  const deleteResearchSession = async (sessionId: string) => {
+    if (!window.confirm(t('lab.delete_session_confirm'))) return;
+    try {
+      await db.researchSessions.delete(sessionId);
+    } catch (e) {
+      console.error('[Scribe AI] ResearchLab delete session failed', formatAiError(e));
+    }
   };
 
   /**
@@ -121,31 +200,42 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
     if (!apiKey) {
       setSearchStatus('idle');
       setSourceCount(0);
-      return { context: '', sourceCount: 0, searchStatus: 'idle' };
+      setSearchSources([]);
+      return { context: '', sourceCount: 0, searchStatus: 'idle', webpages: [] };
     }
 
     setSearchStatus('searching');
     try {
       const results = await metasoSearch(searchQuery, { apiKey });
       const context = buildSearchContext(results);
+      const webpages = (results.webpages ?? []).map((w) => ({
+        title: String(w.title ?? ''),
+        link: String(w.link ?? ''),
+        snippet: String(w.snippet ?? ''),
+      }));
       if (context) {
-        const count = results.webpages?.length ?? 0;
+        const count = webpages.length;
         setSourceCount(count);
         setSearchStatus('found');
-        return { context, sourceCount: count, searchStatus: 'found' };
+        setSearchSources(webpages);
+        return { context, sourceCount: count, searchStatus: 'found', webpages };
       }
       setSearchStatus('fallback');
-      return { context: '', sourceCount: 0, searchStatus: 'fallback' };
+      setSearchSources([]);
+      return { context: '', sourceCount: 0, searchStatus: 'fallback', webpages: [] };
     } catch (e) {
       console.warn('[Scribe AI] Metaso search failed, degrading to offline mode', formatAiError(e));
       setSearchStatus('fallback');
-      return { context: '', sourceCount: 0, searchStatus: 'fallback' };
+      setSearchSources([]);
+      return { context: '', sourceCount: 0, searchStatus: 'fallback', webpages: [] };
     }
   };
 
   const generatePlan = async () => {
     setPhase('planning');
+    setReportGenerationFailed(false);
     setSearchStatus('idle');
+    setSearchSources([]);
     setPlanRevisionNote('');
 
     const { context: searchContext } = await tryWebSearch(query);
@@ -160,8 +250,7 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
         systemInstruction: getLocaleDirective(),
         prompt,
       });
-      const jsonStr = text?.replace(/```json|```/g, '').trim() || '[]';
-      const plan = normalizeResearchPlan(JSON.parse(jsonStr));
+      const plan = normalizeResearchPlan(parseLenientLlmJson(text ?? '[]'));
       setResearchPlan(plan.length > 0 ? plan : RESEARCH_PLAN_FALLBACK);
       setPhase('plan_ready');
     } catch (e) {
@@ -196,8 +285,7 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
         systemInstruction: getLocaleDirective(),
         prompt,
       });
-      const jsonStr = text?.replace(/```json|```/g, '').trim() || '[]';
-      const revised = normalizeResearchPlan(JSON.parse(jsonStr));
+      const revised = normalizeResearchPlan(parseLenientLlmJson(text ?? '[]'));
       if (revised.length > 0) {
         setResearchPlan(revised);
         setPlanRevisionNote('');
@@ -220,27 +308,27 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
     executeResearchInFlightRef.current = true;
     try {
       setPhase('researching');
+      setReportGenerationFailed(false);
       setActiveStep(0);
       const timer1 = setTimeout(() => setActiveStep(1), 2000);
       const timer2 = setTimeout(() => setActiveStep(2), 4000);
 
-      const { context: searchContext, sourceCount: persistedSourceCount, searchStatus: persistedSearchStatus } =
-        await tryWebSearch(query);
+      const {
+        context: searchContext,
+        sourceCount: persistedSourceCount,
+        searchStatus: persistedSearchStatus,
+        webpages: persistedSearchWebpages,
+      } = await tryWebSearch(query);
 
       const planContext =
         researchPlan.length > 0
           ? `\n\nThe user-approved research plan (your report must follow this structure: align the "points" array with these steps in order and honor each step's goals in the analysis):\n${JSON.stringify(researchPlan, null, 2)}`
           : '';
 
-      const fallbackReport = {
-        intro: "Based on the analysis of your interconnected drafts and referenced literature, there are interesting narrative connections.",
-        points: [
-          { title: "The Metaphor of the Blueprint", text: "The protagonist is not just losing memories, but losing the 'blueprint' of their own mind." }
-        ],
-        conclusion: "Actionable Next Steps: Rewrite chapter 4 to emphasize the architectural distortion."
-      };
+      const fallbackReport = researchReportParseFallback(i18n.language);
 
-      let finalReport = fallbackReport;
+      let finalReport: ResearchReportBody = fallbackReport;
+      let executionSucceeded = false;
 
       try {
         const prompt = searchContext
@@ -252,41 +340,45 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
           systemInstruction: getLocaleDirective(),
           prompt,
         });
-        const jsonStr = text?.replace(/```json|```/g, '').trim() || '{}';
-        const report = JSON.parse(jsonStr);
+        const report = normalizeResearchReport(parseLenientLlmJson(text ?? '{}'));
         setResearchReport(report);
         finalReport = report;
+        executionSucceeded = true;
       } catch (e) {
         console.error('[Scribe AI] ResearchLab executeResearch failed', formatAiError(e));
+        setReportGenerationFailed(true);
         setResearchReport(fallbackReport);
         finalReport = fallbackReport;
       } finally {
         clearTimeout(timer1);
         clearTimeout(timer2);
         setActiveStep(3);
-        try {
-          const now = Date.now();
-          await db.researchSessions.add({
-            id: crypto.randomUUID(),
-            query,
-            createdAt: now,
-            updatedAt: now,
-            researchPlan: researchPlan.map((s) => ({ title: s.title, desc: s.desc })),
-            researchReport: {
-              intro: finalReport.intro ?? '',
-              points: Array.isArray(finalReport.points)
-                ? finalReport.points.map((p: { title?: string; text?: string }) => ({
-                    title: String(p?.title ?? ''),
-                    text: String(p?.text ?? ''),
-                  }))
-                : [],
-              conclusion: finalReport.conclusion ?? '',
-            },
-            sourceCount: persistedSourceCount,
-            searchStatus: persistedSearchStatus,
-          });
-        } catch (persistErr) {
-          console.error('[Scribe AI] ResearchLab failed to persist session', persistErr);
+        if (executionSucceeded) {
+          try {
+            const now = Date.now();
+            await db.researchSessions.add({
+              id: crypto.randomUUID(),
+              query,
+              createdAt: now,
+              updatedAt: now,
+              researchPlan: researchPlan.map((s) => ({ title: s.title, desc: s.desc })),
+              researchReport: {
+                intro: finalReport.intro ?? '',
+                points: Array.isArray(finalReport.points)
+                  ? finalReport.points.map((p: { title?: string; text?: string }) => ({
+                      title: String(p?.title ?? ''),
+                      text: String(p?.text ?? ''),
+                    }))
+                  : [],
+                conclusion: finalReport.conclusion ?? '',
+              },
+              sourceCount: persistedSourceCount,
+              searchStatus: persistedSearchStatus,
+              searchWebpages: persistedSearchWebpages,
+            });
+          } catch (persistErr) {
+            console.error('[Scribe AI] ResearchLab failed to persist session', persistErr);
+          }
         }
         setPhase('completed');
       }
@@ -308,18 +400,36 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
                ) : (
                  <div className="space-y-2">
                    {pastSessions.map((session) => (
-                     <button
+                     <div
                        key={session.id}
-                       type="button"
-                       data-testid={`research-session-${session.id}`}
-                       onClick={() => openHistorySession(session)}
-                       className="w-full text-left p-3 bg-white border border-[#E6E4DF] rounded cursor-pointer hover:border-[#C2410C]/50 transition-colors shadow-sm"
+                       className="flex gap-0 rounded-lg border border-[#E6E4DF] bg-white shadow-sm overflow-hidden hover:border-[#C2410C]/45 transition-colors"
                      >
-                       <div className="text-[#8c8a84] text-[10px] mb-1 font-sans">
-                         {formatSessionListDate(session.createdAt, i18n.language)}
-                       </div>
-                       <div className="text-sm font-sans font-medium text-[#1a1a1a] line-clamp-3">{session.query}</div>
-                     </button>
+                       <button
+                         type="button"
+                         data-testid={`research-session-${session.id}`}
+                         onClick={() => openHistorySession(session)}
+                         className="flex-1 min-w-0 text-left p-3 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#C2410C]/25"
+                       >
+                         <div className="text-[#8c8a84] text-[10px] mb-1 font-sans">
+                           {formatSessionListDate(session.createdAt, i18n.language)}
+                         </div>
+                         <div className="text-sm font-sans font-medium text-[#1a1a1a] line-clamp-3">{session.query}</div>
+                       </button>
+                       <button
+                         type="button"
+                         data-testid={`research-session-delete-${session.id}`}
+                         aria-label={t('lab.delete_session')}
+                         title={t('lab.delete_session')}
+                         onClick={(e) => {
+                           e.preventDefault();
+                           e.stopPropagation();
+                           void deleteResearchSession(session.id);
+                         }}
+                         className="shrink-0 px-2.5 flex items-center justify-center border-l border-[#E6E4DF] text-[#8c8a84] hover:bg-[#FEF2F2] hover:text-[#b91c1c] transition-colors"
+                       >
+                         <Trash2 className="w-4 h-4" aria-hidden />
+                       </button>
+                     </div>
                    ))}
                  </div>
                )}
@@ -328,7 +438,22 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
              <>
                <div className="flex justify-between items-center mb-4">
                  <span className="font-mono text-xs text-[#8c8a84] uppercase font-bold tracking-wider">{t('lab.sources_utilized')}</span>
-                 {phase === 'completed' && <button onClick={() => {setPhase('idle'); setQuery(''); setSearchStatus('idle'); setSourceCount(0);}} className="text-[#C2410C] text-xs hover:underline font-bold">{t('lab.new_research')}</button>}
+                 {phase === 'completed' && (
+                   <button
+                     type="button"
+                     onClick={() => {
+                       setPhase('idle');
+                       setQuery('');
+                       setSearchStatus('idle');
+                       setSourceCount(0);
+                       setSearchSources([]);
+                       setReportGenerationFailed(false);
+                     }}
+                     className="text-[#C2410C] text-xs hover:underline font-bold"
+                   >
+                     {t('lab.new_research')}
+                   </button>
+                 )}
                </div>
 
                {/* Search status indicator */}
@@ -352,16 +477,60 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
                )}
 
                <div className="space-y-3">
-                  <div className={`bg-white border border-[#E6E4DF] p-3 rounded text-sm relative shadow-sm transition-all ${activeStep >= 1 ? 'opacity-100' : 'opacity-0 translate-y-4'}`}>
-                     <div className="text-[10px] text-[#4ade80] mb-1 font-mono flex items-center gap-1 font-bold"><Check className="w-3 h-3"/> {t('lab.processed')}</div>
-                     <div className="text-[#1a1a1a] font-serif font-bold">{t('lab.demo_source_card_1_title')}</div>
-                     <div className="text-[#5a5a54] text-xs mt-1 font-sans">{t('lab.demo_source_card_1_desc')}</div>
-                  </div>
-                  <div className={`bg-white border border-[#E6E4DF] p-3 rounded text-sm relative shadow-sm transition-all ${activeStep >= 2 ? 'opacity-100' : 'opacity-0 translate-y-4'}`}>
-                     <div className="text-[10px] text-[#4ade80] mb-1 font-mono flex items-center gap-1 font-bold"><Check className="w-3 h-3"/> {t('lab.processed')}</div>
-                     <div className="text-[#1a1a1a] font-serif font-bold">{t('lab.demo_source_card_2_title')}</div>
-                     <div className="text-[#5a5a54] text-xs mt-1 font-sans">{t('lab.demo_source_card_2_desc')}</div>
-                  </div>
+                 {searchSources.length > 0 ? (
+                   searchSources.map((wp, idx) => {
+                     const href = wp.link?.trim();
+                     const cardShell =
+                       'bg-white border border-[#E6E4DF] p-3 rounded-lg text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C2410C]/30';
+                     const inner = (
+                       <>
+                         <div className="text-[10px] text-[#4ade80] mb-1 font-mono flex items-center gap-1 font-bold">
+                           <Check className="w-3 h-3 shrink-0" aria-hidden />
+                           {t('lab.processed')}
+                         </div>
+                         <div className="flex items-start justify-between gap-2">
+                           <span className="text-[#1a1a1a] font-serif font-bold leading-snug line-clamp-3">
+                             {wp.title?.trim() || wp.link || t('lab.source_untitled')}
+                           </span>
+                           <ExternalLink className="w-4 h-4 shrink-0 text-[#8c8a84] mt-0.5" aria-hidden />
+                         </div>
+                         {wp.snippet?.trim() ? (
+                           <p className="text-[#5a5a54] text-xs mt-2 font-sans leading-relaxed line-clamp-4">
+                             {wp.snippet.trim()}
+                           </p>
+                         ) : null}
+                       </>
+                     );
+                     if (href) {
+                       return (
+                         <a
+                           key={`${href}-${idx}`}
+                           href={href}
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           data-testid={`lab-source-link-${idx}`}
+                           aria-label={`${t('lab.source_open_new_tab')}: ${wp.title || href}`}
+                           className={`${cardShell} block hover:border-[#C2410C]/45 hover:shadow-md ${
+                             phase === 'researching' && activeStep < 2 ? 'opacity-90' : ''
+                           }`}
+                         >
+                           {inner}
+                         </a>
+                       );
+                     }
+                     return (
+                       <div
+                         key={`nolink-${idx}`}
+                         data-testid={`lab-source-static-${idx}`}
+                         className={`${cardShell} opacity-80`}
+                       >
+                         {inner}
+                       </div>
+                     );
+                   })
+                 ) : (
+                   <p className="text-[11px] text-[#8c8a84] font-sans leading-relaxed px-0.5">{t('lab.sources_none_hint')}</p>
+                 )}
                </div>
              </>
            )}
@@ -573,7 +742,23 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
             <div className="flex-1 flex overflow-hidden">
                {/* Final Report */}
                <div className="flex-1 bg-[#FAF9F6] text-[#1a1a1a] overflow-y-auto relative paper-texture">
-                  <div className="max-w-5xl mx-auto px-16 py-14">
+                     <div className="max-w-5xl mx-auto px-16 py-14">
+                     {reportGenerationFailed && (
+                       <div className="mb-8 rounded-xl border border-[#eab308]/40 bg-[#fffbeb] px-5 py-4 font-sans text-sm text-[#713f12] shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                         <div className="flex gap-3 min-w-0">
+                           <AlertTriangle className="w-5 h-5 shrink-0 text-[#b45309]" aria-hidden />
+                           <p className="leading-relaxed">{t('lab.report_failed_banner')}</p>
+                         </div>
+                         <button
+                           type="button"
+                           data-testid="lab-retry-report"
+                           onClick={() => void executeResearch()}
+                           className="shrink-0 inline-flex items-center justify-center gap-2 rounded-lg bg-[#C2410C] px-5 py-2.5 text-sm font-bold text-white shadow-md hover:bg-[#a0350a] transition-colors"
+                         >
+                           {t('lab.retry_generate_report')}
+                         </button>
+                       </div>
+                     )}
                      <div className="mb-12 text-center">
                         <div className="text-[#C2410C] font-mono text-xs uppercase tracking-widest mb-4 flex items-center justify-center gap-2 font-bold">
                           <FileText className="w-4 h-4" /> {t('lab.report')}
