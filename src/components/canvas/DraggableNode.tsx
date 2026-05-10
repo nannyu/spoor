@@ -29,6 +29,8 @@ export interface DraggableNodeProps {
   rotation?: number;
   /** When set (glass note layout), palette does not paint an opaque layer on this root so `backdrop-filter` on the card can sample the canvas. */
   glassSurface?: boolean;
+  /** Note/text: card body pointer sets which node Ctrl+C duplicates (not from checkbox). */
+  onStickyActivate?: (id: string) => void;
 }
 
 export const DraggableNode: React.FC<DraggableNodeProps> = ({ 
@@ -38,6 +40,7 @@ export const DraggableNode: React.FC<DraggableNodeProps> = ({
   isSelected, isEditing, onToggleSelect, allowPalette, onDragEnd, onResizeEnd,
   rotation = 0,
   glassSurface = false,
+  onStickyActivate,
 }) => {
   const { t } = useTranslation();
   const scaleRef = useRef(scale);
@@ -86,12 +89,14 @@ export const DraggableNode: React.FC<DraggableNodeProps> = ({
       }}
       onPointerDown={(e) => {
         const target = e.target as HTMLElement;
-        const isTextInteraction =
-          target.isContentEditable ||
-          target.closest('.markdown-body') ||
-          target.closest('[contentEditable="true"]') ||
-          target.closest('textarea');
-
+        if (
+          onStickyActivate &&
+          !target.closest('button') &&
+          !target.closest('.node-palette') &&
+          !target.closest('.cursor-nwse-resize')
+        ) {
+          onStickyActivate(id);
+        }
         if (showPalette) setShowPalette(false);
         if (isConnecting) {
           e.stopPropagation();

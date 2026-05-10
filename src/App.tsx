@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useTranslation } from 'react-i18next';
-import { db } from './db';
+import { db, type CanvasNode } from './db';
 import {
   Maximize2,
   Minimize2,
@@ -32,7 +32,12 @@ import { useNodeActions } from './hooks/useNodeActions';
 import { useAiActions } from './hooks/useAiActions';
 import { processFileToNode } from './utils/file';
 import { dataTransferHasFiles, preventDefaultIfFileDrag } from './utils/dnd';
-
+import {
+  buildStickyClipboardPayload,
+  isTextEditingTarget,
+  parseStickyClipboardPayload,
+  stickyPastePosition,
+} from './utils/noteClipboard';
 /** 控制台执行 localStorage.setItem('SCRIBE_DEBUG_DND','1') 并刷新；桌面打包版也可用（不设 DEV 门槛）。 */
 const DEBUG_DND =
   typeof localStorage !== 'undefined' &&
@@ -125,6 +130,67 @@ export default function App() {
   }, [articles, activeReferenceId, setActiveReferenceId]);
 
   useSeedData();
+
+  const lastStickyClickIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    lastStickyClickIdRef.current = null;
+  }, [activeCanvasId, activeTab]);
+
+  const stickyClipboardRef = useRef({
+    dynamicNodes,
+    activeCanvasId,
+  });
+  stickyClipboardRef.current = { dynamicNodes, activeCanvasId };
+
+  useEffect(() => {
+    if (activeTab !== 'personal') return;
+
+    const onCopy = (e: ClipboardEvent) => {
+      if (isTextEditingTarget(e.target)) return;
+      const { dynamicNodes: nodes } = stickyClipboardRef.current;
+      const focusId = lastStickyClickIdRef.current;
+      if (!focusId) return;
+      const picked = nodes.filter((n) => n.id === focusId && (n.type === 'note' || n.type === 'text'));
+      const payload = buildStickyClipboardPayload(picked);
+      if (!payload) return;
+      e.preventDefault();
+      e.clipboardData?.setData('text/plain', JSON.stringify(payload));
+    };
+
+    const onPaste = (e: ClipboardEvent) => {
+      if (isTextEditingTarget(e.target)) return;
+      const text = e.clipboardData?.getData('text/plain') ?? '';
+      const payload = parseStickyClipboardPayload(text);
+      if (!payload) return;
+      e.preventDefault();
+      const { activeCanvasId: canvasId } = stickyClipboardRef.current;
+      void (async () => {
+        const rows: CanvasNode[] = payload.nodes.map((item) => {
+          const id = crypto.randomUUID();
+          const { x, y } = stickyPastePosition(item);
+          return {
+            id,
+            canvasId,
+            type: item.type,
+            content: item.content ?? '',
+            layout: item.layout,
+            width: item.width,
+            height: item.height,
+            x,
+            y,
+          };
+        });
+        await db.nodes.bulkAdd(rows);
+      })();
+    };
+
+    window.addEventListener('copy', onCopy, true);
+    window.addEventListener('paste', onPaste, true);
+    return () => {
+      window.removeEventListener('copy', onCopy, true);
+      window.removeEventListener('paste', onPaste, true);
+    };
+  }, [activeTab]);
 
   /**
    * 捕获阶段放行文件拖放：子元素（连线粗命中区、video/img 等）若未调用 dragover.preventDefault，
@@ -399,6 +465,13 @@ export default function App() {
                     }}
                     glassSurface={
                       (node.type === 'note' || node.type === 'text') && (node.layout ?? 0) === 1
+                    }
+                    onStickyActivate={
+                      node.type === 'note' || node.type === 'text'
+                        ? (nid) => {
+                            lastStickyClickIdRef.current = nid;
+                          }
+                        : undefined
                     }
                 >
                   <NodeRenderer
