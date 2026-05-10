@@ -54,6 +54,7 @@ export const DraggableNode: React.FC<DraggableNodeProps> = ({
   const [showPalette, setShowPalette] = useState(false);
   const [styleOverrides, setStyleOverrides] = useState({ bg: '', text: '', font: '', border: '' });
 
+  const paletteColorChoices = glassSurface ? colorPresets.slice(3) : colorPresets;
   return (
     <div 
       className={`absolute cursor-move group pointer-events-auto select-none ${className} ${isSelected ? 'ring-2 ring-[#C2410C]' : ''}`}
@@ -154,9 +155,9 @@ export const DraggableNode: React.FC<DraggableNodeProps> = ({
           onPointerDown={(e) => e.stopPropagation()} /* Prevent drag when clicking palette */
         >
           <div className="flex gap-1.5">
-            {colorPresets.map((color, i) => (
+            {paletteColorChoices.map((color, i) => (
               <button 
-                key={i} 
+                key={glassSurface ? i + 3 : i} 
                 onClick={() => setStyleOverrides(prev => ({ ...prev, bg: color.bg, text: color.text, border: color.border }))}
                 className="w-5 h-5 rounded-full border border-black/10 transition-transform hover:scale-110 shadow-sm"
                 style={{ backgroundColor: color.bg }}
