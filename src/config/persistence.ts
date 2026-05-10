@@ -1,12 +1,13 @@
 /**
  * Blur persistence: note/article text written to IndexedDB when a field loses focus.
  *
- * `DISABLE_CONTENT_BLUR_PERSISTENCE_PROJECT`: set to `false` in this file to restore blur saving for all users.
- * When project default is “off”, re-enable in browser: `localStorage.setItem('SCRIBE_DISABLE_CONTENT_AUTOSAVE','0')` then reload.
+ * `DISABLE_CONTENT_BLUR_PERSISTENCE_PROJECT`: when `true`, blur autosave is disabled project-wide (unless overridden below).
+ * To enable when project default is off: `localStorage.setItem('SCRIBE_DISABLE_CONTENT_AUTOSAVE','0')` then reload.
+ * To disable when project default allows saves: `localStorage.setItem('SCRIBE_DISABLE_CONTENT_AUTOSAVE','1')`.
  *
- * Alternatively use `VITE_DISABLE_CONTENT_AUTOSAVE=true` in `.env` when the project default is `false`.
+ * Alternatively use `VITE_DISABLE_CONTENT_AUTOSAVE=true` in `.env` when the project default is “allow saves”.
  */
-export const DISABLE_CONTENT_BLUR_PERSISTENCE_PROJECT = true;
+export const DISABLE_CONTENT_BLUR_PERSISTENCE_PROJECT = false;
 
 export function isContentBlurPersistenceDisabled(): boolean {
   try {

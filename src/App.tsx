@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useTranslation } from 'react-i18next';
 import { db, type CanvasNode } from './db';
@@ -8,6 +8,7 @@ import {
   Loader2,
   PenLine,
 } from 'lucide-react';
+import { commitCanvasInlineEditing } from './utils/commitCanvasInlineEditing';
 import { nodeSupportsCycleLayout } from './constants/nodeCapabilities';
 import { NOTE_LAYOUT_COUNT } from './constants/noteLayouts';
 import { CanvasEdgeLines } from './components/canvas/CanvasEdgeLines';
@@ -95,6 +96,20 @@ export default function App() {
   // Canvas interaction (transform, pan, zoom, edge lines)
   const { canvasTransform, setCanvasTransform, transformRef, handlePanStart } = useCanvasInteraction(
     mainRef, contentContainerRef, svgRef, edgeLabelsRef, nodesRef, connectingFrom, setConnectingFrom,
+  );
+
+  const handleCanvasPanPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      const nodeRow = editingNodeId ? dynamicNodes.find((n) => n.id === editingNodeId) : undefined;
+      commitCanvasInlineEditing({
+        editingNodeId,
+        nodesRef,
+        nodeType: nodeRow?.type,
+        setEditingNodeId,
+      });
+      handlePanStart(e);
+    },
+    [editingNodeId, dynamicNodes, handlePanStart],
   );
 
   const [aiConfig, setAiConfig] = useState(() => {
@@ -389,7 +404,7 @@ export default function App() {
           {/* Draggable background (pan) */}
           <div 
             className="absolute inset-0 cursor-grab active:cursor-grabbing z-0" 
-            onPointerDown={handlePanStart}
+            onPointerDown={handleCanvasPanPointerDown}
           />
 
           {/* Symmetrical Controls */}
