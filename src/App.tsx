@@ -9,6 +9,7 @@ import {
   PenLine,
 } from 'lucide-react';
 import { nodeSupportsCycleLayout } from './constants/nodeCapabilities';
+import { NOTE_LAYOUT_COUNT } from './constants/noteLayouts';
 import { CanvasEdgeLines } from './components/canvas/CanvasEdgeLines';
 import { DraggableNode } from './components/canvas/DraggableNode';
 import { AISettingsModal } from './components/AISettingsModal';
@@ -383,7 +384,7 @@ export default function App() {
                         ? () => {
                             const currentLayout = node.layout || 0;
                             const layoutCycleMod =
-                              node.type === 'note' || node.type === 'text' ? 5 : 4;
+                              node.type === 'note' || node.type === 'text' ? NOTE_LAYOUT_COUNT : 4;
                             db.nodes.update(node.id, { layout: (currentLayout + 1) % layoutCycleMod });
                           }
                         : undefined
