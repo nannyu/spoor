@@ -13,13 +13,13 @@ export function NoteLayoutStandard({
 }: NodeContentProps & { layout: StandardLayout }) {
   const { t } = useTranslation();
 
-  const outerClass = `w-full h-full transition-all duration-500 border-2 flex flex-col ${
+  const outerClass = `note-surface-standard w-full h-full transition-all duration-500 border-2 flex flex-col ${
     layout === 3 ? 'shadow-[4px_4px_0px_0px_#1b1b1c]' : 'shadow-lg'
   } ${
     layout === 2
       ? 'p-4 bg-[#F4F1ED] border-transparent shadow-sm'
-      : layout === 3
-        ? 'p-6 gap-4 bg-[#fcf8f9] border-[#1b1b1c]'
+      :     layout === 3
+        ? 'neo-brut-surface p-6 gap-4 bg-[#fcf8f9] border-[#1b1b1c]'
         : 'p-5 bg-white border-[#E6E4DF]'
   }`;
 
@@ -43,10 +43,10 @@ export function NoteLayoutStandard({
     <div className={outerClass} style={{ outline: '1px solid transparent' }}>
       <div className={`flex items-center space-x-2 ${layout === 3 ? '' : 'mb-2'}`}>
         <span
-          className={`font-sans uppercase tracking-wider ${
+          className={`note-chrome font-sans uppercase tracking-wider ${
             layout === 3
-              ? 'bg-[#1b1b1c] text-white px-2 py-1 text-[12px] font-semibold leading-none'
-              : 'text-[10px] font-bold text-[#8c8a84]'
+              ? 'neo-brut-badge bg-[#1b1b1c] px-2 py-1 text-[12px] font-semibold leading-none'
+              : 'note-chrome-muted text-[10px] font-bold'
           }`}
         >
           {node.type === 'note' ? t('nodes.observation') : t('nodes.note')}

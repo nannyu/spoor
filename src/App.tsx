@@ -397,6 +397,9 @@ export default function App() {
                     onResizeEnd={(size) => {
                       db.nodes.update(node.id, size);
                     }}
+                    glassSurface={
+                      (node.type === 'note' || node.type === 'text') && (node.layout ?? 0) === 1
+                    }
                 >
                   <NodeRenderer
                     node={node}

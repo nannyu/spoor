@@ -34,13 +34,157 @@
   }
   
   /* Style the node itself if it has background or allow children to override */
-  [style*="--node-bg"], [style*="--node-bg"] .bg-white, [style*="--node-bg"] .bg-\[\#F4F1ED\], [style*="--node-bg"] .bg-\[\#EAE7E2\] {
+  /* Opaque palette on the draggable root — except glass notes: solid bg kills backdrop-filter (blur would only see flat color). */
+  [style*="--node-bg"]:not([data-glass-surface]), [style*="--node-bg"] .bg-white, [style*="--node-bg"] .bg-\[\#F4F1ED\], [style*="--node-bg"] .bg-\[\#EAE7E2\], [style*="--node-bg"] .bg-\[\#fcf8f9\] {
     background-color: var(--node-bg) !important;
     border-color: var(--node-border, currentColor) !important;
   }
-  [style*="--node-text"], [style*="--node-text"] *:not(.node-palette):not(.node-palette *) {
+
+  [style*="--node-bg"] .neo-brut-surface {
+    border-color: color-mix(in srgb, var(--node-border, #1b1b1c) 38%, #1b1b1c) !important;
+  }
+
+  .note-surface-receipt {
+    --note-paper: color-mix(in srgb, var(--node-bg, #fcf8f9) 88%, white 12%);
+  }
+
+  /* Frosted pane samples the canvas behind the node; tint comes from semi-transparent --node-bg / --node-border (see data-glass-surface on root). */
+  .note-surface-glass {
+    -webkit-backdrop-filter: blur(14px) saturate(1.35);
+    backdrop-filter: blur(14px) saturate(1.35);
+    background-color: color-mix(in srgb, var(--node-bg, #ffffff) 24%, rgba(255, 255, 255, 0.42)) !important;
+    box-shadow:
+      0 0 34px color-mix(in srgb, var(--node-border, #c2410c) 34%, transparent),
+      0 0 16px color-mix(in srgb, var(--node-bg, #c2410c) 16%, transparent),
+      inset 0 0 0 1px color-mix(in srgb, var(--node-border, #c2410c) 34%, transparent);
+  }
+
+  .note-glass-wash {
+    background: linear-gradient(
+      to bottom right,
+      color-mix(in srgb, var(--node-bg, #c2410c) 38%, transparent),
+      color-mix(
+        in srgb,
+        color-mix(in srgb, var(--node-bg, #fdba74) 40%, white) 28%,
+        transparent
+      ),
+      transparent 68%
+    );
+    opacity: 0.82;
+    mix-blend-mode: overlay;
+  }
+
+  /* Dark presets: keep hue from the palette without flattening the frost. */
+  [data-node-tone="dark"] .note-glass-wash {
+    background: linear-gradient(
+      to bottom right,
+      color-mix(in srgb, var(--node-border, var(--node-bg)) 52%, transparent),
+      color-mix(in srgb, var(--node-bg) 22%, rgba(255, 255, 255, 0.14)),
+      transparent 72%
+    );
+    opacity: 0.78;
+    mix-blend-mode: overlay;
+  }
+
+  .note-glass-hotspot {
+    background: radial-gradient(
+      ellipse at top left,
+      color-mix(in srgb, color-mix(in srgb, var(--node-bg, #ffedd5) 50%, white) 48%, transparent),
+      transparent 65%
+    );
+  }
+
+  [data-node-tone="dark"] .note-glass-hotspot {
+    background: radial-gradient(
+      ellipse at top left,
+      color-mix(in srgb, var(--node-border) 36%, rgba(255, 255, 255, 0.18)),
+      transparent 70%
+    );
+  }
+
+  .note-receipt-paper {
+    background-color: var(--note-paper) !important;
+  }
+
+  .note-chrome {
+    color: #c2410c;
+  }
+
+  [data-node-tone="dark"] .note-chrome {
+    color: rgb(255 237 213 / 0.93) !important;
+  }
+
+  [data-node-tone="dark"] .note-chrome.neo-brut-badge {
+    color: #ffffff !important;
+  }
+
+  .note-receipt-chrome {
+    color: #2c281f;
+    text-shadow: 0 0 1px rgba(44, 40, 31, 0.2);
+    border-color: color-mix(in srgb, var(--node-border, #c7c5d4) 70%, #c7c5d4) !important;
+  }
+
+  [data-node-tone="dark"] .note-receipt-chrome {
+    color: rgb(255 250 245 / 0.9) !important;
+    text-shadow: none;
+    border-color: rgb(255 255 255 / 0.22) !important;
+  }
+
+  [data-node-tone="dark"] .receipt-barcode {
+    filter: invert(1) brightness(1.05);
+    opacity: 0.75;
+  }
+
+  .receipt-jagged-top {
+    height: 12px;
+    width: 100%;
+    background: linear-gradient(-45deg, transparent 6px, var(--note-paper, #fcf8f9) 6px) bottom left,
+      linear-gradient(45deg, transparent 6px, var(--note-paper, #fcf8f9) 6px) bottom left;
+    background-size: 12px 12px;
+    background-repeat: repeat-x;
+  }
+  .receipt-jagged-bottom {
+    height: 12px;
+    width: 100%;
+    background: linear-gradient(-45deg, var(--note-paper, #fcf8f9) 6px, transparent 6px) top right,
+      linear-gradient(45deg, var(--note-paper, #fcf8f9) 6px, transparent 6px) top right;
+    background-size: 12px 12px;
+    background-repeat: repeat-x;
+  }
+
+  [style*="--node-text"] *:not(.node-palette):not(.node-palette *):not(.note-chrome):not(.note-chrome *) {
     color: var(--node-text) !important;
   }
+
+  .note-chrome-muted {
+    color: #8c8a84;
+  }
+
+  [data-node-tone="dark"] .note-chrome-muted {
+    color: rgb(255 255 255 / 0.58) !important;
+  }
+
+  .note-chrome.neo-brut-badge {
+    background-color: #1b1b1c !important;
+    color: #ffffff !important;
+  }
+
+  [data-node-tone="dark"] .note-glass-markdown .markdown-body,
+  [data-node-tone="dark"] .note-glass-markdown .markdown-body :where(h1, h2, h3) {
+    color: var(--node-text) !important;
+    text-shadow: none;
+  }
+
+  [data-node-tone="dark"] .note-receipt-markdown .markdown-body,
+  [data-node-tone="dark"] .note-receipt-markdown .markdown-body :where(h1, h2, h3) {
+    color: var(--node-text) !important;
+    text-shadow: none;
+  }
+
+  [data-node-tone="dark"] .note-receipt-watermark {
+    color: rgb(255 255 255 / 0.08) !important;
+  }
+
   [style*="--node-font"], [style*="--node-font"] *:not(.node-palette):not(.node-palette *) {
     font-family: var(--node-font) !important;
   }
@@ -87,22 +231,6 @@
   .note-receipt-markdown .markdown-body p { @apply mb-3 leading-relaxed; }
   .note-receipt-markdown .markdown-body a { @apply text-[#44664e] underline; }
 
-  .receipt-jagged-top {
-    height: 12px;
-    width: 100%;
-    background: linear-gradient(-45deg, transparent 6px, #fcf8f9 6px) bottom left,
-      linear-gradient(45deg, transparent 6px, #fcf8f9 6px) bottom left;
-    background-size: 12px 12px;
-    background-repeat: repeat-x;
-  }
-  .receipt-jagged-bottom {
-    height: 12px;
-    width: 100%;
-    background: linear-gradient(-45deg, #fcf8f9 6px, transparent 6px) top right,
-      linear-gradient(45deg, #fcf8f9 6px, transparent 6px) top right;
-    background-size: 12px 12px;
-    background-repeat: repeat-x;
-  }
   .receipt-note-shadow {
     box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.1), 0 10px 15px -5px rgba(0, 0, 0, 0.05),
       5px 0 15px -5px rgba(0, 0, 0, 0.02), -5px 0 15px -5px rgba(0, 0, 0, 0.02);

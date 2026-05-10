@@ -82,6 +82,25 @@ describe('NoteNode', () => {
     expect(container.querySelector('.receipt-barcode')).toBeTruthy();
     expect(container.querySelector('.receipt-jagged-top')).toBeTruthy();
     expect(container.querySelector('.receipt-jagged-bottom')).toBeTruthy();
+    expect(container.querySelector('.note-surface-receipt')).toBeTruthy();
+  });
+
+  it('调色板 CSS 变量存在时 layout 1 保留毛玻璃表面类名', () => {
+    const { container } = render(
+      <div
+        style={
+          {
+            '--node-bg': '#1a1a1a',
+            '--node-text': '#ffffff',
+            '--node-border': '#333333',
+          } as React.CSSProperties
+        }
+      >
+        <NoteNode node={makeNode({ layout: 1 })} editingNodeId={null} setEditingNodeId={vi.fn()} />
+      </div>
+    );
+    expect(container.querySelector('.note-surface-glass')).toBeTruthy();
+    expect(container.querySelector('.note-glass-wash')).toBeTruthy();
   });
 
   it('layout 3 显示观察标签键', () => {

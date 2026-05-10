@@ -28,19 +28,19 @@ export function NoteLayoutReceipt({ node, editingNodeId, setEditingNodeId }: Nod
 
   return (
     <div
-      className="receipt-note-shadow flex h-full w-full min-h-0 flex-col transition-all duration-500"
+      className="note-surface-receipt receipt-note-shadow flex h-full w-full min-h-0 flex-col transition-all duration-500"
       style={{ outline: '1px solid transparent' }}
     >
-      <div className="receipt-jagged-top shrink-0 rotate-180 bg-[#fcf8f9]" aria-hidden />
-      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[#fcf8f9] px-5 py-5">
+      <div className="receipt-jagged-top note-receipt-paper shrink-0 rotate-180" aria-hidden />
+      <div className="note-receipt-paper relative flex min-h-0 flex-1 flex-col overflow-hidden px-5 py-5">
         <div
           className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.03] mix-blend-multiply"
           aria-hidden
         >
-          <Coffee className="h-40 w-40 text-[#2c281f]" strokeWidth={1} />
+          <Coffee className="note-receipt-watermark h-40 w-40 text-[#2c281f]" strokeWidth={1} />
         </div>
 
-        <div className="relative z-10 mb-5 border-b-2 border-dashed border-[#c7c5d4] pb-5 text-center text-[#2c281f] [text-shadow:0_0_1px_rgba(44,40,31,0.2)]">
+        <div className="note-receipt-chrome relative z-10 mb-5 border-b-2 border-dashed pb-5 text-center">
           <h2 className="mb-2 font-mono text-[12px] font-semibold uppercase tracking-[0.2em]">{t('nodes.receipt_title')}</h2>
           <p className="font-mono text-[13px] uppercase">{t('nodes.receipt_store', { num: receiptMeta.store })}</p>
           <p className="mt-4 font-mono text-[13px]">
@@ -54,11 +54,11 @@ export function NoteLayoutReceipt({ node, editingNodeId, setEditingNodeId }: Nod
           </p>
         </div>
 
-        <div className="relative z-10 mb-1 flex justify-between border-b border-dashed border-[#c7c5d4] pb-2 font-mono text-[12px] font-semibold uppercase tracking-widest text-[#2c281f] [text-shadow:0_0_1px_rgba(44,40,31,0.2)]">
+        <div className="note-receipt-chrome relative z-10 mb-1 flex justify-between border-b border-dashed pb-2 font-mono text-[12px] font-semibold uppercase tracking-widest">
           <span>{t('nodes.receipt_col_item')}</span>
           <span>{t('nodes.receipt_col_amt')}</span>
         </div>
-        <div className="relative z-10 -mt-1 mb-3 flex justify-between font-mono text-[13px] text-[#2c281f]/80 [text-shadow:0_0_1px_rgba(44,40,31,0.15)]">
+        <div className="note-receipt-chrome relative z-10 -mt-1 mb-3 flex justify-between border-b border-transparent font-mono text-[13px] opacity-80">
           <span className="pr-4">{node.type === 'note' ? t('nodes.observation') : t('nodes.note')}</span>
           <span className="shrink-0">{t('nodes.receipt_row_value')}</span>
         </div>
@@ -73,7 +73,7 @@ export function NoteLayoutReceipt({ node, editingNodeId, setEditingNodeId }: Nod
           scrollAreaClassName="note-receipt-markdown relative z-10 min-h-0 flex-1 overflow-y-auto pr-1 custom-scrollbar"
         />
 
-        <div className="relative z-10 mt-auto border-t-2 border-dashed border-[#c7c5d4] pt-5 text-center text-[#2c281f] [text-shadow:0_0_1px_rgba(44,40,31,0.2)]">
+        <div className="note-receipt-chrome relative z-10 mt-auto border-t-2 border-dashed pt-5 text-center">
           <div className="mb-4 flex justify-between font-mono text-[12px] font-semibold uppercase tracking-widest">
             <span>{t('nodes.receipt_total')}</span>
             <span>{t('nodes.receipt_paid')}</span>
@@ -84,7 +84,7 @@ export function NoteLayoutReceipt({ node, editingNodeId, setEditingNodeId }: Nod
           <p className="font-mono text-[11px] tracking-widest opacity-90">{barcodeLine}</p>
         </div>
       </div>
-      <div className="receipt-jagged-bottom shrink-0 rotate-180 bg-[#fcf8f9]" aria-hidden />
+      <div className="receipt-jagged-bottom note-receipt-paper shrink-0 rotate-180" aria-hidden />
     </div>
   );
 }

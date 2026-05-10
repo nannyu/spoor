@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, Plus, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { colorPresets, fontPresets } from '../../constants/presets';
+import { isDarkNodeBackground } from '../../utils/nodePaletteTone';
 import { useDraggable } from '../../hooks/useDraggable';
 import { useResizable } from '../../hooks/useResizable';
 
@@ -26,6 +27,8 @@ export interface DraggableNodeProps {
   initialWidth?: number;
   initialHeight?: number;
   rotation?: number;
+  /** When set (glass note layout), palette does not paint an opaque layer on this root so `backdrop-filter` on the card can sample the canvas. */
+  glassSurface?: boolean;
 }
 
 export const DraggableNode: React.FC<DraggableNodeProps> = ({ 
@@ -33,7 +36,8 @@ export const DraggableNode: React.FC<DraggableNodeProps> = ({
   initialX = 100, initialY = 100, initialWidth = 320, initialHeight = 0,
   onDelete, onCycleLayout, className = '', scale = 1, 
   isSelected, isEditing, onToggleSelect, allowPalette, onDragEnd, onResizeEnd,
-  rotation = 0
+  rotation = 0,
+  glassSurface = false,
 }) => {
   const { t } = useTranslation();
   const scaleRef = useRef(scale);
@@ -53,6 +57,14 @@ export const DraggableNode: React.FC<DraggableNodeProps> = ({
   return (
     <div 
       className={`absolute cursor-move group pointer-events-auto select-none ${className} ${isSelected ? 'ring-2 ring-[#C2410C]' : ''}`}
+      data-glass-surface={glassSurface ? '' : undefined}
+      data-node-tone={
+        styleOverrides.bg
+          ? isDarkNodeBackground(styleOverrides.bg)
+            ? 'dark'
+            : 'light'
+          : undefined
+      }
       style={{ 
         left: node.pos.x, 
         top: node.pos.y, 
