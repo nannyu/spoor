@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Plus,
+  Sparkles,
   Bot,
   Wand2,
   Send,
@@ -21,6 +22,7 @@ export interface CanvasToolbarProps {
   setAiPrompt: (prompt: string) => void;
   handleAiSubmit: () => void;
   addTextNode: () => void;
+  addThemeNode: () => void;
   addFileNode: (e: React.ChangeEvent<HTMLInputElement>) => void;
   agentConfigs: AgentConfig[];
   canvasTransform: { x: number; y: number; scale: number };
@@ -36,6 +38,7 @@ export function CanvasToolbar({
   setAiPrompt,
   handleAiSubmit,
   addTextNode,
+  addThemeNode,
   addFileNode,
   agentConfigs,
   canvasTransform,
@@ -51,9 +54,34 @@ export function CanvasToolbar({
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-40">
         <div className={`bg-white rounded-2xl shadow-2xl border border-[#E6E4DF] p-2 flex items-center space-x-2 ring-4 ring-[#F4F1ED]/50 transition-all ${isToolbarAiLoading ? 'opacity-80' : ''}`}>
           <div className="flex items-center gap-1 pl-2 border-r border-[#E6E4DF] pr-3 mr-1 relative group">
-            <button onClick={addTextNode} title={t('sidebar.new_note')} className="w-8 h-8 flex items-center justify-center text-[#5a5a54] hover:text-[#1a1a1a] hover:bg-[#F4F1ED] rounded-lg cursor-pointer transition-colors">
-              <Plus className="w-4 h-4" />
-            </button>
+            <div className="relative group/plus">
+              <button
+                type="button"
+                onClick={addTextNode}
+                title={t('sidebar.new_note')}
+                className="w-8 h-8 flex items-center justify-center text-[#5a5a54] hover:text-[#1a1a1a] hover:bg-[#F4F1ED] rounded-lg cursor-pointer transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+              <div className="absolute bottom-full left-0 mb-2 w-52 bg-white border border-[#E6E4DF] rounded-xl shadow-xl opacity-0 invisible group-hover/plus:opacity-100 group-hover/plus:visible transition-all flex flex-col p-1 z-50">
+                <button
+                  type="button"
+                  onClick={addTextNode}
+                  className="text-left px-3 py-2 text-sm text-[#1a1a1a] hover:bg-[#F4F1ED] rounded-lg mb-1 flex items-center gap-2 min-w-0"
+                >
+                  <Plus className="w-3.5 h-3.5 shrink-0 text-[#5a5a54]" />
+                  <span className="font-bold truncate">{t('sidebar.new_note')}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={addThemeNode}
+                  className="text-left px-3 py-2 text-sm text-[#1a1a1a] hover:bg-[#F4F1ED] rounded-lg mb-1 flex items-center gap-2 min-w-0"
+                >
+                  <Sparkles className="w-3.5 h-3.5 shrink-0 text-[#C2410C]" />
+                  <span className="font-bold truncate">{t('sidebar.new_theme_card')}</span>
+                </button>
+              </div>
+            </div>
             <div className="relative group/agent">
               <button title={t('sidebar.agents')} className="w-8 h-8 flex items-center justify-center text-[#5a5a54] hover:text-[#1a1a1a] hover:bg-[#F4F1ED] rounded-lg cursor-pointer transition-colors">
                 <Bot className="w-4 h-4" />

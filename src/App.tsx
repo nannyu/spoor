@@ -226,7 +226,7 @@ export default function App() {
   }, [activeTab]);
 
   // Node actions (CRUD, selection, linking)
-  const { toggleNodeSelection, handleLink, deleteEdge, removeNodeId, addTextNode, addFileNode } = useNodeActions({
+  const { toggleNodeSelection, handleLink, deleteEdge, removeNodeId, addTextNode, addThemeNode, addFileNode } = useNodeActions({
     activeCanvasId, nodesRef, connectingFrom, setConnectingFrom, edges, selectedNodes, setSelectedNodes, transformRef,
   });
 
@@ -502,7 +502,7 @@ export default function App() {
           isToolbarAiLoading={isToolbarAiLoading || isToolbarIntentPreflight}
           isInputDisabled={isAnyAiBusy}
           aiPrompt={aiPrompt} setAiPrompt={setAiPrompt}
-          handleAiSubmit={handleAiSubmit} addTextNode={addTextNode} addFileNode={addFileNode}
+          handleAiSubmit={handleAiSubmit} addTextNode={addTextNode} addThemeNode={addThemeNode} addFileNode={addFileNode}
           agentConfigs={agentConfigs} canvasTransform={canvasTransform}
           setCanvasTransform={setCanvasTransform} transformRef={transformRef}
           activeCanvasId={activeCanvasId}

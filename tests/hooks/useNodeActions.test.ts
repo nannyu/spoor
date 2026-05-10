@@ -3,6 +3,7 @@ import { renderHook, act } from '@testing-library/react';
 import { useRef, useState } from 'react';
 import { useNodeActions } from '../../src/hooks/useNodeActions';
 import { db } from '../../src/db';
+import i18n from '../../src/i18n';
 
 function useTestNodeActions() {
   const [selectedNodes, setSelectedNodes] = useState<Set<string>>(new Set());
@@ -44,6 +45,20 @@ describe('useNodeActions', () => {
     expect(nodes[0].canvasId).toBe('default');
     expect(typeof nodes[0].x).toBe('number');
     expect(typeof nodes[0].y).toBe('number');
+  });
+
+  it('addThemeNode 在数据库中创建 theme 类型节点', async () => {
+    const { result } = renderHook(() => useTestNodeActions());
+
+    await act(async () => {
+      await result.current.addThemeNode();
+    });
+
+    const nodes = await db.nodes.toArray();
+    expect(nodes.length).toBe(1);
+    expect(nodes[0].type).toBe('theme');
+    expect(nodes[0].content).toBe(i18n.t('nodes.new_theme_title'));
+    expect(nodes[0].canvasId).toBe('default');
   });
 
   it('deleteEdge 删除指定边', async () => {

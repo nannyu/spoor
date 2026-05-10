@@ -52,6 +52,7 @@ describe('i18n 国际化模块', () => {
       expect(i18n.t('sidebar.lab')).toBe('Research Lab');
       expect(i18n.t('sidebar.agents')).toBe('Agents');
       expect(i18n.t('sidebar.new_note')).toBe('New Note');
+      expect(i18n.t('sidebar.new_theme_card')).toBe('New Theme Card');
       expect(i18n.t('sidebar.publish')).toBe('Synthesize');
       expect(i18n.t('sidebar.settings')).toBe('Settings');
     });
@@ -66,6 +67,7 @@ describe('i18n 国际化模块', () => {
 
     it('nodes 翻译完整', () => {
       expect(i18n.t('nodes.theme')).toBe('Core Theme');
+      expect(i18n.t('nodes.new_theme_title')).toBe('Untitled theme');
       expect(i18n.t('nodes.note')).toBe('Note');
       expect(i18n.t('nodes.ai_refinement')).toBe('AI Refinement');
       expect(i18n.t('nodes.ai_loading')).toBe('Synthesizing...');
@@ -127,6 +129,7 @@ describe('i18n 国际化模块', () => {
       expect(i18n.t('sidebar.lab')).toBe('研究实验室');
       expect(i18n.t('sidebar.agents')).toBe('AI 助手');
       expect(i18n.t('sidebar.new_note')).toBe('新建便签');
+      expect(i18n.t('sidebar.new_theme_card')).toBe('新建主题卡');
       expect(i18n.t('sidebar.settings')).toBe('设置');
     });
 
@@ -139,6 +142,7 @@ describe('i18n 国际化模块', () => {
 
     it('nodes 翻译完整', () => {
       expect(i18n.t('nodes.theme')).toBe('核心主题');
+      expect(i18n.t('nodes.new_theme_title')).toBe('未命名主题');
       expect(i18n.t('nodes.note')).toBe('笔记');
       expect(i18n.t('nodes.ai_refinement')).toBe('AI 优化');
     });

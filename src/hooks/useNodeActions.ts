@@ -1,6 +1,7 @@
 import type { RefObject } from 'react';
 import type { CanvasTransform } from './useCanvasInteraction';
 import { db } from '../db';
+import i18n from '../i18n';
 import { getCanvasCenterPosition } from '../utils/canvas';
 import { processFileToNode } from '../utils/file';
 
@@ -59,6 +60,18 @@ export function useNodeActions({
     await db.nodes.add({ id: crypto.randomUUID(), canvasId: activeCanvasId, type: 'text', content: '', x, y });
   };
 
+  const addThemeNode = async () => {
+    const { x, y } = getCanvasCenterPosition(transformRef.current);
+    await db.nodes.add({
+      id: crypto.randomUUID(),
+      canvasId: activeCanvasId,
+      type: 'theme',
+      content: i18n.t('nodes.new_theme_title'),
+      x,
+      y,
+    });
+  };
+
   const addFileNode = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
@@ -78,5 +91,5 @@ export function useNodeActions({
     }
   };
 
-  return { toggleNodeSelection, handleLink, deleteEdge, removeNodeId, addTextNode, addFileNode };
+  return { toggleNodeSelection, handleLink, deleteEdge, removeNodeId, addTextNode, addThemeNode, addFileNode };
 }

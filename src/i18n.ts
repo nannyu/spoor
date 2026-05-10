@@ -16,6 +16,7 @@ const resources = {
         "agents": "Agents",
         "search_placeholder": "Search memories...",
         "new_note": "New Note",
+        "new_theme_card": "New Theme Card",
         "publish": "Synthesize",
         "agent_subtitle": "Intelligent Co-thinkers",
         "drop_agent": "Drop to analyze context",
@@ -37,6 +38,7 @@ const resources = {
       },
       "nodes": {
         "theme": "Core Theme",
+        "new_theme_title": "Untitled theme",
         "note": "Note",
         "observation": "Observation",
         "thought_node": "Thought Node",
@@ -261,6 +263,7 @@ const resources = {
         "agents": "AI 助手",
         "search_placeholder": "搜索记忆...",
         "new_note": "新建便签",
+        "new_theme_card": "新建主题卡",
         "publish": "合成文章",
         "agent_subtitle": "智能协同思考者",
         "drop_agent": "拖拽以分析上下文",
@@ -282,6 +285,7 @@ const resources = {
       },
       "nodes": {
         "theme": "核心主题",
+        "new_theme_title": "未命名主题",
         "note": "笔记",
         "observation": "观察",
         "thought_node": "思绪节点",
