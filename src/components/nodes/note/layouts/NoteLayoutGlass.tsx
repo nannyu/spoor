@@ -15,27 +15,22 @@ export function NoteLayoutGlass({ node, editingNodeId, setEditingNodeId }: NodeC
 
   return (
     <div
-      className="w-full h-full transition-all duration-500 flex flex-col relative overflow-hidden rounded-xl border border-white/60 bg-white/40 backdrop-blur-[12px] shadow-[0_0_24px_rgba(21,21,125,0.15)]"
-      style={{ outline: '1px solid transparent' }}
+      className="isolate relative flex h-full w-full flex-col overflow-hidden rounded-xl bg-white/40 shadow-[0_0_28px_rgba(194,65,12,0.14),inset_0_0_0_1px_rgba(194,65,12,0.08)] outline-none backdrop-blur-[12px] transition-all duration-500 [transform:translateZ(0)]"
     >
       <>
         <div
-          className="pointer-events-none absolute inset-0 rounded-xl border border-transparent shadow-[inset_1px_1px_0_rgba(255,255,255,0.8)]"
+          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#C2410C]/25 via-[#fdba74]/18 to-transparent opacity-85 mix-blend-overlay"
           aria-hidden
         />
         <div
-          className="pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-br from-[#c0c1ff]/40 via-[#c6eccd]/20 to-transparent opacity-80 mix-blend-overlay"
-          aria-hidden
-        />
-        <div
-          className="pointer-events-none absolute left-0 top-0 h-24 w-24 rounded-xl bg-gradient-to-br from-[#e1e0ff]/50 to-transparent blur-md"
+          className="pointer-events-none absolute left-0 top-0 h-24 w-24 bg-gradient-to-br from-[#ffedd5]/60 to-transparent blur-md"
           aria-hidden
         />
       </>
       <div className="relative z-10 flex min-h-0 flex-1 flex-col gap-4 p-6">
         <header className="flex shrink-0 items-center justify-between">
-          <Sparkles className="h-7 w-7 shrink-0 text-[#15157d]" strokeWidth={1.5} aria-hidden />
-          <span className="text-right font-sans text-[12px] font-semibold uppercase leading-none tracking-[0.05em] text-[#15157d]/70">
+          <Sparkles className="h-7 w-7 shrink-0 text-[#C2410C]" strokeWidth={1.5} aria-hidden />
+          <span className="text-right font-sans text-[12px] font-semibold uppercase leading-none tracking-[0.05em] text-[#C2410C]/75">
             {t('nodes.thought_node')}
           </span>
         </header>
