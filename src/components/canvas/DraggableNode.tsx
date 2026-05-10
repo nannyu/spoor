@@ -46,6 +46,9 @@ export const DraggableNode: React.FC<DraggableNodeProps> = ({
   const scaleRef = useRef(scale);
   useEffect(() => { scaleRef.current = scale; }, [scale]);
 
+  /** 编辑正文时隐藏外链、布局/删除、缩放手柄等外围控件（避免 group-hover 仍显示） */
+  const hideChrome = Boolean(isEditing);
+
   const node = useDraggable(initialX, initialY, scale, (pos) => {
     if (onDragEnd) onDragEnd(id, pos);
   });
@@ -60,7 +63,7 @@ export const DraggableNode: React.FC<DraggableNodeProps> = ({
   const paletteColorChoices = glassSurface ? colorPresets.slice(3) : colorPresets;
   return (
     <div 
-      className={`absolute cursor-move group pointer-events-auto select-none ${className} ${isSelected ? 'ring-2 ring-[#C2410C]' : ''}`}
+      className={`absolute cursor-move group pointer-events-auto select-none ${className} ${isSelected && !hideChrome ? 'ring-2 ring-[#C2410C]' : ''}`}
       data-glass-surface={glassSurface ? '' : undefined}
       data-node-tone={
         styleOverrides.bg
@@ -111,7 +114,7 @@ export const DraggableNode: React.FC<DraggableNodeProps> = ({
       {onToggleSelect && (
         <button 
           onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); onToggleSelect(); }} 
-          className={`absolute -top-3 -left-3 w-6 h-6 bg-white border ${isSelected ? 'border-[#C2410C] text-[#C2410C] opacity-100' : 'border-[#E6E4DF] text-transparent hover:border-[#C2410C] opacity-0 group-hover:opacity-40'} rounded-full flex items-center justify-center transition-all z-10 shadow-sm ${isEditing ? '!opacity-0' : ''}`}
+          className={`absolute -top-3 -left-3 w-6 h-6 bg-white border ${isSelected ? 'border-[#C2410C] text-[#C2410C] opacity-100' : 'border-[#E6E4DF] text-transparent hover:border-[#C2410C] opacity-0 group-hover:opacity-40'} rounded-full flex items-center justify-center transition-all z-10 shadow-sm ${hideChrome ? '!opacity-0 pointer-events-none' : ''}`}
           title={t('canvas.select_note')}
         >
           <Check className="w-3 h-3" />
@@ -119,12 +122,26 @@ export const DraggableNode: React.FC<DraggableNodeProps> = ({
       )}
       <button 
         onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); onLink(id); }}
-        className={`absolute top-1/2 -mt-3 -right-3 w-6 h-6 bg-white border border-[#E6E4DF] rounded-full flex items-center justify-center text-[#8c8a84] hover:text-[#C2410C] hover:border-[#C2410C] ${isSelected && !isEditing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-all z-10 shadow-sm`}
+        className={`absolute top-1/2 -mt-3 -right-3 w-6 h-6 bg-white border border-[#E6E4DF] rounded-full flex items-center justify-center text-[#8c8a84] hover:text-[#C2410C] hover:border-[#C2410C] transition-all z-10 shadow-sm ${
+          hideChrome
+            ? '!opacity-0 pointer-events-none'
+            : isSelected
+              ? 'opacity-100'
+              : 'opacity-0 group-hover:opacity-100'
+        }`}
         title={t('canvas.link_note')}
       >
         <Plus className="w-4 h-4" />
       </button>
-      <div className={`absolute -bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 ${isSelected && !isEditing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity z-10`}>
+      <div
+        className={`absolute -bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 transition-opacity z-10 ${
+          hideChrome
+            ? '!opacity-0 pointer-events-none'
+            : isSelected
+              ? 'opacity-100'
+              : 'opacity-0 group-hover:opacity-100'
+        }`}
+      >
         {onCycleLayout && (
           <button 
             onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); onCycleLayout(); }} 
@@ -149,7 +166,13 @@ export const DraggableNode: React.FC<DraggableNodeProps> = ({
       {/* Resize Handle */}
       <div 
         onPointerDown={onResizePointerDown}
-        className={`absolute -bottom-1 -right-1 w-4 h-4 cursor-nwse-resize flex items-center justify-center ${isSelected && !isEditing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity z-20`}
+        className={`absolute -bottom-1 -right-1 w-4 h-4 cursor-nwse-resize flex items-center justify-center transition-opacity z-20 ${
+          hideChrome
+            ? '!opacity-0 pointer-events-none'
+            : isSelected
+              ? 'opacity-100'
+              : 'opacity-0 group-hover:opacity-100'
+        }`}
       >
         <div className="w-1.5 h-1.5 border-r border-b border-[#8c8a84]"></div>
       </div>
