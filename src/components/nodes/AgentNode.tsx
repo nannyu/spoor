@@ -17,8 +17,8 @@ export function AgentNode({
   const runDisabled = isAnalyzing || isAgentAnalysisActionDisabled || !onRunAnalysis;
 
   return (
-    <div className="w-full h-full bg-white text-[#1a1a1a] p-4 shadow-lg border border-[#E6E4DF] rounded-lg relative overflow-hidden group flex flex-col">
-      <div className="absolute inset-0 bg-gradient-to-br from-[#C2410C]/8 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+    <div className="w-full h-full bg-white text-[#1a1a1a] p-4 shadow-lg border border-[#E6E4DF] rounded-lg relative overflow-hidden flex flex-col">
+      <div className="absolute inset-0 bg-gradient-to-br from-[#C2410C]/8 to-transparent pointer-events-none" aria-hidden />
       <div className="flex items-start gap-3 relative z-10">
         <div className="w-9 h-9 rounded-lg bg-[#F4F1ED] border border-[#E6E4DF] flex items-center justify-center text-[#C2410C] shrink-0">
           <Bot className="w-5 h-5" aria-hidden />
