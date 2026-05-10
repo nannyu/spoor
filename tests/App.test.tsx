@@ -1034,6 +1034,39 @@ describe('App 组件', () => {
       expect(publishBtns.length).toBeGreaterThanOrEqual(1);
     });
 
+    it('画布合成按钮未选中时为白色样式', async () => {
+      await act(async () => { render(<App />); });
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      });
+      const publishBtn = screen.getByTitle(/合成文章\s*\(/);
+      expect(publishBtn.className).toContain('bg-white');
+      expect(publishBtn.className).not.toContain('bg-[#C2410C]');
+    });
+
+    it('画布合成按钮选中便签后为橙色样式', async () => {
+      const user = userEvent.setup();
+      await act(async () => { render(<App />); });
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      });
+
+      let selectBtns = screen.queryAllByTitle('选择便签');
+      if (selectBtns.length === 0) {
+        await user.click(screen.getAllByTitle('新建便签')[0]);
+        await act(async () => {
+          await new Promise((resolve) => setTimeout(resolve, 150));
+        });
+        selectBtns = screen.queryAllByTitle('选择便签');
+      }
+
+      expect(selectBtns.length).toBeGreaterThan(0);
+      await user.click(selectBtns[0]);
+
+      const publishBtn = screen.getByTitle(/合成文章\s*\(/);
+      expect(publishBtn.className).toContain('bg-[#C2410C]');
+    });
+
     it('AI 提交输入框存在', async () => {
       await act(async () => { render(<App />); });
       const aiInput = document.querySelector('input[placeholder*="AI"]');

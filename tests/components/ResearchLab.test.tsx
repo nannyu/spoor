@@ -1,7 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
+
+vi.mock('../../src/utils/openExternal', () => ({
+  openExternalUrl: vi.fn().mockResolvedValue(undefined),
+}));
+
 import { ResearchLab } from '../../src/components/ResearchLab';
+import { openExternalUrl } from '../../src/utils/openExternal';
 import { db } from '../../src/db';
 
 // Mock i18next
@@ -99,6 +105,7 @@ const baseConfig = {
 describe('ResearchLab', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
+    vi.mocked(openExternalUrl).mockClear().mockResolvedValue(undefined);
     await db.researchSessions.clear();
   });
 
@@ -271,6 +278,41 @@ describe('ResearchLab', () => {
     const prompt = callAI.mock.calls[1][0].prompt;
     expect(prompt).toContain('[Source]');
     expect(prompt).toContain('Findings');
+  });
+
+  it('opens source detail modal and calls openExternalUrl for system browser', async () => {
+    mockMetasoSearch.mockResolvedValue({
+      credits: 1,
+      total: 1,
+      webpages: [
+        { title: 'Paper', link: 'https://example.com/doc', snippet: 'S', score: '', date: '' },
+      ],
+    });
+    const planJson = JSON.stringify([
+      { title: 'Step 1', desc: 'D1' },
+      { title: 'Step 2', desc: 'D2' },
+      { title: 'Step 3', desc: 'D3' },
+    ]);
+    const callAI = vi.fn().mockResolvedValueOnce('{"need_web":true}').mockResolvedValueOnce(planJson);
+
+    render(<ResearchLab aiConfig={{ ...baseConfig, metasoApiKey: 'sk-metaso' }} callAI={callAI} />);
+
+    fireEvent.change(screen.getByPlaceholderText('Search topic...'), { target: { value: 'topic sources' } });
+    fireEvent.submit(screen.getByPlaceholderText('Search topic...').closest('form')!);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('lab-source-card-0')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByTestId('lab-source-card-0'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('lab-source-detail-modal')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Open in browser/i }));
+
+    expect(openExternalUrl).toHaveBeenCalledWith('https://example.com/doc');
   });
 
   it('does not call metaso when classifier returns need_web false', async () => {
