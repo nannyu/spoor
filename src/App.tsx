@@ -400,7 +400,11 @@ export default function App() {
               <button 
                 onClick={handlePublish}
                 disabled={selectedNodes.size === 0 || isAnyAiBusy}
-                className="bg-[#C2410C] text-white p-3 rounded-full shadow-md hover:scale-105 transition-all disabled:opacity-50 flex items-center justify-center group border border-[#a0350a]/50"
+                className={`p-3 rounded-full shadow-md transition-all flex items-center justify-center border ${
+                  selectedNodes.size > 0
+                    ? 'bg-[#C2410C] text-white border-[#a0350a]/50 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100'
+                    : 'bg-white text-[#1a1a1a] border-[#E6E4DF] hover:scale-105 hover:border-[#C2410C] hover:text-[#C2410C] disabled:opacity-50 disabled:hover:scale-100 disabled:hover:border-[#E6E4DF] disabled:hover:text-[#1a1a1a]'
+                }`}
                 title={isPublishing ? t('nodes.ai_loading') : `${t('sidebar.publish')} (${selectedNodes.size})`}
               >
                 {isPublishing ? <Loader2 className="w-5 h-5 animate-spin" /> : <PenLine className="w-5 h-5" />}
