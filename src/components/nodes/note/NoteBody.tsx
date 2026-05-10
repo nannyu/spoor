@@ -1,8 +1,12 @@
-import React, { useCallback, useLayoutEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import Markdown from 'react-markdown';
+import remarkBreaks from 'remark-breaks';
 import { db } from '../../../db';
 import type { CanvasNode } from '../../../db';
 import { isContentBlurPersistenceDisabled } from '../../../config/persistence';
+
+/** 让单个 \n 渲染为 <br>，避免用户在便签里手敲的回车被 Markdown 默认行为吞掉（双 \n 仍是段落，列表/标题不受影响） */
+const NOTE_REMARK_PLUGINS = [remarkBreaks];
 
 export interface NoteBodyProps {
   node: CanvasNode;
@@ -24,48 +28,42 @@ export function NoteBody({
   scrollAreaClassName = 'flex-1 overflow-y-auto min-h-0 pr-1 custom-scrollbar',
 }: NoteBodyProps) {
   const isEditing = editingNodeId === node.id;
-  const editableRef = useRef<HTMLDivElement | null>(null);
 
-  /** 在挂载 contentEditable 时立刻灌入文本；只靠 useLayoutEffect 时 ref 有时尚未挂上，会出现「再点进编辑内容为空」 */
-  const setEditableRef = useCallback(
-    (el: HTMLDivElement | null) => {
-      editableRef.current = el;
-      if (!el || !isEditing) return;
-      el.textContent = node.content ?? '';
-    },
-    // 故意不依赖 node.content：同一次编辑中父级重渲染不得覆盖 DOM；灌入时读的是创建本 callback 那一次渲染的 node（进入编辑瞬间）
-    [isEditing, node.id],
-  );
-
-  // 双保险：ref 已就绪后再写一次（与 callback 幂等）
-  useLayoutEffect(() => {
-    if (!isEditing) return;
-    const el = editableRef.current;
-    if (el) {
-      el.textContent = node.content ?? '';
+  /** 乐观值：onBlur 写库后立即生效，避开 db.nodes.update -> useLiveQuery 异步刷新之间的"老内容闪一下"间隙；
+   *  当 props 上的 node.content 与乐观值一致（即 IndexedDB 已同步回组件），自动清空 */
+  const [pendingContent, setPendingContent] = useState<string | null>(null);
+  useEffect(() => {
+    if (pendingContent !== null && pendingContent === node.content) {
+      setPendingContent(null);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- 同上，仅在 isEditing / node.id 变化时同步；node.content 取进入该状态时的快照
-  }, [isEditing, node.id]);
+  }, [node.content, pendingContent]);
+
+  const displayContent = pendingContent ?? node.content;
 
   return (
     <div className={scrollAreaClassName}>
       {isEditing ? (
         <div
-          ref={setEditableRef}
           autoFocus
           className={editClassName}
           contentEditable
           suppressContentEditableWarning
+          /** white-space: pre-wrap 保证 node.content 里的 \n 在编辑区视觉上换行；否则 HTML 默认会把 \n 折叠成空格 */
+          style={{ whiteSpace: 'pre-wrap' }}
           onBlur={(e) => {
+            const next = e.currentTarget.innerText;
             if (!isContentBlurPersistenceDisabled()) {
-              db.nodes.update(node.id, { content: e.currentTarget.innerText });
+              db.nodes.update(node.id, { content: next });
+              setPendingContent(next);
             }
             setEditingNodeId(null);
           }}
-        />
+        >
+          {node.content}
+        </div>
       ) : (
         <div onClick={() => setEditingNodeId(node.id)} className={`cursor-text min-h-[50px] ${viewClassName}`}>
-          <Markdown>{node.content || emptyNoteMarkdown}</Markdown>
+          <Markdown remarkPlugins={NOTE_REMARK_PLUGINS}>{displayContent || emptyNoteMarkdown}</Markdown>
         </div>
       )}
     </div>

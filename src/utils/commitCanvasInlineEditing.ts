@@ -1,30 +1,31 @@
 import type { MutableRefObject } from 'react';
-import { db } from '../db';
 
 /**
- * 在画布空白处平移等操作前调用：将当前处于 App 级「编辑中」的便签/文本节点内容写入 IndexedDB，并清除 editing 态，
- * 避免 pointerdown 上 preventDefault 导致 contentEditable 未失焦、也未保存。
+ * 在画布空白处平移等操作前调用：因为 useCanvasInteraction.handlePanStart 会 preventDefault，
+ * 浏览器不会自动把焦点从 contentEditable 转走、也就不会触发 onBlur。
+ *
+ * 这里的职责是 **触发 blur**，让受控的 onBlur 走完整链路（写库 + 清 editingNodeId）。
+ * 不直接调 db.nodes.update，也不直接 setEditingNodeId(null)，避免双写库或绕过组件状态。
  */
 export function commitCanvasInlineEditing(params: {
   editingNodeId: string | null;
   nodesRef: MutableRefObject<Record<string, HTMLElement | null>>;
   nodeType: string | undefined;
-  setEditingNodeId: (id: string | null) => void;
 }): void {
-  const { editingNodeId, nodesRef, nodeType, setEditingNodeId } = params;
+  const { editingNodeId, nodesRef, nodeType } = params;
   if (!editingNodeId) return;
 
   if (nodeType === 'note' || nodeType === 'text') {
     const root = nodesRef.current[editingNodeId];
     const ce = root?.querySelector('[contenteditable="true"]') as HTMLElement | null;
     if (ce) {
-      void db.nodes.update(editingNodeId, { content: ce.innerText });
-    }
-  } else {
-    const ae = document.activeElement;
-    if (ae instanceof HTMLElement && ae.isContentEditable) {
-      ae.blur();
+      ce.blur();
+      return;
     }
   }
-  setEditingNodeId(null);
+
+  const ae = document.activeElement;
+  if (ae instanceof HTMLElement && ae.isContentEditable) {
+    ae.blur();
+  }
 }

@@ -1,74 +1,85 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createRef } from 'react';
+import type { MutableRefObject } from 'react';
 import { commitCanvasInlineEditing } from '../../src/utils/commitCanvasInlineEditing';
 
-const updateMock = vi.fn();
-
-vi.mock('../../src/db', () => ({
-  db: {
-    nodes: {
-      update: (...args: unknown[]) => updateMock(...args),
-    },
-  },
-}));
+function makeRef(map: Record<string, HTMLElement | null> = {}): MutableRefObject<Record<string, HTMLElement | null>> {
+  return { current: map } as MutableRefObject<Record<string, HTMLElement | null>>;
+}
 
 describe('commitCanvasInlineEditing', () => {
-  const setEditingNodeId = vi.fn();
-
   beforeEach(() => {
-    updateMock.mockClear();
-    setEditingNodeId.mockClear();
     document.body.innerHTML = '';
   });
 
-  it('无 editingNodeId 时不写库、不清空', () => {
+  it('无 editingNodeId 时不触发任何 blur', () => {
+    const ce = document.createElement('div');
+    ce.contentEditable = 'true';
+    const blurSpy = vi.spyOn(ce, 'blur');
+    document.body.appendChild(ce);
+
     commitCanvasInlineEditing({
       editingNodeId: null,
-      nodesRef: createRef<Record<string, HTMLElement | null>>(),
+      nodesRef: makeRef(),
       nodeType: undefined,
-      setEditingNodeId,
     });
-    expect(updateMock).not.toHaveBeenCalled();
-    expect(setEditingNodeId).not.toHaveBeenCalled();
+
+    expect(blurSpy).not.toHaveBeenCalled();
   });
 
-  it('note 类型：从 nodesRef 根下 contentEditable 读 innerText 并写库后清空编辑态', () => {
-    const div = document.createElement('div');
+  it('note/text 类型：在 nodesRef 根下找到 contentEditable 并触发其 blur（让 React onBlur 走单点写库）', () => {
+    const root = document.createElement('div');
     const ce = document.createElement('div');
     ce.setAttribute('contenteditable', 'true');
-    ce.innerText = 'line from dom';
-    div.appendChild(ce);
-    document.body.appendChild(div);
+    root.appendChild(ce);
+    document.body.appendChild(root);
 
-    const nodesRef = createRef<Record<string, HTMLElement | null>>();
-    nodesRef.current = { n1: div };
+    const ceBlurSpy = vi.spyOn(ce, 'blur');
 
     commitCanvasInlineEditing({
       editingNodeId: 'n1',
-      nodesRef: nodesRef as React.MutableRefObject<Record<string, HTMLElement | null>>,
+      nodesRef: makeRef({ n1: root }),
       nodeType: 'text',
-      setEditingNodeId,
     });
 
-    expect(updateMock).toHaveBeenCalledWith('n1', { content: 'line from dom' });
-    expect(setEditingNodeId).toHaveBeenCalledWith(null);
+    expect(ceBlurSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('非便签类型：blur 活跃元素并清空编辑态', () => {
+  it('note/text 类型：找不到 contentEditable 时不抛异常，也不会误触发其他节点的 blur', () => {
+    const otherCe = document.createElement('div');
+    otherCe.setAttribute('contenteditable', 'true');
+    document.body.appendChild(otherCe);
+    const otherBlurSpy = vi.spyOn(otherCe, 'blur');
+
+    const emptyRoot = document.createElement('div');
+
+    expect(() =>
+      commitCanvasInlineEditing({
+        editingNodeId: 'n1',
+        nodesRef: makeRef({ n1: emptyRoot }),
+        nodeType: 'note',
+      })
+    ).not.toThrow();
+
+    /** JSDOM 中 contentEditable 不被视为可聚焦，document.activeElement 仍是 body，
+     *  所以兜底分支不会去 blur otherCe，这里只断言「不抛 + 不误触发」 */
+    expect(otherBlurSpy).not.toHaveBeenCalled();
+  });
+
+  it('非便签类型且 activeElement 不是 contentEditable 时，安全无操作（不抛、不误 blur）', () => {
     const ce = document.createElement('div');
-    ce.contentEditable = 'true';
+    ce.setAttribute('contenteditable', 'true');
     document.body.appendChild(ce);
-    ce.focus();
+    const blurSpy = vi.spyOn(ce, 'blur');
 
-    commitCanvasInlineEditing({
-      editingNodeId: 'ai1',
-      nodesRef: createRef<Record<string, HTMLElement | null>>(),
-      nodeType: 'ai',
-      setEditingNodeId,
-    });
+    expect(() =>
+      commitCanvasInlineEditing({
+        editingNodeId: 'ai1',
+        nodesRef: makeRef(),
+        nodeType: 'ai',
+      })
+    ).not.toThrow();
 
-    expect(updateMock).not.toHaveBeenCalled();
-    expect(document.activeElement).not.toBe(ce);
-    expect(setEditingNodeId).toHaveBeenCalledWith(null);
+    /** JSDOM 默认 activeElement 是 body，不会被错误地 blur ce */
+    expect(blurSpy).not.toHaveBeenCalled();
   });
 });

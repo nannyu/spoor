@@ -105,7 +105,6 @@ export default function App() {
         editingNodeId,
         nodesRef,
         nodeType: nodeRow?.type,
-        setEditingNodeId,
       });
       handlePanStart(e);
     },
