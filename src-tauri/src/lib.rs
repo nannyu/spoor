@@ -83,6 +83,16 @@ async fn metaso_search(api_key: String, query: String) -> Result<String, String>
     Ok(text)
 }
 
+/// Open an http(s) URL in the system default browser. Webview `target=_blank` is unreliable in Tauri.
+#[tauri::command]
+fn open_external_url(url: String) -> Result<(), String> {
+    let url = url.trim();
+    if !(url.starts_with("http://") || url.starts_with("https://")) {
+        return Err("Only http:// and https:// URLs are allowed".into());
+    }
+    open::that(url).map_err(|e| e.to_string())
+}
+
 /// 内置 llama.cpp：加载本地 GGUF，使用模型自带 chat 模板完成一轮对话（桌面端离线）。
 #[tauri::command]
 async fn local_llama_chat(payload: LocalLlamaChatPayload) -> Result<String, String> {
@@ -103,6 +113,7 @@ pub fn run() {
     .invoke_handler(tauri::generate_handler![
       openai_compatible_chat,
       metaso_search,
+      open_external_url,
       local_llama_chat,
       get_local_llama_log_path
     ])

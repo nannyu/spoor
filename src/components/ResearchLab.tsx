@@ -1,9 +1,10 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { formatAiError } from '../services/ai';
 import { getLocaleDirective } from '../utils/aiI18n';
 import { parseLenientLlmJson } from '../utils/llmJson';
+import { openExternalUrl } from '../utils/openExternal';
 import { metasoSearch, buildSearchContext } from '../services/search';
 import {
   db,
@@ -25,6 +26,7 @@ import {
   Sparkles,
   ExternalLink,
   Trash2,
+  X,
 } from 'lucide-react';
 import type { CallAIFn } from '../types';
 
@@ -161,12 +163,22 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
   const [planRevisionNote, setPlanRevisionNote] = useState('');
   const [planRevising, setPlanRevising] = useState(false);
   const [searchSources, setSearchSources] = useState<ResearchSessionWebpageSnapshot[]>([]);
+  const [sourceDetail, setSourceDetail] = useState<ResearchSessionWebpageSnapshot | null>(null);
   const executeResearchInFlightRef = useRef(false);
 
   const pastSessions = useLiveQuery(
     () => db.researchSessions.orderBy('createdAt').reverse().limit(RESEARCH_HISTORY_LIMIT).toArray(),
     []
   ) ?? [];
+
+  useEffect(() => {
+    if (!sourceDetail) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSourceDetail(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [sourceDetail]);
 
   const openHistorySession = (session: ResearchSession) => {
     setQuery(session.query);
@@ -236,14 +248,15 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
     setReportGenerationFailed(false);
     setSearchStatus('idle');
     setSearchSources([]);
+    setSourceDetail(null);
     setPlanRevisionNote('');
 
     const { context: searchContext } = await tryWebSearch(query);
 
     try {
       const prompt = searchContext
-        ? `${t('lab.ai_generate_plan', { query })}\n\nAdditionally, here are web search results that may inform your plan:\n\n${searchContext}`
-        : t('lab.ai_generate_plan', { query });
+        ? `${t('lab.ai_decompose_question', { query })}\n\nAdditionally, here are web search results that may inform your plan:\n\n${searchContext}`
+        : t('lab.ai_decompose_question', { query });
 
       const text = await callAI({
         config: aiConfig,
@@ -275,7 +288,7 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
 
     setPlanRevising(true);
     try {
-      const prompt = t('lab.ai_revise_plan', {
+      const prompt = t('lab.ai_revise_decompose', {
         query,
         plan: JSON.stringify(researchPlan, null, 2),
         instruction,
@@ -309,6 +322,7 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
     try {
       setPhase('researching');
       setReportGenerationFailed(false);
+      setSourceDetail(null);
       setActiveStep(0);
       const timer1 = setTimeout(() => setActiveStep(1), 2000);
       const timer2 = setTimeout(() => setActiveStep(2), 4000);
@@ -448,6 +462,7 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
                        setSourceCount(0);
                        setSearchSources([]);
                        setReportGenerationFailed(false);
+                       setSourceDetail(null);
                      }}
                      className="text-[#C2410C] text-xs hover:underline font-bold"
                    >
@@ -479,11 +494,19 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
                <div className="space-y-3">
                  {searchSources.length > 0 ? (
                    searchSources.map((wp, idx) => {
-                     const href = wp.link?.trim();
                      const cardShell =
-                       'bg-white border border-[#E6E4DF] p-3 rounded-lg text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C2410C]/30';
-                     const inner = (
-                       <>
+                       'w-full text-left bg-white border border-[#E6E4DF] p-3 rounded-lg text-sm shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C2410C]/30 hover:border-[#C2410C]/45 hover:shadow-md cursor-pointer';
+                     return (
+                       <button
+                         key={`${wp.link}-${idx}`}
+                         type="button"
+                         data-testid={`lab-source-card-${idx}`}
+                         aria-label={t('lab.source_view_detail')}
+                         onClick={() => setSourceDetail(wp)}
+                         className={`${cardShell} ${
+                           phase === 'researching' && activeStep < 2 ? 'opacity-90' : ''
+                         }`}
+                       >
                          <div className="text-[10px] text-[#4ade80] mb-1 font-mono flex items-center gap-1 font-bold">
                            <Check className="w-3 h-3 shrink-0" aria-hidden />
                            {t('lab.processed')}
@@ -499,33 +522,7 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
                              {wp.snippet.trim()}
                            </p>
                          ) : null}
-                       </>
-                     );
-                     if (href) {
-                       return (
-                         <a
-                           key={`${href}-${idx}`}
-                           href={href}
-                           target="_blank"
-                           rel="noopener noreferrer"
-                           data-testid={`lab-source-link-${idx}`}
-                           aria-label={`${t('lab.source_open_new_tab')}: ${wp.title || href}`}
-                           className={`${cardShell} block hover:border-[#C2410C]/45 hover:shadow-md ${
-                             phase === 'researching' && activeStep < 2 ? 'opacity-90' : ''
-                           }`}
-                         >
-                           {inner}
-                         </a>
-                       );
-                     }
-                     return (
-                       <div
-                         key={`nolink-${idx}`}
-                         data-testid={`lab-source-static-${idx}`}
-                         className={`${cardShell} opacity-80`}
-                       >
-                         {inner}
-                       </div>
+                       </button>
                      );
                    })
                  ) : (
@@ -792,6 +789,74 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
             </div>
          )}
       </div>
+
+      {sourceDetail ? (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/45 p-4"
+          role="presentation"
+          data-testid="lab-source-detail-modal"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setSourceDetail(null);
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="lab-source-detail-title"
+            className="flex max-h-[min(560px,85vh)] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-[#E6E4DF] bg-[#FAF9F6] shadow-2xl"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3 border-b border-[#E6E4DF] bg-white px-4 py-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#C2410C]">{t('lab.source_detail_heading')}</p>
+                <h2 id="lab-source-detail-title" className="mt-1 font-serif text-lg font-bold leading-snug text-[#1a1a1a]">
+                  {sourceDetail.title?.trim() || sourceDetail.link || t('lab.source_untitled')}
+                </h2>
+              </div>
+              <button
+                type="button"
+                aria-label={t('settings.close')}
+                className="shrink-0 rounded-lg p-1.5 text-[#8c8a84] transition-colors hover:bg-[#F4F1ED] hover:text-[#1a1a1a]"
+                onClick={() => setSourceDetail(null)}
+              >
+                <X className="h-5 w-5" aria-hidden />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-4 py-3">
+              <p className="text-xs leading-relaxed text-[#5a5a54]">{t('lab.source_modal_hint')}</p>
+              {sourceDetail.snippet?.trim() ? (
+                <p className="mt-3 whitespace-pre-wrap font-sans text-sm leading-relaxed text-[#1a1a1a]">{sourceDetail.snippet.trim()}</p>
+              ) : null}
+              {sourceDetail.link?.trim() ? (
+                <p className="mt-4 break-all font-mono text-[11px] text-[#8c8a84]">{sourceDetail.link.trim()}</p>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-[#E6E4DF] bg-white px-4 py-3">
+              <button
+                type="button"
+                className="rounded-lg border border-[#E6E4DF] bg-white px-4 py-2 text-sm font-bold text-[#1a1a1a] shadow-sm hover:bg-[#FAF9F6]"
+                onClick={() => setSourceDetail(null)}
+              >
+                {t('settings.close')}
+              </button>
+              {sourceDetail.link?.trim() && /^https?:\/\//i.test(sourceDetail.link.trim()) ? (
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 rounded-lg bg-[#C2410C] px-4 py-2 text-sm font-bold text-white shadow-md hover:bg-[#a0350a]"
+                  onClick={() => {
+                    void openExternalUrl(sourceDetail.link).catch((err) =>
+                      console.error('[Scribe AI] openExternalUrl failed', err),
+                    );
+                  }}
+                >
+                  <ExternalLink className="h-4 w-4" aria-hidden />
+                  {t('lab.open_in_system_browser')}
+                </button>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

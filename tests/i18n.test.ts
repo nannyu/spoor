@@ -91,7 +91,7 @@ describe('i18n 国际化模块', () => {
       expect(i18n.t('lab.report')).toBe('Synthesized Report');
       expect(i18n.t('lab.plan_edit_hint').length).toBeGreaterThan(10);
       expect(i18n.t('lab.plan_revision_apply')).toContain('AI');
-      expect(i18n.t('lab.ai_revise_plan', { query: 'Q', plan: '[]', instruction: 'X' })).toContain('Q');
+      expect(i18n.t('lab.ai_revise_decompose', { query: 'Q', plan: '[]', instruction: 'X' })).toContain('Q');
     });
 
     it('reference 翻译完整', () => {
@@ -171,7 +171,7 @@ describe('i18n 国际化模块', () => {
       expect(i18n.t('lab.suggested_tag_1')).toContain('空间编码');
       expect(i18n.t('lab.approve')).toBe('批准并执行');
       expect(i18n.t('lab.plan_revision_apply')).toContain('AI');
-      expect(i18n.t('lab.ai_revise_plan', { query: '问题', plan: '[]', instruction: '改' })).toContain('问题');
+      expect(i18n.t('lab.ai_revise_decompose', { query: '问题', plan: '[]', instruction: '改' })).toContain('问题');
     });
 
     it('reference 翻译完整', () => {
