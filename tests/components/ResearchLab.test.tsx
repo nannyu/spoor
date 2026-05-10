@@ -45,6 +45,8 @@ vi.mock('react-i18next', () => ({
         'lab.plan_revision_placeholder': 'Revision instructions...',
         'lab.plan_revision_apply': 'Update outline with AI',
         'lab.plan_revision_applying': 'Updating outline...',
+        'lab.plan_stream_hint': 'Streaming hint',
+        'lab.plan_stream_status': 'Receiving outline…',
         'lab.ai_need_web_classifier': 'Classifier {{query}}',
         'lab.ai_decompose_question': 'Decompose question: {{query}}',
         'lab.ai_revise_decompose': 'Revise decompose for {{query}}. Plan: {{plan}}. Instruction: {{instruction}}',

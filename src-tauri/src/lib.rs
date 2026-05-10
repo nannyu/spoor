@@ -1,6 +1,8 @@
 mod local_llama;
 
+use futures_util::StreamExt;
 use serde_json::Value;
+use tauri::{AppHandle, Emitter};
 
 use local_llama::LocalLlamaChatPayload;
 
@@ -43,6 +45,94 @@ async fn openai_compatible_chat(api_key: String, url: String, body: Value) -> Re
     Some(v) => Ok(v.to_string()),
     None => Err(format!("Unexpected API response: {text}")),
   }
+}
+
+/// Same as [`openai_compatible_chat`] but `stream: true` + SSE; emits JSON `{ id, text }` on `lab-ai-stream` as tokens arrive.
+#[tauri::command]
+async fn openai_compatible_chat_stream(
+  app: AppHandle,
+  api_key: String,
+  url: String,
+  mut body: Value,
+  stream_id: String,
+) -> Result<String, String> {
+  let client = reqwest::Client::builder()
+    .build()
+    .map_err(|e| e.to_string())?;
+
+  if let Some(obj) = body.as_object_mut() {
+    obj.insert("stream".to_string(), Value::Bool(true));
+  }
+
+  let response = client
+    .post(&url)
+    .header(
+      "Authorization",
+      format!("Bearer {}", api_key.trim()),
+    )
+    .header("Content-Type", "application/json")
+    .json(&body)
+    .send()
+    .await
+    .map_err(|e| {
+      eprintln!("[Scribe AI] openai_compatible_chat_stream network error: {e} (url={url})");
+      e.to_string()
+    })?;
+
+  let status = response.status();
+  if !status.is_success() {
+    let text = response.text().await.unwrap_or_default();
+    let preview: String = text.chars().take(800).collect();
+    eprintln!(
+      "[Scribe AI] openai_compatible_chat_stream HTTP {status} url={url} body_preview={preview}"
+    );
+    return Err(text);
+  }
+
+  let mut stream = response.bytes_stream();
+  let mut pending = String::new();
+  let mut full = String::new();
+
+  while let Some(chunk_result) = stream.next().await {
+    let chunk = chunk_result.map_err(|e| e.to_string())?;
+    pending.push_str(&String::from_utf8_lossy(&chunk));
+
+    loop {
+      let nl = match pending.find('\n') {
+        Some(i) => i,
+        None => break,
+      };
+      let line = pending[..nl].trim_end_matches('\r').to_string();
+      pending = pending[nl + 1..].to_string();
+
+      let trimmed = line.trim();
+      let data = match trimmed.strip_prefix("data:") {
+        Some(rest) => rest.trim_start(),
+        None => continue,
+      };
+      if data == "[DONE]" {
+        continue;
+      }
+      let v: Value = match serde_json::from_str(data) {
+        Ok(v) => v,
+        Err(_) => continue,
+      };
+      let delta = v["choices"]
+        .get(0)
+        .and_then(|c| c.get("delta"))
+        .and_then(|d| d.get("content"))
+        .and_then(|c| c.as_str());
+      if let Some(d) = delta {
+        if !d.is_empty() {
+          full.push_str(d);
+          let payload = serde_json::json!({ "id": &stream_id, "text": &full });
+          let _ = app.emit("lab-ai-stream", payload);
+        }
+      }
+    }
+  }
+
+  Ok(full)
 }
 
 /// Metaso (秘塔) search API proxy.
@@ -112,6 +202,7 @@ pub fn run() {
   tauri::Builder::default()
     .invoke_handler(tauri::generate_handler![
       openai_compatible_chat,
+      openai_compatible_chat_stream,
       metaso_search,
       open_external_url,
       local_llama_chat,

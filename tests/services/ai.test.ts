@@ -138,6 +138,36 @@ describe('callUniversalAI', () => {
       ).rejects.toThrow('Unauthorized');
     });
 
+    it('onStreamChunk 在 OpenAI SSE 流式响应时增量累积', async () => {
+      const enc = new TextEncoder();
+      const sse =
+        'data: {"choices":[{"delta":{"content":"Hello"}}]}\n\n' +
+        'data: {"choices":[{"delta":{"content":" world"}}]}\n\n' +
+        'data: [DONE]\n\n';
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          body: new ReadableStream({
+            start(controller) {
+              controller.enqueue(enc.encode(sse));
+              controller.close();
+            },
+          }),
+        }),
+      );
+      const acc: string[] = [];
+      const result = await callUniversalAI({
+        config: { ...baseConfig, provider: 'openai', apiKey: 'sk-test' },
+        prompt: 'Hi',
+        onStreamChunk: (t) => acc.push(t),
+      });
+      expect(acc).toEqual(['Hello', 'Hello world']);
+      expect(result).toBe('Hello world');
+      const reqBody = JSON.parse((vi.mocked(fetch).mock.calls[0][1] as RequestInit).body as string);
+      expect(reqBody.stream).toBe(true);
+    });
+
     it('传递 systemInstruction 给 OpenAI', async () => {
       await callUniversalAI({
         config: { ...baseConfig, provider: 'openai', apiKey: 'sk-test' },

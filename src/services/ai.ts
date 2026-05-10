@@ -125,12 +125,135 @@ async function postOpenAiCompatibleChat(
   return extractChatCompletionContent(data);
 }
 
+/** Accumulate OpenAI-style SSE (`data: {...}\\n`) deltas from a fetch Response body. */
+async function consumeOpenAiSseFromResponse(
+  response: Response,
+  onAccumulated: (full: string) => void,
+): Promise<string> {
+  const reader = response.body?.getReader();
+  if (!reader) {
+    const rawText = await response.text();
+    let data: unknown;
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      throw new Error('API returned non-JSON response.');
+    }
+    const content = extractChatCompletionContent(data);
+    onAccumulated(content);
+    return content;
+  }
+
+  const decoder = new TextDecoder();
+  let carry = '';
+  let full = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    carry += decoder.decode(value, { stream: true });
+    const lines = carry.split(/\r?\n/);
+    carry = lines.pop() ?? '';
+    for (const line of lines) {
+      const trimmed = line.replace(/\r$/, '').trim();
+      if (!trimmed.startsWith('data:')) continue;
+      const dataLine = trimmed.slice(5).trimStart();
+      if (dataLine === '[DONE]') continue;
+      try {
+        const json = JSON.parse(dataLine) as {
+          choices?: Array<{ delta?: { content?: string } }>;
+        };
+        const piece = json?.choices?.[0]?.delta?.content ?? '';
+        if (piece) {
+          full += piece;
+          onAccumulated(full);
+        }
+      } catch {
+        /* ignore malformed chunk */
+      }
+    }
+  }
+  return full;
+}
+
+async function postOpenAiCompatibleChatWithOptionalStream(
+  apiKey: string,
+  url: string,
+  body: Record<string, unknown>,
+  meta: { provider: string; model: string },
+  onStreamChunk?: (accumulated: string) => void,
+): Promise<string> {
+  if (!onStreamChunk) {
+    return postOpenAiCompatibleChat(apiKey, url, body, meta);
+  }
+
+  const streamBody = { ...body, stream: true };
+
+  if (isTauriRuntime()) {
+    const { invoke } = await import('@tauri-apps/api/core');
+    const { listen } = await import('@tauri-apps/api/event');
+    const streamId = crypto.randomUUID();
+    const unlisten = await listen<{ id: string; text: string }>('lab-ai-stream', (event) => {
+      if (event.payload.id !== streamId) return;
+      onStreamChunk(event.payload.text);
+    });
+    try {
+      return await invoke<string>('openai_compatible_chat_stream', {
+        apiKey: apiKey.trim(),
+        url,
+        body: streamBody,
+        streamId,
+      });
+    } finally {
+      unlisten();
+    }
+  }
+
+  const key = apiKey.trim();
+  if (!key) {
+    throw new Error('API Key 为空（或只有空格）。请在设置中粘贴 MiMo 的密钥（通常以 tp- 开头）。');
+  }
+  console.info(`${LOG_PREFIX} chat/completions stream`, {
+    provider: meta.provider,
+    model: meta.model,
+    url,
+    runtime: 'web',
+    apiKey: maskApiKeyForLog(key),
+  });
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${key}`,
+      },
+      body: JSON.stringify(streamBody),
+    });
+  } catch (e) {
+    console.error(`${LOG_PREFIX} stream network/fetch failed`, { url, error: formatAiError(e) });
+    throw new Error(`Network error: ${formatAiError(e)}. If this is MiMo in the browser, ensure Vite dev server is running (proxy /api/mimo) or use the desktop app.`);
+  }
+
+  if (!response.ok) {
+    const errBody = await response.text();
+    throw new Error(parseOpenAiStyleErrorBody(errBody, response.status));
+  }
+
+  const full = await consumeOpenAiSseFromResponse(response, onStreamChunk);
+  if (!full.trim()) {
+    throw new Error('API returned an empty streamed response.');
+  }
+  return full;
+}
+
 export type CallAIFn = (params: {
   config: AiProviderConfig;
   prompt: string;
   systemInstruction?: string;
   temperature?: number;
   topP?: number;
+  onStreamChunk?: (accumulatedText: string) => void;
 }) => Promise<string>;
 
 export type AiProviderConfig = {
@@ -147,13 +270,15 @@ export async function callUniversalAI({
   prompt,
   systemInstruction,
   temperature = 0.7,
-  topP = 0.4
+  topP = 0.4,
+  onStreamChunk,
 }: {
   config: AiProviderConfig;
   prompt: string;
   systemInstruction?: string;
   temperature?: number;
   topP?: number;
+  onStreamChunk?: (accumulatedText: string) => void;
 }): Promise<string> {
   const apiKeyTrimmed = (config.apiKey ?? '').trim();
   const useUserConfig = Boolean(apiKeyTrimmed);
@@ -204,7 +329,9 @@ export async function callUniversalAI({
         elapsedMs: Date.now() - startedAt,
         outChars: (out ?? '').length,
       });
-      return out;
+      const text = out ?? '';
+      onStreamChunk?.(text);
+      return text;
     } catch (e) {
       const elapsedMs = Date.now() - startedAt;
       const msg = formatAiError(e);
@@ -236,7 +363,9 @@ export async function callUniversalAI({
           topP
         }
       });
-      return response.text || '';
+      const text = response.text || '';
+      onStreamChunk?.(text);
+      return text;
     } catch (e) {
       console.error(`${LOG_PREFIX} Gemini failed`, formatAiError(e));
       throw e instanceof Error ? e : new Error(formatAiError(e));
@@ -266,10 +395,10 @@ export async function callUniversalAI({
       top_p: topP
     };
 
-    return postOpenAiCompatibleChat(apiKeyTrimmed, chatUrl, body, {
+    return postOpenAiCompatibleChatWithOptionalStream(apiKeyTrimmed, chatUrl, body, {
       provider: config.provider,
       model,
-    });
+    }, onStreamChunk);
   }
 
   if (config.provider === 'anthropic') {
@@ -301,7 +430,9 @@ export async function callUniversalAI({
       throw new Error(msg);
     }
     const data = await response.json();
-    return data.content[0].text;
+    const text = data.content[0].text as string;
+    onStreamChunk?.(text);
+    return text;
   }
 
   throw new Error(`Provider not supported: ${config.provider}`);

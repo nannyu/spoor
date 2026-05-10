@@ -6,4 +6,6 @@ export type CallAIFn = (params: {
   systemInstruction?: string;
   temperature?: number;
   topP?: number;
+  /** When set, OpenAI-compatible providers emit incremental full text; others invoke once at completion. */
+  onStreamChunk?: (accumulatedText: string) => void;
 }) => Promise<string | undefined>;

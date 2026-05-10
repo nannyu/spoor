@@ -187,6 +187,8 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
   const [sourceCount, setSourceCount] = useState(0);
   const [planRevisionNote, setPlanRevisionNote] = useState('');
   const [planRevising, setPlanRevising] = useState(false);
+  /** Raw model output while generating outline (streaming when provider supports it). */
+  const [planStreamText, setPlanStreamText] = useState('');
   const [searchSources, setSearchSources] = useState<ResearchSessionWebpageSnapshot[]>([]);
   const [sourceDetail, setSourceDetail] = useState<ResearchSessionWebpageSnapshot | null>(null);
   const executeResearchInFlightRef = useRef(false);
@@ -330,6 +332,7 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
     setSourceDetail(null);
     setPlanRevisionNote('');
     labNeedWebRef.current = true;
+    setPlanStreamText('');
 
     const { context: searchContext } = await resolveWebSearchOutcome(query);
 
@@ -342,12 +345,15 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
         config: aiConfig,
         systemInstruction: getLocaleDirective(),
         prompt,
+        onStreamChunk: (acc) => setPlanStreamText(acc),
       });
       const plan = normalizeResearchPlan(parseLenientLlmJson(text ?? '[]'));
       setResearchPlan(plan.length > 0 ? plan : RESEARCH_PLAN_FALLBACK);
+      setPlanStreamText('');
       setPhase('plan_ready');
     } catch (e) {
       console.error('[Scribe AI] ResearchLab generatePlan failed', formatAiError(e));
+      setPlanStreamText('');
       setResearchPlan(RESEARCH_PLAN_FALLBACK);
       setPhase('plan_ready');
     }
@@ -541,6 +547,7 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
                        setReportGenerationFailed(false);
                        setSourceDetail(null);
                        labNeedWebRef.current = true;
+                       setPlanStreamText('');
                      }}
                      className="text-[#C2410C] text-xs hover:underline font-bold"
                    >
@@ -660,11 +667,25 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
 
               <div className="bg-white border border-[#E6E4DF] shadow-md rounded-xl p-8 relative overflow-hidden">
                 {phase === 'planning' && (
-                  <div className="flex flex-col items-center justify-center py-12">
-                     <Loader2 className="w-8 h-8 text-[#C2410C] animate-spin mb-4" />
-                     <div className="font-mono text-sm text-[#8c8a84]">
-                       {searchStatus === 'searching' ? t('lab.searching') : t('nodes.ai_loading')}
-                     </div>
+                  <div className="space-y-4">
+                    {planStreamText ? (
+                      <div className="space-y-2">
+                        <p className="text-xs text-[#8c8a84] font-sans leading-relaxed">{t('lab.plan_stream_hint')}</p>
+                        <pre className="max-h-[min(420px,55vh)] overflow-auto whitespace-pre-wrap break-words font-mono text-[13px] leading-relaxed text-[#1a1a1a] bg-[#FAF9F6] border border-[#E6E4DF] rounded-lg p-4">
+                          {planStreamText}
+                        </pre>
+                      </div>
+                    ) : null}
+                    <div className={`flex flex-col items-center justify-center gap-3 ${planStreamText ? 'py-6' : 'py-12'}`}>
+                      <Loader2 className="w-8 h-8 text-[#C2410C] animate-spin" aria-hidden />
+                      <div className="font-mono text-sm text-[#8c8a84] text-center px-2">
+                        {searchStatus === 'searching'
+                          ? t('lab.searching')
+                          : planStreamText
+                            ? t('lab.plan_stream_status')
+                            : t('nodes.ai_loading')}
+                      </div>
+                    </div>
                   </div>
                 )}
 
