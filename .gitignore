@@ -5,6 +5,9 @@ node_modules/
 build/
 dist/
 
+# Remotion kit render output
+remotion-kit/output/
+
 # Tauri build
 src-tauri/target/
 

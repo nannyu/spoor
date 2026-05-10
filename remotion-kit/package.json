@@ -1,0 +1,23 @@
+{
+  "name": "content-factory-remotion-kit",
+  "version": "1.0.0",
+  "private": true,
+  "description": "从 content-factory 抽取的 Remotion 竖屏/横屏推广视频模板 + Express 渲染 API，便于复制到其他项目",
+  "type": "module",
+  "scripts": {
+    "remotion:studio": "remotion studio remotion/index.js",
+    "remotion:render": "remotion render remotion/index.js MyComposition out.mp4",
+    "remotion:render:promo": "remotion render remotion/index.js PromoVertical promo-vertical.mp4",
+    "test": "node --test test/remotion-components.test.mjs test/remotion-api.test.mjs"
+  },
+  "dependencies": {
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "remotion": "^4.0.422"
+  },
+  "devDependencies": {
+    "@remotion/cli": "^4.0.422",
+    "express": "^4.21.2",
+    "supertest": "^7.0.0"
+  }
+}

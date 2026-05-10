@@ -12,7 +12,11 @@
     "lint": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "remotion:server": "node scripts/remotion-server.mjs",
+    "remotion:studio": "npm run remotion:studio --prefix remotion-kit",
+    "remotion:render": "npm run remotion:render --prefix remotion-kit",
+    "remotion:render:promo": "npm run remotion:render:promo --prefix remotion-kit"
   },
   "dependencies": {
     "@google/genai": "^1.51.0",
