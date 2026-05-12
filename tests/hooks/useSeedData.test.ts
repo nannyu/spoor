@@ -30,7 +30,6 @@ describe('useSeedData', () => {
 
     const agents = await db.agents.toArray();
     const roles = agents.map(a => a.role);
-    expect(roles).toContain('Debater');
     expect(roles).toContain('Journalist');
     expect(roles).toContain('Connector');
     expect(roles).toContain('Editor');
@@ -59,7 +58,6 @@ describe('useSeedData', () => {
       updatedAt: Date.now(),
     });
     await db.agents.bulkPut([
-      { id: 'challenger', name: 'The Touchstone', role: 'Debater', prompt: '', temperature: 0.7, creativity: 0.4 },
       { id: 'interviewer', name: 'The Mirror of Insight', role: 'Journalist', prompt: '', temperature: 0.7, creativity: 0.4 },
       { id: 'synthesizer', name: 'The Weaver', role: 'Connector', prompt: '', temperature: 0.8, creativity: 0.7 },
       { id: 'stylist', name: 'The Smoothing Iron', role: 'Editor', prompt: '', temperature: 0.6, creativity: 0.5 },
@@ -75,11 +73,25 @@ describe('useSeedData', () => {
 
     // agents 已存在不会重复插入，但 nodes 和 articles 仍会创建（因为 nodeCount=0）
     const agents = await db.agents.toArray();
-    expect(agents.length).toBe(6);
+    expect(agents.length).toBe(5);
 
-    // 因为 nodeCount=0 且 totalCount<=6，种子逻辑仍会创建 nodes 和 articles
+    // 因为 nodeCount=0 且 totalCount<=5，种子逻辑仍会创建 nodes 和 articles
     const nodes = await db.nodes.toArray();
     expect(nodes.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('启动时移除已废弃的内置 id challenger', async () => {
+    await db.agents.put({
+      id: 'challenger',
+      name: 'The Touchstone',
+      role: 'Debater',
+      prompt: 'legacy',
+      temperature: 0.7,
+      creativity: 0.4,
+    });
+    renderHook(() => useSeedData());
+    await new Promise((r) => setTimeout(r, 300));
+    expect(await db.agents.get('challenger')).toBeUndefined();
   });
 
   /**

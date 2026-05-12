@@ -109,7 +109,7 @@ describe('i18n 国际化模块', () => {
 
     it('内置 Agent 系统提示词有英文文案', () => {
       expect(i18n.t('agents.defaults.interviewer.name')).toBe('The Mirror of Insight');
-      expect(i18n.t('agents.defaults.challenger.prompt')).toContain('Touchstone');
+      expect(i18n.t('agents.defaults.stylist.prompt')).toContain('Smoothing Iron');
     });
   });
 
@@ -166,7 +166,7 @@ describe('i18n 国际化模块', () => {
 
     it('内置 Agent 系统提示词有中文文案', () => {
       expect(i18n.t('agents.defaults.interviewer.name')).toBe('真知镜');
-      expect(i18n.t('agents.defaults.challenger.prompt')).toContain('试金石');
+      expect(i18n.t('agents.defaults.stylist.prompt')).toContain('熨烫师');
     });
 
     it('lab 翻译完整', () => {
@@ -198,13 +198,13 @@ describe('i18n 国际化模块', () => {
 
     it('agents 沙盒标题插值正常', () => {
       i18n.changeLanguage('en');
-      expect(i18n.t('agents.sandbox_title', { name: 'Touchstone' })).toBe('Sandbox: Touchstone');
+      expect(i18n.t('agents.sandbox_title', { name: 'Weaver' })).toBe('Sandbox: Weaver');
     });
 
     it('agents 沙盒空消息插值正常', () => {
       i18n.changeLanguage('zh');
-      expect(i18n.t('agents.sandbox_empty', { name: '试金石' })).toBe(
-        '正在测试 试金石 的沙盒。发送消息以查看其根据当前系统提示词的响应。'
+      expect(i18n.t('agents.sandbox_empty', { name: '真知镜' })).toBe(
+        '正在测试 真知镜 的沙盒。发送消息以查看其根据当前系统提示词的响应。'
       );
     });
   });

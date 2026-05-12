@@ -1,7 +1,6 @@
 import type { AgentConfig } from '../db';
 
 export const SYSTEM_AGENT_IDS = [
-  'challenger',
   'interviewer',
   'synthesizer',
   'stylist',
@@ -15,7 +14,6 @@ export const SYSTEM_AGENT_TUNING: Record<
   SystemAgentId,
   Pick<AgentConfig, 'temperature' | 'creativity'>
 > = {
-  challenger: { temperature: 0.7, creativity: 0.4 },
   interviewer: { temperature: 0.7, creativity: 0.4 },
   synthesizer: { temperature: 0.8, creativity: 0.7 },
   stylist: { temperature: 0.6, creativity: 0.5 },
@@ -25,9 +23,6 @@ export const SYSTEM_AGENT_TUNING: Record<
 
 /** 若本地仍保存旧版种子文案，启动时自动替换为当前语言的默认提示词（不覆盖用户已改写的提示词）。 */
 export const LEGACY_AGENT_PROMPTS: Record<SystemAgentId, string[]> = {
-  challenger: [
-    'You are a critical Debater. Do not agree with the user or simply follow orders. Challenge the premise of what is connected to you. Point out logical flaws, demand stronger evidence, and actively try to find holes in the argument to help the user refine their thoughts.',
-  ],
   interviewer: [
     'You are an AI Interviewer who takes initiative. Do not wait for commands. Based on the provided context, actively start asking probing questions to draw out deeper narratives or follow-up ideas.',
   ],

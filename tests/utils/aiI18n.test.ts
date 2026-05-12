@@ -24,18 +24,18 @@ describe('resolveAgentLocalizedName / Role / SystemPrompt', () => {
   it('内置人格在切换语言时名称与角色随当前 UI 语言变化', async () => {
     await i18n.changeLanguage('en');
     const agent = cfg({
-      id: 'challenger',
-      name: i18n.t('agents.defaults.challenger.name'),
-      role: i18n.t('agents.defaults.challenger.role'),
-      prompt: i18n.t('agents.defaults.challenger.prompt'),
+      id: 'interviewer',
+      name: i18n.t('agents.defaults.interviewer.name'),
+      role: i18n.t('agents.defaults.interviewer.role'),
+      prompt: i18n.t('agents.defaults.interviewer.prompt'),
     });
 
-    expect(resolveAgentLocalizedName(agent)).toBe(i18n.t('agents.defaults.challenger.name'));
-    expect(resolveAgentLocalizedRole(agent)).toBe(i18n.t('agents.defaults.challenger.role'));
+    expect(resolveAgentLocalizedName(agent)).toBe(i18n.t('agents.defaults.interviewer.name'));
+    expect(resolveAgentLocalizedRole(agent)).toBe(i18n.t('agents.defaults.interviewer.role'));
 
     await i18n.changeLanguage('zh');
-    expect(resolveAgentLocalizedName(agent)).toBe(i18n.t('agents.defaults.challenger.name'));
-    expect(resolveAgentLocalizedRole(agent)).toBe(i18n.t('agents.defaults.challenger.role'));
+    expect(resolveAgentLocalizedName(agent)).toBe(i18n.t('agents.defaults.interviewer.name'));
+    expect(resolveAgentLocalizedRole(agent)).toBe(i18n.t('agents.defaults.interviewer.role'));
   });
 
   it('非内置 id 时保留数据库中的名称与角色', async () => {

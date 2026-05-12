@@ -450,7 +450,6 @@ describe('App 组件', () => {
 
       const agents = await db.agents.toArray();
       const roles = agents.map(a => a.role);
-      expect(roles).toContain('Debater');
       expect(roles).toContain('Journalist');
       expect(roles).toContain('Connector');
       expect(roles).toContain('Editor');
@@ -696,10 +695,10 @@ describe('App 组件', () => {
     it('显示默认的系统代理列表', async () => {
       const user = userEvent.setup();
       await goToAgents(user);
-      const touchstoneMatches = screen.getAllByText('The Touchstone');
-      expect(touchstoneMatches.length).toBeGreaterThanOrEqual(1);
-      expect(screen.getByText('The Mirror of Insight')).toBeInTheDocument();
+      const mirrorMatches = screen.getAllByText('The Mirror of Insight');
+      expect(mirrorMatches.length).toBeGreaterThanOrEqual(1);
       expect(screen.getByText('The Weaver')).toBeInTheDocument();
+      expect(screen.getByText('The Smoothing Iron')).toBeInTheDocument();
     });
 
     it('显示搜索人格输入框', async () => {
@@ -713,8 +712,8 @@ describe('App 组件', () => {
       const user = userEvent.setup();
       await goToAgents(user);
       const searchInput = document.querySelector('input[placeholder="搜索人格..."]') as HTMLInputElement;
-      await user.type(searchInput, 'Touchstone');
-      expect(screen.getAllByText('The Touchstone').length).toBeGreaterThanOrEqual(1);
+      await user.type(searchInput, 'Weaver');
+      expect(screen.getAllByText('The Weaver').length).toBeGreaterThanOrEqual(1);
       expect(screen.queryByText('The Mirror of Insight')).not.toBeInTheDocument();
     });
 

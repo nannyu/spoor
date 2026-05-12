@@ -131,66 +131,69 @@ export function useCanvasInteraction(
       const svg = svgRef.current;
       const container = contentContainerRef.current;
       const edgeLabelsContainer = edgeLabelsRef.current;
-      if (!svg || !container) return;
 
-      const containerRect = container.getBoundingClientRect();
-      const currentScale = transformRef.current.scale;
+      // Always reschedule: after HMR or strict-mode remount, refs can be null for a frame.
+      // Early-return without rAF would permanently stop edge updates until a full reload.
+      if (svg && container) {
+        const containerRect = container.getBoundingClientRect();
+        const currentScale = transformRef.current.scale;
 
-      const edgeGroups = Array.from(svg.querySelectorAll('g[data-edge-id]')) as SVGGElement[];
+        const edgeGroups = Array.from(svg.querySelectorAll('g[data-edge-id]')) as SVGGElement[];
 
-      edgeGroups.forEach((g: SVGGElement) => {
-        const fromId = g.getAttribute('data-edge-from');
-        const toId = g.getAttribute('data-edge-to');
-        const edgeId = g.getAttribute('data-edge-id');
-        if (!fromId || !toId || !edgeId) return;
+        edgeGroups.forEach((g: SVGGElement) => {
+          const fromId = g.getAttribute('data-edge-from');
+          const toId = g.getAttribute('data-edge-to');
+          const edgeId = g.getAttribute('data-edge-id');
+          if (!fromId || !toId || !edgeId) return;
 
-        const fromNode = nodesRef.current[fromId];
-        const toNode = nodesRef.current[toId];
-        if (fromNode && toNode) {
-          const fromRect = fromNode.getBoundingClientRect();
-          const toRect = toNode.getBoundingClientRect();
+          const fromNode = nodesRef.current[fromId];
+          const toNode = nodesRef.current[toId];
+          if (fromNode && toNode) {
+            const fromRect = fromNode.getBoundingClientRect();
+            const toRect = toNode.getBoundingClientRect();
 
-          const x1 = (fromRect.left + fromRect.width / 2 - containerRect.left) / currentScale;
-          const y1 = (fromRect.top + fromRect.height / 2 - containerRect.top) / currentScale;
-          const x2 = (toRect.left + toRect.width / 2 - containerRect.left) / currentScale;
-          const y2 = (toRect.top + toRect.height / 2 - containerRect.top) / currentScale;
+            const x1 = (fromRect.left + fromRect.width / 2 - containerRect.left) / currentScale;
+            const y1 = (fromRect.top + fromRect.height / 2 - containerRect.top) / currentScale;
+            const x2 = (toRect.left + toRect.width / 2 - containerRect.left) / currentScale;
+            const y2 = (toRect.top + toRect.height / 2 - containerRect.top) / currentScale;
 
-          g.querySelectorAll('line').forEach((line: SVGLineElement) => {
-            line.setAttribute('x1', x1.toString());
-            line.setAttribute('y1', y1.toString());
-            line.setAttribute('x2', x2.toString());
-            line.setAttribute('y2', y2.toString());
-          });
+            g.querySelectorAll('line').forEach((line: SVGLineElement) => {
+              line.setAttribute('x1', x1.toString());
+              line.setAttribute('y1', y1.toString());
+              line.setAttribute('x2', x2.toString());
+              line.setAttribute('y2', y2.toString());
+            });
 
-          if (edgeLabelsContainer) {
-            const btn = edgeLabelsContainer.querySelector(`[data-edge-btn="${edgeId}"]`) as HTMLButtonElement;
-            if (btn) {
-              btn.style.left = `${(x1 + x2) / 2}px`;
-              btn.style.top = `${(y1 + y2) / 2}px`;
+            if (edgeLabelsContainer) {
+              const btn = edgeLabelsContainer.querySelector(`[data-edge-btn="${edgeId}"]`) as HTMLButtonElement;
+              if (btn) {
+                btn.style.left = `${(x1 + x2) / 2}px`;
+                btn.style.top = `${(y1 + y2) / 2}px`;
+              }
             }
           }
-        }
-      });
+        });
 
-      const tempEdge = svg.querySelector('#temp-edge') as SVGLineElement;
-      const connFrom = svg.getAttribute('data-connecting-from');
-      if (tempEdge) {
-        if (connFrom && nodesRef.current[connFrom]) {
-          const fromNode = nodesRef.current[connFrom];
-          const fromRect = fromNode.getBoundingClientRect();
+        const tempEdge = svg.querySelector('#temp-edge') as SVGLineElement;
+        const connFrom = svg.getAttribute('data-connecting-from');
+        if (tempEdge) {
+          if (connFrom && nodesRef.current[connFrom]) {
+            const fromNode = nodesRef.current[connFrom];
+            const fromRect = fromNode.getBoundingClientRect();
 
-          const x1 = (fromRect.right - containerRect.left) / currentScale;
-          const y1 = (fromRect.top + fromRect.height / 2 - containerRect.top) / currentScale;
-          const x2 = (mousePosRef.current.x - containerRect.left) / currentScale;
-          const y2 = (mousePosRef.current.y - containerRect.top) / currentScale;
+            const x1 = (fromRect.right - containerRect.left) / currentScale;
+            const y1 = (fromRect.top + fromRect.height / 2 - containerRect.top) / currentScale;
+            const x2 = (mousePosRef.current.x - containerRect.left) / currentScale;
+            const y2 = (mousePosRef.current.y - containerRect.top) / currentScale;
 
-          tempEdge.style.display = 'block';
-          tempEdge.setAttribute('x1', x1.toString());
-          tempEdge.setAttribute('y1', y1.toString());
-          tempEdge.setAttribute('x2', x2.toString());
-          tempEdge.setAttribute('y2', y2.toString());
-        } else {
-          tempEdge.style.display = 'none';
+            tempEdge.style.display = 'block';
+            tempEdge.setAttribute('x1', x1.toString());
+            tempEdge.setAttribute('y1', y1.toString());
+            tempEdge.setAttribute('x2', x2.toString());
+            tempEdge.setAttribute('y2', y2.toString());
+          } else {
+            tempEdge.style.display = 'none';
+          }
         }
       }
 
