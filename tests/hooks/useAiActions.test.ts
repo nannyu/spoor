@@ -318,6 +318,53 @@ describe('useAiActions', () => {
       expect(rows[0].threadRootContextNodeId).toBe('ctx1');
       expect(rows[0].threadAgentConfigId).toBe('a1');
     });
+
+    it('便签与 Agent 邻接图片时 callUniversalAI 传入 images 并写入 threadContextImageNodeIds', async () => {
+      const tinyPng =
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+      const agent: AgentConfig = {
+        id: 'a1',
+        name: 'Test',
+        role: 'R',
+        prompt: 'You are test',
+        temperature: 0.7,
+        creativity: 0.4,
+      };
+
+      const { result } = renderHook(() =>
+        useTestAiActions({
+          agentConfigs: [agent],
+          dynamicNodes: [
+            { id: 'agent-node', type: 'agent', agentConfigId: 'a1', x: 0, y: 0, canvasId: 'default' },
+            { id: 'img1', type: 'image', content: tinyPng, x: 0, y: 0, canvasId: 'default' },
+          ],
+          edges: [
+            { id: 'e1', from: 'img1', to: 'agent-node', canvasId: 'default' },
+            { id: 'e2', from: 'ctx1', to: 'agent-node', canvasId: 'default' },
+          ],
+        }),
+      );
+
+      act(() => {
+        const el = document.createElement('div');
+        el.appendChild(document.createTextNode('note text'));
+        result.current.nodesRef.current.ctx1 = el;
+      });
+
+      await act(async () => {
+        await result.current.triggerAgentAnalysis('a1', 'agent-node', 'ctx1');
+      });
+
+      expect(callUniversalAI).toHaveBeenCalledWith(
+        expect.objectContaining({
+          prompt: expect.stringMatching(/note text/),
+          images: [tinyPng],
+        }),
+      );
+
+      const rows = await db.nodes.toArray();
+      expect(rows[0].threadContextImageNodeIds).toEqual(['img1']);
+    });
   });
 
   describe('加载状态标志', () => {
@@ -557,6 +604,69 @@ describe('useAiActions', () => {
 
       const parentRow = await db.nodes.get('parent-ai');
       expect(parentRow?.followUpSent).not.toBe(true);
+    });
+
+    it('Agent 链追问时传入 threadContextImageNodeIds 解析出的 images', async () => {
+      const tinyPng =
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+      const agent: AgentConfig = {
+        id: 'ac1',
+        name: 'A',
+        role: 'R',
+        prompt: 'You are A',
+        temperature: 0.2,
+        creativity: 0.3,
+      };
+      const parentWithThread: CanvasNode = {
+        ...parentCard,
+        threadRootContextNodeId: 'ctx-note',
+        threadAgentConfigId: 'ac1',
+        threadContextImageNodeIds: ['img1'],
+      };
+      const imgNode: CanvasNode = {
+        id: 'img1',
+        type: 'image',
+        content: tinyPng,
+        x: 0,
+        y: 0,
+        canvasId: 'default',
+      };
+      await db.nodes.add({ ...parentWithThread });
+
+      const { result } = renderHook(() =>
+        useTestAiActions({
+          agentConfigs: [agent],
+          dynamicNodes: [parentWithThread, imgNode],
+          edges: [],
+        }),
+      );
+
+      const mockEl = document.createElement('div');
+      Object.defineProperties(mockEl, {
+        offsetHeight: { get: () => 100 },
+        offsetWidth: { get: () => 280 },
+      });
+      const ctxEl = document.createElement('div');
+      ctxEl.appendChild(document.createTextNode('initial ctx'));
+
+      act(() => {
+        result.current.nodesRef.current['parent-ai'] = mockEl;
+        result.current.nodesRef.current['ctx-note'] = ctxEl;
+      });
+
+      await act(async () => {
+        await result.current.submitAiThreadFollowUp('parent-ai', 'follow up');
+      });
+
+      expect(callUniversalAI).toHaveBeenCalledWith(
+        expect.objectContaining({
+          images: [tinyPng],
+          temperature: 0.2,
+          topP: 0.3,
+          systemInstruction: expect.stringMatching(/You are A/),
+          prompt: expect.stringMatching(/follow up/),
+        }),
+      );
     });
   });
 });

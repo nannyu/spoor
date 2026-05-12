@@ -21,6 +21,8 @@ export interface CanvasNode {
   threadRootContextNodeId?: string;
   /** Agent 分析链：首张 AI 卡记录 `AgentConfig.id`；子卡从父卡复制 */
   threadAgentConfigId?: string;
+  /** Agent 分析链：首轮附带的多模态图片节点 id（便签/Agent 邻接 image）；子卡从父卡复制 */
+  threadContextImageNodeIds?: string[];
 }
 
 export interface Canvas {

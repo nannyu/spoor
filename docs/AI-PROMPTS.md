@@ -43,7 +43,9 @@ Context to analyze:
 
 `contextText` 来自该节点卡片根 DOM：若存在带 `data-canvas-node-context-text` 的区域（仅用户内容，排除「笔记」等 UI 标签），则使用该区域的 `innerText`；否则回退为整卡 `innerText` / `textContent`（见 `src/utils/canvasNodeContextText.ts`）。
 
-首张 AI 卡入库时会写入 `threadRootContextNodeId`（源便签 id）、`threadAgentConfigId`（`AgentConfig.id`），供同链追问使用。
+**邻接图片（多模态）**：与**该便签**或**当前 Agent 卡**通过边相连的 `image` 节点（`content` 为 `data:image/...;base64,...`）会被 [`collectAgentContextImagePayload`](src/utils/canvasContextImages.ts) 收集，随 `callUniversalAI` 的 `images` 一并发给模型（最多 4 张，超大 data URL 会跳过并 `console.warn`）。因此「图片—Agent—便签」星型连线也能把图送进模型。需使用支持视觉的在线模型；**本地 GGUF** 路径下若存在邻接图会**直接报错**（`local_llama` 不传图）。OpenAI 兼容接口使用 `image_url` + data URL；Gemini 使用 `inlineData`；Anthropic 使用 base64 `image` block。
+
+首张 AI 卡入库时会写入 `threadRootContextNodeId`（源便签 id）、`threadAgentConfigId`（`AgentConfig.id`），若首轮带了图还会写入 `threadContextImageNodeIds`（邻接 `image` 节点 id 列表）；追问链上子卡从父卡复制这些字段，并在每次 Agent 链追问中按 id 解析当前画布上的 data URL 再次传入 `images`。
 
 ### 2.1 画布 · Agent 链上的 AI 便签「追问」
 
@@ -53,7 +55,7 @@ Context to analyze:
 | **启用完整上下文条件** | 父 AI 卡带有 `threadAgentConfigId` / `threadRootContextNodeId`（首卡由 `triggerAgentAnalysis` 写入；链上子卡及联网搜索后的 AI 卡从父卡复制）；且沿边回溯的根 AI 卡 `threadAgentConfigId` 与父卡一致 |
 | **system** | `buildAgentSystemInstruction(agent)`，与首次分析一致（界面语言 + 人设 + Markdown 知识库） |
 | **temperature / topP** | 与对应 Agent 卡配置一致 |
-| **user** | `ai.prompts.agentThreadFollowUp`：`initialContext` 为源便签节点当前 DOM 的 `getCanvasNodeContextText`（便签已删时用 `agentThreadContextMissing` 占位）、`dialogueHistory` 由 [`collectAiThreadChain`](src/utils/agentThreadContext.ts) + `formatAgentThreadDialogueHistory` 生成、`request` 为用户本条输入 |
+| **user** | `ai.prompts.agentThreadFollowUp`：`initialContext` 为源便签节点当前 DOM 的 `getCanvasNodeContextText`（便签已删时用 `agentThreadContextMissing` 占位）、`dialogueHistory` 由 [`collectAiThreadChain`](src/utils/agentThreadContext.ts) + `formatAgentThreadDialogueHistory` 生成、`request` 为用户本条输入；**`images`**：由父卡或链首卡上的 `threadContextImageNodeIds` 经 [`resolveImageDataUrlsFromNodeIds`](src/utils/canvasContextImages.ts) 解析，与首轮一致 |
 | **回退** | 非 Agent 链（如工具栏生成的 AI 卡）仍用 `ai.prompts.threadFollowUp`，`systemInstruction` 仅为 `getLocaleDirective()` |
 
 ---

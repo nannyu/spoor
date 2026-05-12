@@ -12,6 +12,10 @@ import { analyzeToolbarIntentPreflight } from '../services/toolbarIntentClarific
 import { getCanvasCenterPosition } from '../utils/canvas';
 import { buildAgentSystemInstruction, combineSystemParts, getLocaleDirective } from '../utils/aiI18n';
 import { collectAiThreadChain, formatAgentThreadDialogueHistory } from '../utils/agentThreadContext';
+import {
+  collectAgentContextImagePayload,
+  resolveImageDataUrlsFromNodeIds,
+} from '../utils/canvasContextImages';
 import { getCanvasNodeContextText } from '../utils/canvasNodeContextText';
 import { db } from '../db';
 
@@ -121,12 +125,16 @@ export function useAiActions({
 
     setAnalyzingAgentNodeId(agentNodeId);
     try {
+      const { nodeIds: threadContextImageNodeIds, dataUrls: contextImageDataUrls } =
+        collectAgentContextImagePayload(contextNodeId, agentNodeId, dynamicNodes, edges);
+
       const text = await callUniversalAI({
         config: aiConfig,
         prompt: t('ai.prompts.agentContext', { content: contextText }),
         systemInstruction: buildAgentSystemInstruction(agentConfig),
         temperature: agentConfig.temperature ?? 0.7,
         topP: agentConfig.creativity ?? 0.4,
+        images: contextImageDataUrls.length > 0 ? contextImageDataUrls : undefined,
       });
 
       if (text) {
@@ -144,6 +152,9 @@ export function useAiActions({
           y,
           threadRootContextNodeId: contextNodeId,
           threadAgentConfigId: agentConfigId,
+          ...(threadContextImageNodeIds.length > 0
+            ? { threadContextImageNodeIds }
+            : {}),
         });
         await db.edges.add({ id: crypto.randomUUID(), canvasId: activeCanvasId, from: agentNodeId, to: newNodeId });
       }
@@ -322,6 +333,9 @@ export function useAiActions({
             ? {
                 threadRootContextNodeId: parent.threadRootContextNodeId,
                 threadAgentConfigId: parent.threadAgentConfigId,
+                ...(parent.threadContextImageNodeIds != null
+                  ? { threadContextImageNodeIds: parent.threadContextImageNodeIds }
+                  : {}),
               }
             : {}),
         });
@@ -360,6 +374,13 @@ export function useAiActions({
       const useAgentThread =
         agentConfig != null && parent.threadAgentConfigId != null && rootMatchesThread;
 
+      const threadImageIds =
+      parent.threadContextImageNodeIds ?? chain[0]?.threadContextImageNodeIds;
+      const threadImageDataUrls = resolveImageDataUrlsFromNodeIds(
+        threadImageIds,
+        dynamicNodes,
+      );
+
       const text = useAgentThread
         ? await callUniversalAI({
             config: aiConfig,
@@ -384,6 +405,7 @@ export function useAiActions({
             }),
             temperature: agentConfig.temperature ?? 0.7,
             topP: agentConfig.creativity ?? 0.4,
+            images: threadImageDataUrls.length > 0 ? threadImageDataUrls : undefined,
           })
         : await callUniversalAI({
             config: aiConfig,
@@ -412,6 +434,9 @@ export function useAiActions({
             ? {
                 threadRootContextNodeId: parent.threadRootContextNodeId,
                 threadAgentConfigId: parent.threadAgentConfigId,
+                ...(parent.threadContextImageNodeIds != null
+                  ? { threadContextImageNodeIds: parent.threadContextImageNodeIds }
+                  : {}),
               }
             : {}),
         });

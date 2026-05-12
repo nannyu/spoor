@@ -56,7 +56,79 @@ function extractChatCompletionContent(data: unknown): string {
     console.error(`${LOG_PREFIX} unexpected response (no choices[0].message.content)`, data);
     throw new Error('API returned no text content. Open DevTools → Console for the full response.');
   }
-  return typeof content === 'string' ? content : String(content);
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    const texts = content
+      .map((c) => {
+        if (typeof c === 'object' && c !== null && 'text' in c) {
+          const t = (c as { text?: unknown }).text;
+          return typeof t === 'string' ? t : '';
+        }
+        return '';
+      })
+      .filter(Boolean);
+    if (texts.length > 0) return texts.join('');
+  }
+  return String(content);
+}
+
+/** Parse `data:image/...;base64,...` for multimodal APIs. */
+export function parseImageDataUrl(dataUrl: string): { mediaType: string; base64: string } | null {
+  const trimmed = dataUrl.trim();
+  const m = /^data:(image\/[a-zA-Z0-9+.^-]+);base64,(.+)$/s.exec(trimmed);
+  if (!m) return null;
+  return { mediaType: m[1], base64: m[2] };
+}
+
+function buildOpenAiUserContent(
+  prompt: string,
+  images: string[] | undefined,
+): string | Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }> {
+  if (!images?.length) return prompt;
+  const content: Array<
+    { type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }
+  > = [{ type: 'text', text: prompt }];
+  for (const url of images) {
+    if (parseImageDataUrl(url)) content.push({ type: 'image_url', image_url: { url } });
+  }
+  return content;
+}
+
+type AnthropicUserBlock =
+  | { type: 'text'; text: string }
+  | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } };
+
+function buildAnthropicUserContent(
+  prompt: string,
+  images: string[] | undefined,
+): string | AnthropicUserBlock[] {
+  if (!images?.length) return prompt;
+  const blocks: AnthropicUserBlock[] = [{ type: 'text', text: prompt }];
+  for (const url of images) {
+    const p = parseImageDataUrl(url);
+    if (p) {
+      blocks.push({
+        type: 'image',
+        source: { type: 'base64', media_type: p.mediaType, data: p.base64 },
+      });
+    }
+  }
+  return blocks;
+}
+
+type GeminiPart = { text: string } | { inlineData: { mimeType: string; data: string } };
+
+function buildGeminiUserPayload(
+  prompt: string,
+  images: string[] | undefined,
+): string | GeminiPart[] {
+  if (!images?.length) return prompt;
+  const parts: GeminiPart[] = [{ text: prompt }];
+  for (const url of images) {
+    const p = parseImageDataUrl(url);
+    if (p) parts.push({ inlineData: { mimeType: p.mediaType, data: p.base64 } });
+  }
+  return parts;
 }
 
 async function postOpenAiCompatibleChat(
@@ -253,6 +325,8 @@ export type CallAIFn = (params: {
   systemInstruction?: string;
   temperature?: number;
   topP?: number;
+  /** `data:image/*;base64,...` URLs from canvas image nodes */
+  images?: string[];
   onStreamChunk?: (accumulatedText: string) => void;
 }) => Promise<string>;
 
@@ -271,6 +345,7 @@ export async function callUniversalAI({
   systemInstruction,
   temperature = 0.7,
   topP = 0.4,
+  images,
   onStreamChunk,
 }: {
   config: AiProviderConfig;
@@ -278,12 +353,18 @@ export async function callUniversalAI({
   systemInstruction?: string;
   temperature?: number;
   topP?: number;
+  images?: string[];
   onStreamChunk?: (accumulatedText: string) => void;
 }): Promise<string> {
   const apiKeyTrimmed = (config.apiKey ?? '').trim();
   const useUserConfig = Boolean(apiKeyTrimmed);
 
   if (config.provider === 'local_llama') {
+    if (images?.length) {
+      throw new Error(
+        '本地 GGUF（llama.cpp）当前不支持在请求中附带图片。请改用在线多模态模型，或暂时移除与便签/Agent 相连的图片来源后再试。',
+      );
+    }
     if (!isTauriRuntime()) {
       throw new Error('本地 GGUF（内置 llama.cpp）仅在使用 Tauri 桌面版时可用，网页版请改用在线模型。');
     }
@@ -356,7 +437,7 @@ export async function callUniversalAI({
     try {
       const response = await ai.models.generateContent({
         model: modelId,
-        contents: prompt,
+        contents: buildGeminiUserPayload(prompt, images),
         config: {
           systemInstruction,
           temperature,
@@ -389,7 +470,7 @@ export async function callUniversalAI({
       model,
       messages: [
         ...(systemInstruction ? [{ role: 'system' as const, content: systemInstruction }] : []),
-        { role: 'user' as const, content: prompt }
+        { role: 'user' as const, content: buildOpenAiUserContent(prompt, images) }
       ],
       temperature,
       top_p: topP
@@ -418,7 +499,7 @@ export async function callUniversalAI({
         model: config.model || 'claude-3-5-sonnet-20240620',
         system: systemInstruction,
         max_tokens: 1024,
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{ role: 'user', content: buildAnthropicUserContent(prompt, images) }],
         temperature
       })
     });
@@ -430,7 +511,22 @@ export async function callUniversalAI({
       throw new Error(msg);
     }
     const data = await response.json();
-    const text = data.content[0].text as string;
+    const blocks = data.content as Array<{ type?: string; text?: string }>;
+    if (!Array.isArray(blocks) || blocks.length === 0) {
+      console.error(`${LOG_PREFIX} unexpected Anthropic response`, data);
+      throw new Error('API returned no content blocks.');
+    }
+    const text = blocks
+      .map((b) => {
+        if (typeof b.text !== 'string') return '';
+        if (b.type === 'image') return '';
+        return b.text;
+      })
+      .join('');
+    if (!text) {
+      console.error(`${LOG_PREFIX} Anthropic returned no text blocks`, data);
+      throw new Error('API returned no text content.');
+    }
     onStreamChunk?.(text);
     return text;
   }

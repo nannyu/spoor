@@ -307,6 +307,17 @@ describe('callUniversalAI', () => {
       ).rejects.toThrow('请在设置中填写本地 GGUF');
     });
 
+    it('附带 images 时抛错且不调用 invoke', async () => {
+      await expect(
+        callUniversalAI({
+          config: localBase,
+          prompt: 'hi',
+          images: ['data:image/png;base64,AAAA'],
+        })
+      ).rejects.toThrow('不支持');
+      expect(mockInvoke).not.toHaveBeenCalled();
+    });
+
     it('调用 local_llama_chat 时 payload 形状与字段映射正确', async () => {
       mockInvoke
         .mockResolvedValueOnce('D:\\TEMP\\scribe_llama.log') // get_local_llama_log_path
