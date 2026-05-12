@@ -537,6 +537,41 @@ describe('useAiActions', () => {
       expect(parentRow?.followUpSent).toBe(true);
     });
 
+    it('「联网搜索」且父卡带 Agent 链字段时子 AI 卡复制 threadContextImageNodeIds', async () => {
+      vi.mocked(metasoSearch).mockResolvedValueOnce({
+        credits: 0,
+        total: 1,
+        webpages: [{ title: 'T', snippet: 'S', link: 'https://ex.com', score: '', date: '' }],
+      });
+      const parentWithThread: CanvasNode = {
+        ...parentCard,
+        threadRootContextNodeId: 'ctx-note',
+        threadAgentConfigId: 'ag-x',
+        threadContextImageNodeIds: ['img-a', 'img-b'],
+      };
+      await db.nodes.add(parentWithThread);
+
+      const { result } = renderHook(() => useTestAiActions({ dynamicNodes: [parentWithThread] }));
+
+      const mockEl = document.createElement('div');
+      Object.defineProperties(mockEl, {
+        offsetHeight: { get: () => 100 },
+        offsetWidth: { get: () => 280 },
+      });
+      act(() => {
+        result.current.nodesRef.current['parent-ai'] = mockEl;
+      });
+
+      await act(async () => {
+        await result.current.submitAiThreadFollowUp('parent-ai', '联网搜索');
+      });
+
+      const child = (await db.nodes.toArray()).find((n) => n.userTurn === '联网搜索');
+      expect(child?.threadRootContextNodeId).toBe('ctx-note');
+      expect(child?.threadAgentConfigId).toBe('ag-x');
+      expect(child?.threadContextImageNodeIds).toEqual(['img-a', 'img-b']);
+    });
+
     it('「联网搜索 主题」用后面的词作为检索词', async () => {
       vi.mocked(metasoSearch).mockResolvedValueOnce({
         credits: 0,

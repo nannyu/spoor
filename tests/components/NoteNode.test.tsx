@@ -108,6 +108,31 @@ describe('NoteNode', () => {
     expect(screen.getByText('nodes.observation')).toBeInTheDocument();
   });
 
+  it('连续 rerender 切换 layout 时 Markdown 正文仍可见（NoteBody 稳定）', () => {
+    const setEditing = vi.fn();
+    const { rerender } = render(
+      <NoteNode node={makeNode({ layout: 0 })} editingNodeId={null} setEditingNodeId={setEditing} />,
+    );
+    expect(screen.getByTestId('markdown')).toHaveTextContent('Test content');
+    rerender(<NoteNode node={makeNode({ layout: 1 })} editingNodeId={null} setEditingNodeId={setEditing} />);
+    expect(screen.getByTestId('markdown')).toHaveTextContent('Test content');
+    rerender(<NoteNode node={makeNode({ layout: 3 })} editingNodeId={null} setEditingNodeId={setEditing} />);
+    expect(screen.getByTestId('markdown')).toHaveTextContent('Test content');
+  });
+
+  it('非法 layout（非 4）走合并壳：仍渲染笔记 Markdown，不出现票根', () => {
+    const { container } = render(
+      <NoteNode
+        node={makeNode({ layout: 99 as unknown as number })}
+        editingNodeId={null}
+        setEditingNodeId={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('markdown')).toHaveTextContent('Test content');
+    expect(container.querySelector('.receipt-barcode')).toBeFalsy();
+    expect(container.querySelector('.note-surface-receipt')).toBeFalsy();
+  });
+
   it('editingNodeId 匹配时出现 contentEditable 且内容为 node.content', () => {
     render(<NoteNode node={makeNode({ layout: 0 })} editingNodeId="n1" setEditingNodeId={vi.fn()} />);
     const el = document.querySelector('[contenteditable="true"]');

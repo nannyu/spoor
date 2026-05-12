@@ -13,7 +13,7 @@ vi.mock('@tauri-apps/api/core', () => ({
   invoke: (...args: unknown[]) => mockInvoke(...args),
 }));
 
-import { callUniversalAI } from '../../src/services/ai';
+import { callUniversalAI, parseImageDataUrl } from '../../src/services/ai';
 
 const baseConfig = {
   provider: 'gemini',
@@ -25,6 +25,17 @@ const baseConfig = {
 describe('callUniversalAI', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  describe('parseImageDataUrl', () => {
+    it('解析合法 data URL', () => {
+      const u = 'data:image/png;base64,QUJD';
+      expect(parseImageDataUrl(u)).toEqual({ mediaType: 'image/png', base64: 'QUJD' });
+    });
+    it('非 base64 或前缀不对时返回 null', () => {
+      expect(parseImageDataUrl('https://ex.com/a.png')).toBeNull();
+      expect(parseImageDataUrl('data:text/plain;base64,QQ==')).toBeNull();
+    });
   });
 
   // --- Gemini ---
@@ -66,6 +77,24 @@ describe('callUniversalAI', () => {
       expect(mockGenerateContent).toHaveBeenCalledWith(
         expect.objectContaining({ model: 'gemini-2.0-flash' })
       );
+    });
+
+    it('多模态时 contents 为 text + inlineData parts', async () => {
+      mockGenerateContent.mockClear();
+      const png = 'data:image/png;base64,QUJD';
+      await callUniversalAI({
+        config: baseConfig,
+        prompt: 'Describe',
+        images: [png, 'bad-url-ignored'],
+      });
+      expect(mockGenerateContent).toHaveBeenCalledTimes(1);
+      const arg = mockGenerateContent.mock.calls[0][0] as {
+        contents: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }>;
+      };
+      expect(Array.isArray(arg.contents)).toBe(true);
+      expect(arg.contents[0]).toEqual({ text: 'Describe' });
+      expect(arg.contents[1]).toEqual({ inlineData: { mimeType: 'image/png', data: 'QUJD' } });
+      expect(arg.contents.length).toBe(2);
     });
 
     it('apiKey 为空且无环境变量时抛错', async () => {
@@ -178,6 +207,57 @@ describe('callUniversalAI', () => {
       expect(body.messages[0]).toEqual({ role: 'system', content: 'You are a bot' });
       expect(body.messages[1]).toEqual({ role: 'user', content: 'Hello' });
     });
+
+    it('多模态时 user content 为 text + image_url 数组', async () => {
+      vi.mocked(fetch).mockClear();
+      const png = 'data:image/png;base64,QUJD';
+      await callUniversalAI({
+        config: { ...baseConfig, provider: 'openai', apiKey: 'sk-test' },
+        prompt: 'What is this',
+        images: [png],
+      });
+      const calls = vi.mocked(fetch).mock.calls;
+      const body = JSON.parse((calls[calls.length - 1][1] as RequestInit).body as string);
+      const userMsg = body.messages.find((m: { role: string }) => m.role === 'user');
+      expect(userMsg.role).toBe('user');
+      expect(userMsg.content).toEqual([
+        { type: 'text', text: 'What is this' },
+        { type: 'image_url', image_url: { url: png } },
+      ]);
+    });
+
+    it('流式请求在带 images 时 body 仍为 multipart user 且 stream 为 true', async () => {
+      vi.mocked(fetch).mockClear();
+      const enc = new TextEncoder();
+      const sse = 'data: {"choices":[{"delta":{"content":"x"}}]}\n\n' + 'data: [DONE]\n\n';
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          body: new ReadableStream({
+            start(controller) {
+              controller.enqueue(enc.encode(sse));
+              controller.close();
+            },
+          }),
+        }),
+      );
+      const png = 'data:image/jpeg;base64,WFhY';
+      await callUniversalAI({
+        config: { ...baseConfig, provider: 'openai', apiKey: 'sk-test' },
+        prompt: 'p',
+        images: [png],
+        onStreamChunk: () => {},
+      });
+      const calls = vi.mocked(fetch).mock.calls;
+      const reqBody = JSON.parse((calls[calls.length - 1][1] as RequestInit).body as string);
+      expect(reqBody.stream).toBe(true);
+      const userMsg = reqBody.messages.find((m: { role: string }) => m.role === 'user');
+      expect(userMsg.content).toEqual([
+        { type: 'text', text: 'p' },
+        { type: 'image_url', image_url: { url: png } },
+      ]);
+    });
   });
 
   // --- Custom provider (same as OpenAI) ---
@@ -196,6 +276,30 @@ describe('callUniversalAI', () => {
         prompt: 'Hello',
       });
       expect(result).toBe('Custom response');
+    });
+
+    it('custom + images 时 user 仍为 multipart 数组', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          text: async () =>
+            JSON.stringify({ choices: [{ message: { content: 'ok' } }] }),
+          json: async () => ({ choices: [{ message: { content: 'ok' } }] }),
+        }),
+      );
+      const png = 'data:image/png;base64,QUJD';
+      await callUniversalAI({
+        config: { ...baseConfig, provider: 'custom', apiKey: 'k', baseUrl: 'http://custom.api/v1' },
+        prompt: 'x',
+        images: [png],
+      });
+      const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1].body as string);
+      expect(body.messages[0]).toEqual({ role: 'user', content: expect.any(Array) });
+      expect((body.messages[0].content as unknown[])[1]).toEqual({
+        type: 'image_url',
+        image_url: { url: png },
+      });
     });
   });
 
@@ -236,6 +340,26 @@ describe('callUniversalAI', () => {
       });
       const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1].body as string);
       expect(body.system).toBe('Be concise');
+    });
+
+    it('多模态时 user 为 text + base64 image blocks', async () => {
+      vi.mocked(fetch).mockClear();
+      const png = 'data:image/png;base64,QUJD';
+      await callUniversalAI({
+        config: { ...baseConfig, provider: 'anthropic', apiKey: 'sk-ant-test' },
+        prompt: 'Caption',
+        images: [png],
+      });
+      const calls = vi.mocked(fetch).mock.calls;
+      const body = JSON.parse((calls[calls.length - 1][1] as RequestInit).body as string);
+      expect(body.messages[0].role).toBe('user');
+      expect(body.messages[0].content).toEqual([
+        { type: 'text', text: 'Caption' },
+        {
+          type: 'image',
+          source: { type: 'base64', media_type: 'image/png', data: 'QUJD' },
+        },
+      ]);
     });
 
     it('API 返回非 200 时抛错', async () => {
