@@ -65,9 +65,6 @@ export function AiNode({
       {node.userTurn ? (
         <>
           <div className="mb-3 shrink-0">
-            <div className="text-[10px] font-sans font-bold uppercase tracking-widest text-[#8c8a84] mb-1.5">
-              {t('nodes.ai_your_follow_up')}
-            </div>
             <div className="text-sm text-[#1a1a1a] font-serif leading-relaxed border-l-2 border-[#C2410C]/35 pl-3 py-0.5 bg-white/50 rounded-r">
               {node.userTurn}
             </div>
