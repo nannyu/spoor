@@ -34,7 +34,6 @@ describe('useSeedData', () => {
     expect(roles).toContain('Connector');
     expect(roles).toContain('Editor');
     expect(roles).toContain('Visionary');
-    expect(roles).toContain('Realist');
   });
 
   it('首次运行创建示例节点和边', async () => {
@@ -62,7 +61,6 @@ describe('useSeedData', () => {
       { id: 'synthesizer', name: 'The Weaver', role: 'Connector', prompt: '', temperature: 0.8, creativity: 0.7 },
       { id: 'stylist', name: 'The Smoothing Iron', role: 'Editor', prompt: '', temperature: 0.6, creativity: 0.5 },
       { id: 'futurist', name: 'The Star-Gazer', role: 'Visionary', prompt: '', temperature: 0.9, creativity: 0.9 },
-      { id: 'pragmatist', name: 'The Heartwood', role: 'Realist', prompt: '', temperature: 0.4, creativity: 0.2 },
     ]);
 
     renderHook(() => useSeedData());
@@ -73,9 +71,9 @@ describe('useSeedData', () => {
 
     // agents 已存在不会重复插入，但 nodes 和 articles 仍会创建（因为 nodeCount=0）
     const agents = await db.agents.toArray();
-    expect(agents.length).toBe(5);
+    expect(agents.length).toBe(4);
 
-    // 因为 nodeCount=0 且 totalCount<=5，种子逻辑仍会创建 nodes 和 articles
+    // 因为 nodeCount=0 且 totalCount<=4，种子逻辑仍会创建 nodes 和 articles
     const nodes = await db.nodes.toArray();
     expect(nodes.length).toBeGreaterThanOrEqual(3);
   });
@@ -92,6 +90,20 @@ describe('useSeedData', () => {
     renderHook(() => useSeedData());
     await new Promise((r) => setTimeout(r, 300));
     expect(await db.agents.get('challenger')).toBeUndefined();
+  });
+
+  it('启动时移除已废弃的内置 id pragmatist', async () => {
+    await db.agents.put({
+      id: 'pragmatist',
+      name: 'The Heartwood',
+      role: 'Realist',
+      prompt: 'legacy',
+      temperature: 0.4,
+      creativity: 0.2,
+    });
+    renderHook(() => useSeedData());
+    await new Promise((r) => setTimeout(r, 300));
+    expect(await db.agents.get('pragmatist')).toBeUndefined();
   });
 
   /**

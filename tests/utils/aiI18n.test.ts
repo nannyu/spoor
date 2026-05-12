@@ -66,17 +66,17 @@ describe('resolveAgentLocalizedName / Role / SystemPrompt', () => {
 
   it('内置提示词随语言切换（与 resolveAgentSystemPrompt 一致）', async () => {
     await i18n.changeLanguage('en');
-    const promptEn = i18n.t('agents.defaults.pragmatist.prompt');
+    const promptEn = i18n.t('agents.defaults.futurist.prompt');
     const agent = cfg({
-      id: 'pragmatist',
-      name: i18n.t('agents.defaults.pragmatist.name'),
-      role: i18n.t('agents.defaults.pragmatist.role'),
+      id: 'futurist',
+      name: i18n.t('agents.defaults.futurist.name'),
+      role: i18n.t('agents.defaults.futurist.role'),
       prompt: promptEn,
     });
 
-    expect(resolveAgentSystemPrompt(agent)).toContain('Heartwood');
+    expect(resolveAgentSystemPrompt(agent)).toContain('Star-Gazer');
 
     await i18n.changeLanguage('zh');
-    expect(resolveAgentSystemPrompt(agent)).toContain('实心木');
+    expect(resolveAgentSystemPrompt(agent)).toContain('占星术');
   });
 });

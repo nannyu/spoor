@@ -455,7 +455,6 @@ describe('App 组件', () => {
       expect(roles).toContain('Connector');
       expect(roles).toContain('Editor');
       expect(roles).toContain('Visionary');
-      expect(roles).toContain('Realist');
     });
 
     it('首次渲染时自动创建示例节点和边', async () => {

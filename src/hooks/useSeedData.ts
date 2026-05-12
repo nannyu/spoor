@@ -53,9 +53,10 @@ export function useSeedData() {
 
       await migrateLegacyAgentPrompts();
       await db.agents.delete('challenger');
+      await db.agents.delete('pragmatist');
 
       const totalCount = await db.agents.count();
-      if (totalCount <= 5) {
+      if (totalCount <= 4) {
         const nodeCount = await db.nodes.count();
         if (nodeCount === 0) {
           await db.articles.put({

@@ -5,7 +5,6 @@ export const SYSTEM_AGENT_IDS = [
   'synthesizer',
   'stylist',
   'futurist',
-  'pragmatist',
 ] as const;
 
 export type SystemAgentId = (typeof SYSTEM_AGENT_IDS)[number];
@@ -18,7 +17,6 @@ export const SYSTEM_AGENT_TUNING: Record<
   synthesizer: { temperature: 0.8, creativity: 0.7 },
   stylist: { temperature: 0.6, creativity: 0.5 },
   futurist: { temperature: 0.9, creativity: 0.9 },
-  pragmatist: { temperature: 0.4, creativity: 0.2 },
 };
 
 /** 若本地仍保存旧版种子文案，启动时自动替换为当前语言的默认提示词（不覆盖用户已改写的提示词）。 */
@@ -34,8 +32,5 @@ export const LEGACY_AGENT_PROMPTS: Record<SystemAgentId, string[]> = {
   ],
   futurist: [
     'You are a Visionary Futurist. Based on the ideas connected to you, project their evolution 10-20 years into the future. What are the long-term implications, potential disruptors, and wild possibilities?',
-  ],
-  pragmatist: [
-    "You are a realistic Pragmatist. Your job is to ground the user's ideas in reality. Identify practical constraints, missing logistical steps, potential costs, and immediate roadblocks that need to be addressed.",
   ],
 };
