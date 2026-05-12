@@ -74,9 +74,9 @@ describe('resolveAgentLocalizedName / Role / SystemPrompt', () => {
       prompt: promptEn,
     });
 
-    expect(resolveAgentSystemPrompt(agent)).toContain('Star-Gazer');
+    expect(resolveAgentSystemPrompt(agent)).toContain('sticky-note');
 
     await i18n.changeLanguage('zh');
-    expect(resolveAgentSystemPrompt(agent)).toContain('占星术');
+    expect(resolveAgentSystemPrompt(agent)).toContain('便签画布');
   });
 });
