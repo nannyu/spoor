@@ -106,6 +106,20 @@ describe('i18n 国际化模块', () => {
     it('ai 翻译完整', () => {
       expect(i18n.t('ai.loading')).toBe('AI is thinking...');
       expect(i18n.t('ai.prompts.localeDirective')).toContain('English');
+      expect(
+        i18n.t('ai.prompts.agentThreadFollowUp', {
+          initialContext: 'IC',
+          dialogueHistory: 'DH',
+          request: 'RQ',
+        }),
+      ).toContain('IC');
+      expect(
+        i18n.t('ai.prompts.agentThreadFollowUp', {
+          initialContext: 'IC',
+          dialogueHistory: 'DH',
+          request: 'RQ',
+        }),
+      ).toContain('RQ');
     });
 
     it('内置 Agent 系统提示词有英文文案', () => {
@@ -164,6 +178,13 @@ describe('i18n 国际化模块', () => {
     it('ai 翻译完整', () => {
       expect(i18n.t('ai.loading')).toBe('AI 思考中...');
       expect(i18n.t('ai.prompts.localeDirective')).toContain('简体中文');
+      expect(
+        i18n.t('ai.prompts.agentThreadFollowUp', {
+          initialContext: '原文',
+          dialogueHistory: '对话',
+          request: '问',
+        }),
+      ).toContain('原文');
     });
 
     it('内置 Agent 系统提示词有中文文案', () => {

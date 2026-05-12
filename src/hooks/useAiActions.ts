@@ -11,6 +11,7 @@ import { shouldPreflightToolbarIntent } from '../utils/toolbarIntentGate';
 import { analyzeToolbarIntentPreflight } from '../services/toolbarIntentClarification';
 import { getCanvasCenterPosition } from '../utils/canvas';
 import { buildAgentSystemInstruction, combineSystemParts, getLocaleDirective } from '../utils/aiI18n';
+import { collectAiThreadChain, formatAgentThreadDialogueHistory } from '../utils/agentThreadContext';
 import { getCanvasNodeContextText } from '../utils/canvasNodeContextText';
 import { db } from '../db';
 
@@ -134,7 +135,16 @@ export function useAiActions({
         const y = agentNode ? agentNode.y : window.innerHeight / 2;
         const newNodeId = crypto.randomUUID();
 
-        await db.nodes.add({ id: newNodeId, canvasId: activeCanvasId, type: 'ai', content: text, x, y });
+        await db.nodes.add({
+          id: newNodeId,
+          canvasId: activeCanvasId,
+          type: 'ai',
+          content: text,
+          x,
+          y,
+          threadRootContextNodeId: contextNodeId,
+          threadAgentConfigId: agentConfigId,
+        });
         await db.edges.add({ id: crypto.randomUUID(), canvasId: activeCanvasId, from: agentNodeId, to: newNodeId });
       }
     } catch (e) {
@@ -308,6 +318,12 @@ export function useAiActions({
           x: parent.x,
           y: childY,
           width: w,
+          ...(parent.threadRootContextNodeId != null && parent.threadAgentConfigId != null
+            ? {
+                threadRootContextNodeId: parent.threadRootContextNodeId,
+                threadAgentConfigId: parent.threadAgentConfigId,
+              }
+            : {}),
         });
         await db.edges.add({
           id: crypto.randomUUID(),
@@ -333,14 +349,50 @@ export function useAiActions({
     followUpGuardRef.current = true;
     setFollowUpParentId(parentNodeId);
     try {
-      const text = await callUniversalAI({
-        config: aiConfig,
-        systemInstruction: getLocaleDirective(),
-        prompt: t('ai.prompts.threadFollowUp', {
-          previous: previous || '—',
-          request: trimmed,
-        }),
-      });
+      const agentConfig =
+        parent.threadAgentConfigId != null
+          ? agentConfigs.find((a) => a.id === parent.threadAgentConfigId)
+          : undefined;
+      const chain = collectAiThreadChain(dynamicNodes, edges, parentNodeId);
+      const rootMatchesThread =
+        chain[0]?.threadAgentConfigId != null &&
+        chain[0].threadAgentConfigId === parent.threadAgentConfigId;
+      const useAgentThread =
+        agentConfig != null && parent.threadAgentConfigId != null && rootMatchesThread;
+
+      const text = useAgentThread
+        ? await callUniversalAI({
+            config: aiConfig,
+            systemInstruction: buildAgentSystemInstruction(agentConfig, {
+              fallbackPrompt: t('agents.studio.fallback_assistant'),
+            }),
+            prompt: t('ai.prompts.agentThreadFollowUp', {
+              initialContext: (() => {
+                const ctxId = parent.threadRootContextNodeId ?? chain[0]?.threadRootContextNodeId;
+                let initialContext = t('ai.prompts.agentThreadContextMissing');
+                if (ctxId) {
+                  const ctxEl = nodesRef.current[ctxId];
+                  if (ctxEl) {
+                    const raw = getCanvasNodeContextText(ctxEl).trim();
+                    if (raw) initialContext = raw;
+                  }
+                }
+                return initialContext;
+              })(),
+              dialogueHistory: formatAgentThreadDialogueHistory(chain),
+              request: trimmed,
+            }),
+            temperature: agentConfig.temperature ?? 0.7,
+            topP: agentConfig.creativity ?? 0.4,
+          })
+        : await callUniversalAI({
+            config: aiConfig,
+            systemInstruction: getLocaleDirective(),
+            prompt: t('ai.prompts.threadFollowUp', {
+              previous: previous || '—',
+              request: trimmed,
+            }),
+          });
 
       if (text) {
         const el = nodesRef.current[parentNodeId];
@@ -356,6 +408,12 @@ export function useAiActions({
           x: parent.x,
           y: parent.y + h + THREAD_GAP,
           width: w,
+          ...(parent.threadRootContextNodeId != null && parent.threadAgentConfigId != null
+            ? {
+                threadRootContextNodeId: parent.threadRootContextNodeId,
+                threadAgentConfigId: parent.threadAgentConfigId,
+              }
+            : {}),
         });
         await db.edges.add({
           id: crypto.randomUUID(),

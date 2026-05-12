@@ -43,6 +43,19 @@ Context to analyze:
 
 `contextText` 来自该节点卡片根 DOM：若存在带 `data-canvas-node-context-text` 的区域（仅用户内容，排除「笔记」等 UI 标签），则使用该区域的 `innerText`；否则回退为整卡 `innerText` / `textContent`（见 `src/utils/canvasNodeContextText.ts`）。
 
+首张 AI 卡入库时会写入 `threadRootContextNodeId`（源便签 id）、`threadAgentConfigId`（`AgentConfig.id`），供同链追问使用。
+
+### 2.1 画布 · Agent 链上的 AI 便签「追问」
+
+| 项目 | 内容 |
+|------|------|
+| **触发** | [`submitAiThreadFollowUp`](src/hooks/useAiActions.ts)（普通追问，非「联网搜索」意图） |
+| **启用完整上下文条件** | 父 AI 卡带有 `threadAgentConfigId` / `threadRootContextNodeId`（首卡由 `triggerAgentAnalysis` 写入；链上子卡及联网搜索后的 AI 卡从父卡复制）；且沿边回溯的根 AI 卡 `threadAgentConfigId` 与父卡一致 |
+| **system** | `buildAgentSystemInstruction(agent)`，与首次分析一致（界面语言 + 人设 + Markdown 知识库） |
+| **temperature / topP** | 与对应 Agent 卡配置一致 |
+| **user** | `ai.prompts.agentThreadFollowUp`：`initialContext` 为源便签节点当前 DOM 的 `getCanvasNodeContextText`（便签已删时用 `agentThreadContextMissing` 占位）、`dialogueHistory` 由 [`collectAiThreadChain`](src/utils/agentThreadContext.ts) + `formatAgentThreadDialogueHistory` 生成、`request` 为用户本条输入 |
+| **回退** | 非 Agent 链（如工具栏生成的 AI 卡）仍用 `ai.prompts.threadFollowUp`，`systemInstruction` 仅为 `getLocaleDirective()` |
+
 ---
 
 ## 3. 画布 · 底部工具栏 AI 输入框

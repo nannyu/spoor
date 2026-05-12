@@ -115,7 +115,9 @@ const resources = {
           "toolbarWithNotesSystem": "The user selected notes on the canvas whose text is included below. Answer by integrating this material with the user's message: use the excerpts when relevant, note if something is missing, and stay focused on what they asked.",
           "toolbarWithNotesUser": "Excerpts from the user's selected notes:\n{{context}}\n\nUser message: {{request}}",
           "context_fragment_label": "\n[Context Fragment]: ",
-          "threadFollowUp": "You are continuing a dialogue on the canvas. The assistant’s previous reply was:\n\n---\n{{previous}}\n---\n\nThe user’s new message:\n{{request}}\n\nRespond as a thoughtful continuation. Address the follow-up directly; keep the same voice and depth as before unless the user asks otherwise."
+          "threadFollowUp": "You are continuing a dialogue on the canvas. The assistant’s previous reply was:\n\n---\n{{previous}}\n---\n\nThe user’s new message:\n{{request}}\n\nRespond as a thoughtful continuation. Address the follow-up directly; keep the same voice and depth as before unless the user asks otherwise.",
+          "agentThreadContextMissing": "(Original source note is unavailable or was removed — continue using the dialogue below.)",
+          "agentThreadFollowUp": "You are continuing an agent-persona thread on the canvas.\n\n## Original material (same as the first analysis)\n\n---\n{{initialContext}}\n---\n\n## Dialogue so far (oldest to newest)\n\n{{dialogueHistory}}\n\n## User’s new message\n\n{{request}}\n\nReply as a direct continuation: stay aligned with the agent’s role, keep depth consistent, and tie back to the original material when relevant."
         }
       },
       "lab": {
@@ -362,7 +364,9 @@ const resources = {
           "toolbarWithNotesSystem": "用户勾选后的便签节选已附在下方。请综合这些节选与用户的问题作答：与节选相关处要扣住原文，信息不足时简要说明，并始终围绕用户想问的内容。",
           "toolbarWithNotesUser": "来自用户所选便签的节选：\n{{context}}\n\n用户消息：{{request}}",
           "context_fragment_label": "\n【上下文片段】：",
-          "threadFollowUp": "你正在画布上延续一段对话。助手上一轮回复如下：\n\n---\n{{previous}}\n---\n\n用户的新消息：\n{{request}}\n\n请承接上文，直接回应这条追问；语气与深度与之前保持一致，除非用户另有要求。"
+          "threadFollowUp": "你正在画布上延续一段对话。助手上一轮回复如下：\n\n---\n{{previous}}\n---\n\n用户的新消息：\n{{request}}\n\n请承接上文，直接回应这条追问；语气与深度与之前保持一致，除非用户另有要求。",
+          "agentThreadContextMissing": "（首轮分析的原始便签不可用或已删除，请仅依据下列对话与当前追问作答。）",
+          "agentThreadFollowUp": "你正在延续画布上某一 Agent 人格的对话线程。\n\n## 原始材料（与首次分析时相同的那份正文）\n\n---\n{{initialContext}}\n---\n\n## 已发生的对话（从旧到新）\n\n{{dialogueHistory}}\n\n## 用户本条消息\n\n{{request}}\n\n请直接接着谈：保持该 Agent 人设与深度；需要时请回扣原始材料。"
         }
       },
       "lab": {

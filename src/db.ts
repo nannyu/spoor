@@ -17,6 +17,10 @@ export interface CanvasNode {
   userTurn?: string;
   /** 已从该卡成功发出过追问并生成下游 AI 卡后隐藏追问输入，保持卡片简洁 */
   followUpSent?: boolean;
+  /** Agent 分析链：首张 AI 卡记录源便签 id；追问链上子卡从父卡复制 */
+  threadRootContextNodeId?: string;
+  /** Agent 分析链：首张 AI 卡记录 `AgentConfig.id`；子卡从父卡复制 */
+  threadAgentConfigId?: string;
 }
 
 export interface Canvas {

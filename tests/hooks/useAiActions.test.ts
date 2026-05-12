@@ -312,6 +312,11 @@ describe('useAiActions', () => {
           prompt: expect.stringMatching(/context body/),
         }),
       );
+
+      const rows = await db.nodes.toArray();
+      expect(rows).toHaveLength(1);
+      expect(rows[0].threadRootContextNodeId).toBe('ctx1');
+      expect(rows[0].threadAgentConfigId).toBe('a1');
     });
   });
 
@@ -395,6 +400,7 @@ describe('useAiActions', () => {
       const callArg = vi.mocked(callUniversalAI).mock.calls[0][0];
       expect(callArg.prompt).toContain('我的追问');
       expect(callArg.prompt).toContain('上一轮 AI 正文');
+      expect(callArg.systemInstruction).toContain('Always reply entirely in English');
 
       const allNodes = await db.nodes.toArray();
       expect(allNodes).toHaveLength(2);
