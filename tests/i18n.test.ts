@@ -124,7 +124,7 @@ describe('i18n 国际化模块', () => {
 
     it('内置 Agent 系统提示词有英文文案', () => {
       expect(i18n.t('agents.defaults.interviewer.name')).toBe('The Mirror of Insight');
-      expect(i18n.t('agents.defaults.stylist.prompt')).toContain('Smoothing Iron');
+      expect(i18n.t('agents.defaults.stylist.prompt')).toContain('stacking blocks');
     });
   });
 
@@ -189,7 +189,7 @@ describe('i18n 国际化模块', () => {
 
     it('内置 Agent 系统提示词有中文文案', () => {
       expect(i18n.t('agents.defaults.interviewer.name')).toBe('真知镜');
-      expect(i18n.t('agents.defaults.stylist.prompt')).toContain('熨烫师');
+      expect(i18n.t('agents.defaults.stylist.prompt')).toContain('文字积木');
     });
 
     it('lab 翻译完整', () => {
