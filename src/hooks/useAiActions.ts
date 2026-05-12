@@ -11,6 +11,7 @@ import { shouldPreflightToolbarIntent } from '../utils/toolbarIntentGate';
 import { analyzeToolbarIntentPreflight } from '../services/toolbarIntentClarification';
 import { getCanvasCenterPosition } from '../utils/canvas';
 import { buildAgentSystemInstruction, combineSystemParts, getLocaleDirective } from '../utils/aiI18n';
+import { getCanvasNodeContextText } from '../utils/canvasNodeContextText';
 import { db } from '../db';
 
 interface UseAiActionsParams {
@@ -72,7 +73,7 @@ export function useAiActions({
       for (const id of Array.from(selectedNodes)) {
         const el = nodesRef.current[id];
         if (el) {
-          combinedText += el.innerText + '\n\n';
+          combinedText += getCanvasNodeContextText(el) + '\n\n';
         }
       }
 
@@ -114,8 +115,7 @@ export function useAiActions({
     const contextEl = nodesRef.current[contextNodeId];
     if (!contextEl) return;
 
-    const clone = contextEl.cloneNode(true) as HTMLElement;
-    const contextText = clone.innerText || clone.textContent || '';
+    const contextText = getCanvasNodeContextText(contextEl);
     if (!contextText.trim()) return;
 
     setAnalyzingAgentNodeId(agentNodeId);
@@ -170,7 +170,7 @@ export function useAiActions({
     for (const id of Array.from(selectedNodes)) {
       const el = nodesRef.current[id];
       if (el) {
-        contextText += fragmentLabel + (el.innerText || '');
+        contextText += fragmentLabel + getCanvasNodeContextText(el);
       }
     }
 

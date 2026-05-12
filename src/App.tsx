@@ -9,6 +9,7 @@ import {
   PenLine,
 } from 'lucide-react';
 import { commitCanvasInlineEditing } from './utils/commitCanvasInlineEditing';
+import { getCanvasNodeContextText } from './utils/canvasNodeContextText';
 import { nodeSupportsCycleLayout } from './constants/nodeCapabilities';
 import { NOTE_LAYOUT_COUNT } from './constants/noteLayouts';
 import { CanvasEdgeLines } from './components/canvas/CanvasEdgeLines';
@@ -283,7 +284,7 @@ export default function App() {
       if (!n || n.type === 'agent') continue;
       const el = nodesRef.current[cid];
       if (!el) continue;
-      const text = (el.innerText || el.textContent || '').trim();
+      const text = getCanvasNodeContextText(el);
       if (!text) continue;
       void triggerAgentAnalysis(agentNode.agentConfigId, agentNodeId, cid);
       return;

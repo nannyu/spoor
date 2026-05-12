@@ -4,6 +4,7 @@ import { Sparkles, Maximize2 } from 'lucide-react';
 import { db } from '../../db';
 import type { NodeContentProps } from './types';
 import { isContentBlurPersistenceDisabled } from '../../config/persistence';
+import { CANVAS_NODE_CONTEXT_TEXT_ATTR } from '../../utils/canvasNodeContextText';
 
 export function ThemeNode({ node, editingNodeId }: NodeContentProps) {
   const { t } = useTranslation();
@@ -34,7 +35,10 @@ export function ThemeNode({ node, editingNodeId }: NodeContentProps) {
         </div>
       )}
 
-      <div className={`flex-1 overflow-y-auto min-h-0 pr-2 custom-scrollbar ${editingNodeId === node.id ? 'select-text' : ''}`}>
+      <div
+        className={`flex-1 overflow-y-auto min-h-0 pr-2 custom-scrollbar ${editingNodeId === node.id ? 'select-text' : ''}`}
+        {...{ [CANVAS_NODE_CONTEXT_TEXT_ATTR]: '' }}
+      >
         <h3 
           className={`font-bold leading-tight focus:outline-none rounded px-1 -mx-1 transition-all cursor-text ${
             node.layout === 1 ? 'text-3xl font-serif mb-4' :

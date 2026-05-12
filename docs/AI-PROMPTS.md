@@ -41,7 +41,7 @@ Context to analyze:
 {contextText}
 ```
 
-`contextText` 为对应 DOM 克隆后的 `innerText` / `textContent`。
+`contextText` 来自该节点卡片根 DOM：若存在带 `data-canvas-node-context-text` 的区域（仅用户内容，排除「笔记」等 UI 标签），则使用该区域的 `innerText`；否则回退为整卡 `innerText` / `textContent`（见 `src/utils/canvasNodeContextText.ts`）。
 
 ---
 
@@ -65,7 +65,7 @@ Context to analyze:
 
 | 项目 | 内容 |
 |------|------|
-| **上下文** | 与合成文章同源：对每个已勾选节点的 DOM 读取 `innerText`，前置 `ai.prompts.context_fragment_label`，拼成 `{{context}}` |
+| **上下文** | 与合成文章同源：对每个已勾选节点用 `getCanvasNodeContextText`（优先 `data-canvas-node-context-text`）取文，前置 `ai.prompts.context_fragment_label`，拼成 `{{context}}` |
 | **系统提示词** | `combineSystemParts(ai.prompts.toolbarWithNotesSystem, getLocaleDirective())` — 要求结合节选与用户提问作答 |
 | **用户提示词** | `ai.prompts.toolbarWithNotesUser`，其中 `{{context}}` / `{{request}}` 分别为上文节选与底部输入 |
 
@@ -73,7 +73,7 @@ Context to analyze:
 
 ```
 Excerpts from the user's selected notes:
-[Context Fragment]: {节点 innerText}
+[Context Fragment]: {getCanvasNodeContextText(节点根元素)}
 …
 
 User message: {用户输入}

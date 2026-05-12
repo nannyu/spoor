@@ -1,6 +1,7 @@
 ﻿import React from 'react';
 import { FileText } from 'lucide-react';
 import type { NodeContentProps } from './types';
+import { CANVAS_NODE_CONTEXT_TEXT_ATTR } from '../../utils/canvasNodeContextText';
 
 export function DocumentNode({ node }: NodeContentProps) {
   return (
@@ -21,6 +22,7 @@ export function DocumentNode({ node }: NodeContentProps) {
       </div>
       <div
         className="flex-1 overflow-y-auto min-h-0 pr-1 custom-scrollbar text-sm font-serif leading-relaxed text-[#4a4a44] doc-content"
+        {...{ [CANVAS_NODE_CONTEXT_TEXT_ATTR]: '' }}
         dangerouslySetInnerHTML={{ __html: node.content || '<em>(空文档)</em>' }}
       />
     </div>

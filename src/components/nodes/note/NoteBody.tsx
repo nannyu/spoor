@@ -4,6 +4,7 @@ import remarkBreaks from 'remark-breaks';
 import { db } from '../../../db';
 import type { CanvasNode } from '../../../db';
 import { isContentBlurPersistenceDisabled } from '../../../config/persistence';
+import { CANVAS_NODE_CONTEXT_TEXT_ATTR } from '../../../utils/canvasNodeContextText';
 
 /** 让单个 \n 渲染为 <br>，避免用户在便签里手敲的回车被 Markdown 默认行为吞掉（双 \n 仍是段落，列表/标题不受影响） */
 const NOTE_REMARK_PLUGINS = [remarkBreaks];
@@ -41,7 +42,7 @@ export function NoteBody({
   const displayContent = pendingContent ?? node.content;
 
   return (
-    <div className={scrollAreaClassName}>
+    <div className={scrollAreaClassName} {...{ [CANVAS_NODE_CONTEXT_TEXT_ATTR]: '' }}>
       {isEditing ? (
         <div
           autoFocus

@@ -5,6 +5,7 @@ import Markdown from 'react-markdown';
 import { db } from '../../db';
 import type { AiNodeProps } from './types';
 import { isContentBlurPersistenceDisabled } from '../../config/persistence';
+import { CANVAS_NODE_CONTEXT_TEXT_ATTR } from '../../utils/canvasNodeContextText';
 
 export function AiNode({
   node,
@@ -62,6 +63,7 @@ export function AiNode({
 
   return (
     <div className="w-full h-full bg-[#F4F1ED] p-6 shadow-lg border border-[#E6E4DF] flex flex-col">
+      <div className="flex min-h-0 flex-1 flex-col" {...{ [CANVAS_NODE_CONTEXT_TEXT_ATTR]: '' }}>
       {node.userTurn ? (
         <>
           <div className="mb-3 shrink-0">
@@ -80,6 +82,7 @@ export function AiNode({
           </div>
         </>
       )}
+      </div>
 
       {showFollowUp ? (
         <div className="mt-2 shrink-0">
