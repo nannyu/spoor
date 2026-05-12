@@ -538,10 +538,10 @@ export default function App() {
         {activeTab === 'lab' && <ResearchLab aiConfig={aiConfig} callAI={callUniversalAI} />}
         {/* Agents in Agents Studio need consistent write access */}
         {activeTab === 'agents' && <AgentsStudio agentConfigs={agentConfigs} setAgentConfigs={async (newConfigs) => {
-          // This ensures updates to agents from studio are saved to DB
-          for (const config of newConfigs) {
-            await db.agents.put(config);
-          }
+          const nextIds = new Set(newConfigs.map((c) => c.id));
+          const existing = await db.agents.toArray();
+          await Promise.all(existing.filter((row) => !nextIds.has(row.id)).map((row) => db.agents.delete(row.id)));
+          await Promise.all(newConfigs.map((config) => db.agents.put(config)));
         }} aiConfig={aiConfig} callAI={callUniversalAI} />}
         <IntentClarificationModal
           open={intentClarification !== null}

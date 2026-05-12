@@ -76,6 +76,7 @@ vi.mock('react-i18next', () => ({
         'agents.temp': '采样温度',
         'agents.creativity': '创造力',
         'agents.delete_confirm': '您确定要删除此人格设定吗？',
+        'agents.delete_persona': '删除人格',
         'agents.search_personas': '搜索人格...',
         'agents.sandbox_title': `沙盒：${opts?.name ?? ''}`,
         'agents.sandbox_empty': `正在测试 ${opts?.name ?? ''} 的沙盒。`,
@@ -755,7 +756,7 @@ describe('App 组件', () => {
     it('选中代理后显示删除按钮', async () => {
       const user = userEvent.setup();
       await goToAgents(user);
-      expect(screen.getByText('删除便签')).toBeInTheDocument();
+      expect(screen.getByText('删除人格')).toBeInTheDocument();
     });
 
     it('点击新建人格按钮添加新代理', async () => {

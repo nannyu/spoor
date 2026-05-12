@@ -195,10 +195,10 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
     }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (!window.confirm(t('agents.delete_confirm'))) return;
     const newConfigs = agentConfigs.filter((a) => a.id !== id);
-    setAgentConfigs(newConfigs);
+    await setAgentConfigs(newConfigs);
     if (activeAgentId === id) {
       setActiveAgentId(newConfigs[0]?.id || null);
     }
@@ -282,8 +282,12 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
                   <MessageSquare className="w-4 h-4" />
                   {isSandboxOpen ? t('agents.close_sandbox') : t('agents.test_sandbox')}
                 </button>
-                <button onClick={() => handleDelete(activeAgent.id)} className="px-6 py-2 text-[#ef4444] rounded-lg font-sans font-bold hover:bg-[#ef4444]/10 transition-all text-sm">
-                  {t('canvas.delete_note')}
+                <button
+                  type="button"
+                  onClick={() => void handleDelete(activeAgent.id)}
+                  className="px-6 py-2 text-[#ef4444] rounded-lg font-sans font-bold hover:bg-[#ef4444]/10 transition-all text-sm"
+                >
+                  {t('agents.delete_persona')}
                 </button>
               </div>
             </div>

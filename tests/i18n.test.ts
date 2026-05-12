@@ -85,6 +85,7 @@ describe('i18n 国际化模块', () => {
       expect(i18n.t('agents.new_persona')).toBe('New Persona');
       expect(i18n.t('agents.test_sandbox')).toBe('Test Sandbox');
       expect(i18n.t('agents.delete_confirm')).toBe('Are you sure you want to delete this persona?');
+      expect(i18n.t('agents.delete_persona')).toBe('Delete persona');
     });
 
     it('lab 翻译完整', () => {
@@ -157,6 +158,7 @@ describe('i18n 国际化模块', () => {
       expect(i18n.t('agents.personas')).toBe('人格设定');
       expect(i18n.t('agents.new_persona')).toBe('新建人格');
       expect(i18n.t('agents.delete_confirm')).toBe('您确定要删除此人格设定吗？');
+      expect(i18n.t('agents.delete_persona')).toBe('删除人格');
     });
 
     it('ai 翻译完整', () => {
