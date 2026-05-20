@@ -13,6 +13,7 @@ import type { AgentConfig } from '../db';
 import { db } from '../db';
 import { getCanvasCenterPosition } from '../utils/canvas';
 import { resolveAgentLocalizedName } from '../utils/aiI18n';
+import { IntentClarificationModal } from './IntentClarificationModal';
 
 export interface CanvasToolbarProps {
   isToolbarAiLoading: boolean;
@@ -28,6 +29,14 @@ export interface CanvasToolbarProps {
   setCanvasTransform: React.Dispatch<React.SetStateAction<{ x: number; y: number; scale: number }>>;
   transformRef: React.MutableRefObject<{ x: number; y: number; scale: number }>;
   activeCanvasId: string;
+  intentClarification: {
+    original: string;
+    options: [string, string, string];
+    hint?: string;
+  } | null;
+  isIntentSubmitting: boolean;
+  onCancelIntentClarification: () => void;
+  onConfirmIntentClarification: (finalRequest: string) => void;
 }
 
 export function CanvasToolbar({
@@ -44,13 +53,26 @@ export function CanvasToolbar({
   setCanvasTransform,
   transformRef,
   activeCanvasId,
+  intentClarification,
+  isIntentSubmitting,
+  onCancelIntentClarification,
+  onConfirmIntentClarification,
 }: CanvasToolbarProps) {
   const { t } = useTranslation();
 
   return (
     <>
       {/* AI Prompt Bar */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-40">
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-40 flex flex-col">
+        <IntentClarificationModal
+          open={intentClarification !== null}
+          original={intentClarification?.original ?? ''}
+          options={intentClarification?.options ?? ['', '', '']}
+          hint={intentClarification?.hint}
+          isSubmitting={isIntentSubmitting}
+          onCancel={onCancelIntentClarification}
+          onConfirm={onConfirmIntentClarification}
+        />
         <div className={`bg-white rounded-2xl shadow-2xl border border-[#E6E4DF] p-2 flex items-center space-x-2 ring-4 ring-[#F4F1ED]/50 transition-all ${isToolbarAiLoading ? 'opacity-80' : ''}`}>
           <div className="flex items-center gap-1 pl-2 border-r border-[#E6E4DF] pr-3 mr-1 relative group">
             <div className="relative group/plus">

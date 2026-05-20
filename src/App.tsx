@@ -19,7 +19,6 @@ import { AISettingsModal } from './components/AISettingsModal';
 import { Sidebar } from './components/Sidebar';
 import { CanvasHistoryPopover } from './components/CanvasHistoryPopover';
 import { CanvasToolbar } from './components/CanvasToolbar';
-import { IntentClarificationModal } from './components/IntentClarificationModal';
 import type { AIConfig } from './components/AISettingsModal';
 import { Reference } from './components/Reference';
 import { ResearchLab } from './components/ResearchLab';
@@ -526,6 +525,10 @@ export default function App() {
           agentConfigs={agentConfigs} canvasTransform={canvasTransform}
           setCanvasTransform={setCanvasTransform} transformRef={transformRef}
           activeCanvasId={activeCanvasId}
+          intentClarification={intentClarification}
+          isIntentSubmitting={isToolbarAiLoading}
+          onCancelIntentClarification={cancelIntentClarification}
+          onConfirmIntentClarification={(finalRequest) => void confirmIntentClarification(finalRequest)}
         />
         </main>
         )}
@@ -549,15 +552,6 @@ export default function App() {
           await Promise.all(existing.filter((row) => !nextIds.has(row.id)).map((row) => db.agents.delete(row.id)));
           await Promise.all(newConfigs.map((config) => db.agents.put(config)));
         }} aiConfig={aiConfig} callAI={callUniversalAI} />}
-        <IntentClarificationModal
-          open={intentClarification !== null}
-          original={intentClarification?.original ?? ''}
-          options={intentClarification?.options ?? ['', '', '']}
-          hint={intentClarification?.hint}
-          isSubmitting={isToolbarAiLoading}
-          onCancel={cancelIntentClarification}
-          onConfirm={(finalRequest) => void confirmIntentClarification(finalRequest)}
-        />
         <AISettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} config={aiConfig} setConfig={setAiConfig} />
       </div>
     </div>

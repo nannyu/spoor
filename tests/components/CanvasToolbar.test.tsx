@@ -24,7 +24,7 @@ vi.mock('../../src/utils/canvas', () => ({
 }));
 
 vi.mock('lucide-react', () => {
-  const names = ['Plus', 'Sparkles', 'Bot', 'Wand2', 'Send', 'ZoomIn', 'FileText', 'Loader2'] as const;
+  const names = ['Plus', 'Sparkles', 'Bot', 'Wand2', 'Send', 'ZoomIn', 'FileText', 'Loader2', 'Check', 'ChevronDown', 'ChevronUp', 'X'] as const;
   const icons: Record<string, React.FC> = {};
   for (const name of names) {
     icons[name] = (props: Record<string, unknown>) => {
@@ -49,6 +49,10 @@ const defaultProps = () => ({
   setCanvasTransform: vi.fn(),
   transformRef: { current: { x: 0, y: 0, scale: 1 } },
   activeCanvasId: 'default',
+  intentClarification: null,
+  isIntentSubmitting: false,
+  onCancelIntentClarification: vi.fn(),
+  onConfirmIntentClarification: vi.fn(),
 });
 
 describe('CanvasToolbar', () => {

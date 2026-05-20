@@ -2,6 +2,7 @@ import type { TFunction } from 'i18next';
 import type { AIConfig } from '../components/AISettingsModal';
 import { callUniversalAI } from './ai';
 import { combineSystemParts, getLocaleDirective } from '../utils/aiI18n';
+import { intentOptionsAreInvalidClarification } from '../utils/intentOptionSanitize';
 
 export type ToolbarIntentAnalysis =
   | { ambiguous: false }
@@ -32,7 +33,9 @@ function normalizeAnalysis(parsed: unknown): ToolbarIntentAnalysis {
   const opts = optionsRaw.map((x) => String(x).trim()).filter(Boolean);
   if (opts.length !== 3) return { ambiguous: false };
   const hint = typeof o.hint === 'string' && o.hint.trim() ? o.hint.trim() : undefined;
-  return { ambiguous: true, options: [opts[0], opts[1], opts[2]], hint };
+  const options: [string, string, string] = [opts[0], opts[1], opts[2]];
+  if (intentOptionsAreInvalidClarification(options)) return { ambiguous: false };
+  return { ambiguous: true, options, hint };
 }
 
 /**
