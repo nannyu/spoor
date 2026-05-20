@@ -7,6 +7,11 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, '.'),
+      '@testing-library/react': path.resolve(__dirname, 'tests/testing-library.tsx'),
+      '@testing-library/react-impl': path.resolve(
+        __dirname,
+        'node_modules/@testing-library/react',
+      ),
     },
   },
   test: {

@@ -29,6 +29,7 @@ import {
   X,
 } from 'lucide-react';
 import type { CallAIFn } from '../types';
+import { useAppDialog } from './AppDialogProvider';
 
 export type ResearchPlanStep = { title: string; desc: string };
 
@@ -172,6 +173,7 @@ function parseNeedWebDecision(text: string): boolean {
 
 export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
   const { t, i18n } = useTranslation();
+  const { confirm } = useAppDialog();
   const [phase, setPhase] = useState<'idle' | 'planning' | 'plan_ready' | 'researching' | 'completed'>('idle');
   const [query, setQuery] = useState('');
   /** Real execute pipeline: await resolveWebSearchForExecute → await callAI(report). */
@@ -225,7 +227,11 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
   };
 
   const deleteResearchSession = async (sessionId: string) => {
-    if (!window.confirm(t('lab.delete_session_confirm'))) return;
+    const ok = await confirm({
+      message: t('lab.delete_session_confirm'),
+      variant: 'danger',
+    });
+    if (!ok) return;
     try {
       await db.researchSessions.delete(sessionId);
     } catch (e) {

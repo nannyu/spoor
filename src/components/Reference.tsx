@@ -13,11 +13,13 @@ import {
   Link2,
   BookOpen,
   X,
+  Trash2,
 } from 'lucide-react';
 import { db } from '../db';
 import type { Article, ArticleCategory } from '../db';
 import { isContentBlurPersistenceDisabled } from '../config/persistence';
 import { extractToc, slugifyHeading } from '../utils/referenceToc';
+import { useAppDialog } from './AppDialogProvider';
 
 const REFERENCE_MARKDOWN_PLUGINS = [remarkBreaks];
 
@@ -54,6 +56,7 @@ export function Reference({
   onOpenCanvas,
 }: ReferenceProps) {
   const { t } = useTranslation();
+  const { confirm, alert: appAlert } = useAppDialog();
   const canvases = useLiveQuery(() => db.canvases.toArray(), []) ?? [];
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -138,6 +141,22 @@ export function Reference({
     setActiveReferenceId(id);
   };
 
+  const handleDeleteArticle = async (article: Article, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const ok = await confirm({
+      message: t('reference.delete_confirm', { title: article.title }),
+      variant: 'danger',
+      confirmLabel: t('dialog.confirm'),
+      cancelLabel: t('dialog.cancel'),
+    });
+    if (!ok) return;
+    await db.articles.delete(article.id);
+    if (activeReferenceId === article.id) {
+      const remaining = articles.filter((a) => a.id !== article.id);
+      setActiveReferenceId(remaining[0]?.id ?? '');
+    }
+  };
+
   const onNotesChange = useCallback(
     (v: string) => {
       setNotesLocal(v);
@@ -176,7 +195,7 @@ export function Reference({
       setCitationStatus('ok');
       setTimeout(() => setCitationStatus(''), 2500);
     } catch {
-      alert(t('reference.citation_failed'));
+      void appAlert({ message: t('reference.citation_failed') });
     }
   };
 
@@ -317,17 +336,29 @@ export function Reference({
                       : 'bg-white border-transparent hover:border-[#E6E4DF] hover:bg-[#FAF9F6] hover:shadow-sm'
                   }`}
                 >
-                  <div className="flex justify-between items-start mb-1.5">
+                  <div className="flex justify-between items-start mb-1.5 gap-1">
                     <span
-                      className={`${
+                      className={`min-w-0 truncate ${
                         activeReferenceId === article.id ? 'text-[#C2410C]' : 'text-[#8c8a84]'
                       } text-[10px] uppercase tracking-wider font-mono font-bold`}
                     >
                       {article.type}
                     </span>
-                    <span className="text-[#8c8a84] text-[10px]">{article.date}</span>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <span className="text-[#8c8a84] text-[10px]">{article.date}</span>
+                      <button
+                        type="button"
+                        data-testid={`reference-delete-${article.id}`}
+                        title={t('reference.delete_article')}
+                        aria-label={t('reference.delete_article')}
+                        onClick={(e) => void handleDeleteArticle(article, e)}
+                        className="rounded p-0.5 text-[#8c8a84] opacity-0 transition-all hover:bg-[#EAE7E2] hover:text-[#C2410C] group-hover:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#C2410C]/40"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                      </button>
+                    </div>
                   </div>
-                  <h3 className="font-bold text-sm leading-tight mb-1 font-serif pr-2 text-[#1a1a1a]">
+                  <h3 className="font-bold text-sm leading-tight mb-1 font-serif pr-6 text-[#1a1a1a]">
                     {article.title}
                   </h3>
                   <p className="text-[#5a5a54] text-xs font-sans truncate">

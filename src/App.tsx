@@ -33,6 +33,7 @@ import { useFullscreen } from './hooks/useFullscreen';
 import { useCanvasInteraction } from './hooks/useCanvasInteraction';
 import { useNodeActions } from './hooks/useNodeActions';
 import { useAiActions } from './hooks/useAiActions';
+import { useAppDialog } from './components/AppDialogProvider';
 import { processFileToNode } from './utils/file';
 import { dataTransferHasFiles, preventDefaultIfFileDrag } from './utils/dnd';
 import {
@@ -60,6 +61,7 @@ function migrateStoredAiConfig(raw: unknown): AIConfig | null {
 }
 export default function App() {
   const { t, i18n } = useTranslation();
+  const { alert: appAlert } = useAppDialog();
   const nodesRef = useRef<Record<string, HTMLElement | null>>({});
   const svgRef = useRef<SVGSVGElement>(null);
   const edgeLabelsRef = useRef<HTMLDivElement>(null);
@@ -293,7 +295,7 @@ export default function App() {
       return;
     }
 
-    alert(t('nodes.agent_no_context'));
+    void appAlert({ message: t('nodes.agent_no_context') });
   };
 
   const handleNodeDragEnd = (draggedId: string, finalPos: {x: number, y: number}) => {

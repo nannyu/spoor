@@ -5,6 +5,13 @@ import { agentDefaultsEn, agentDefaultsZh } from './i18n/agentDefaultsContent';
 const resources = {
   en: {
     translation: {
+      "dialog": {
+        "confirm_title": "Please confirm",
+        "alert_title": "Notice",
+        "confirm": "Confirm",
+        "cancel": "Cancel",
+        "ok": "OK"
+      },
       "app": {
         "name": "The Memory Architect",
         "description": "Spatial Thinking & Knowledge Synthesis"
@@ -222,6 +229,8 @@ const resources = {
         "private_notes": "Private Notes",
         "notes_placeholder": "Add your own notes to this reference...",
         "add_article": "New reference",
+        "delete_article": "Delete reference",
+        "delete_confirm": "Delete “{{title}}” from the archive? This cannot be undone.",
         "new_article_title": "Untitled reference",
         "empty_library": "No references yet. Use + to add one.",
         "empty_document": "Select or create a reference.",
@@ -298,6 +307,13 @@ const resources = {
   },
   zh: {
     translation: {
+      "dialog": {
+        "confirm_title": "请确认",
+        "alert_title": "提示",
+        "confirm": "确定",
+        "cancel": "取消",
+        "ok": "知道了"
+      },
       "app": {
         "name": "记忆建筑师",
         "description": "空间思维与知识合成"
@@ -515,6 +531,8 @@ const resources = {
         "private_notes": "私密笔记",
         "notes_placeholder": "为此参考文献添加您自己的笔记...",
         "add_article": "新建文献",
+        "delete_article": "删除文献",
+        "delete_confirm": "确定从档案中删除「{{title}}」吗？此操作无法撤销。",
         "new_article_title": "未命名文献",
         "empty_library": "暂无文献。点击 + 添加。",
         "empty_document": "请选择或新建一条文献。",

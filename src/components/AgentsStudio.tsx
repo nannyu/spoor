@@ -28,6 +28,7 @@ import {
   AGENT_KNOWLEDGE_MAX_FILE_BYTES,
   isAgentMarkdownFilename,
 } from '../utils/agentMarkdownKnowledge';
+import { useAppDialog } from './AppDialogProvider';
 
 type SandboxChatMessage = { role: 'user' | 'model'; text: string };
 
@@ -53,6 +54,7 @@ export interface AgentsStudioProps {
 
 export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }: AgentsStudioProps) {
   const { t } = useTranslation();
+  const { confirm, alert: appAlert } = useAppDialog();
   const [activeAgentId, setActiveAgentId] = useState<string | null>(agentConfigs[0]?.id || null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isEnhancing, setIsEnhancing] = useState(false);
@@ -158,7 +160,7 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
     }
 
     if (errors.length) {
-      alert(errors.join('\n'));
+      void appAlert({ message: errors.join('\n') });
     }
     if (merged.size > 0) {
       setActiveAgentKnowledgeFiles(Array.from(merged.values()));
@@ -193,7 +195,9 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
     } catch (error) {
       const msg = formatAiError(error);
       console.error('[Scribe AI] enhance prompt failed', msg);
-      alert(`增强提示词失败\n\n${msg}\n\nF12 → Console 查看 [Scribe AI] 日志。`);
+      void appAlert({
+        message: `增强提示词失败\n\n${msg}\n\nF12 → Console 查看 [Scribe AI] 日志。`,
+      });
     } finally {
       setIsEnhancing(false);
     }
@@ -261,7 +265,8 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
 
   const handleClearSandboxChat = async () => {
     if (!activeAgentId || sandboxMessages.length === 0) return;
-    if (!window.confirm(t('agents.sandbox_clear_confirm'))) return;
+    const ok = await confirm({ message: t('agents.sandbox_clear_confirm'), variant: 'danger' });
+    if (!ok) return;
     setSandboxMessages([]);
     try {
       await db.agentSandboxThreads.delete(activeAgentId);
@@ -271,7 +276,8 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm(t('agents.delete_confirm'))) return;
+    const ok = await confirm({ message: t('agents.delete_confirm'), variant: 'danger' });
+    if (!ok) return;
     const newConfigs = agentConfigs.filter((a) => a.id !== id);
     await setAgentConfigs(newConfigs);
     try {

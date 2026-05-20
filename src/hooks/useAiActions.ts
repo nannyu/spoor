@@ -19,6 +19,7 @@ import {
 import { getCanvasNodeContextText } from '../utils/canvasNodeContextText';
 import { parsePublishArticleResponse } from '../utils/parsePublishArticleResponse';
 import { db } from '../db';
+import { useAppDialog } from '../components/AppDialogProvider';
 
 interface UseAiActionsParams {
   aiConfig: AIConfig;
@@ -48,6 +49,7 @@ export function useAiActions({
   setActiveTab,
 }: UseAiActionsParams) {
   const { t } = useTranslation();
+  const { alert: appAlert } = useAppDialog();
   const [isPublishing, setIsPublishing] = useState(false);
   const [isToolbarAiLoading, setIsToolbarAiLoading] = useState(false);
   const [analyzingAgentNodeId, setAnalyzingAgentNodeId] = useState<string | null>(null);
@@ -110,7 +112,9 @@ export function useAiActions({
     } catch (e) {
       const msg = formatAiError(e);
       console.error('[Scribe AI] handlePublish failed', { error: msg, provider: aiConfig.provider, model: aiConfig.model, apiKey: maskApiKeyForLog(aiConfig.apiKey) });
-      alert(`合成失败\n\n${msg}\n\n打开开发者工具 (F12) → Console 查看 [Scribe AI] 日志。`);
+      void appAlert({
+        message: `合成失败\n\n${msg}\n\n打开开发者工具 (F12) → Console 查看 [Scribe AI] 日志。`,
+      });
     } finally {
       setIsPublishing(false);
     }
@@ -164,7 +168,9 @@ export function useAiActions({
     } catch (e) {
       const msg = formatAiError(e);
       console.error('[Scribe AI] triggerAgentAnalysis failed', { error: msg, provider: aiConfig.provider, model: aiConfig.model, apiKey: maskApiKeyForLog(aiConfig.apiKey) });
-      alert(`AI 生成失败\n\n${msg}\n\n打开开发者工具 (F12) → Console 查看 [Scribe AI] 详细日志。`);
+      void appAlert({
+        message: `AI 生成失败\n\n${msg}\n\n打开开发者工具 (F12) → Console 查看 [Scribe AI] 详细日志。`,
+      });
     } finally {
       setAnalyzingAgentNodeId(null);
     }
@@ -227,7 +233,9 @@ export function useAiActions({
       } catch (error) {
         const msg = formatAiError(error);
         console.error('[Scribe AI] handleAiSubmit failed', { error: msg, provider: aiConfig.provider, model: aiConfig.model, apiKey: maskApiKeyForLog(aiConfig.apiKey) });
-        alert(`AI 生成失败\n\n${msg}\n\n请检查：1) 设置中 Provider / MiMo Key / Base URL（需含 /v1） 2) 若用浏览器，需 npm run dev 且已重启（/api/mimo 代理）；桌面端用 Tauri 可不依赖代理。\n\nF12 → Console 查看 [Scribe AI] 日志。`);
+        void appAlert({
+          message: `AI 生成失败\n\n${msg}\n\n请检查：1) 设置中 Provider / MiMo Key / Base URL（需含 /v1） 2) 若用浏览器，需 npm run dev 且已重启（/api/mimo 代理）；桌面端用 Tauri 可不依赖代理。\n\nF12 → Console 查看 [Scribe AI] 日志。`,
+        });
       } finally {
         setIsToolbarAiLoading(false);
       }
@@ -275,7 +283,9 @@ export function useAiActions({
     } catch (error) {
       const msg = formatAiError(error);
       console.error('[Scribe AI] handleAiSubmit after intent clarify failed', { error: msg, provider: aiConfig.provider, model: aiConfig.model, apiKey: maskApiKeyForLog(aiConfig.apiKey) });
-      alert(`AI 生成失败\n\n${msg}\n\n请检查：1) 设置中 Provider / MiMo Key / Base URL（需含 /v1） 2) 若用浏览器，需 npm run dev 且已重启（/api/mimo 代理）；桌面端用 Tauri 可不依赖代理。\n\nF12 → Console 查看 [Scribe AI] 日志。`);
+      void appAlert({
+        message: `AI 生成失败\n\n${msg}\n\n请检查：1) 设置中 Provider / MiMo Key / Base URL（需含 /v1） 2) 若用浏览器，需 npm run dev 且已重启（/api/mimo 代理）；桌面端用 Tauri 可不依赖代理。\n\nF12 → Console 查看 [Scribe AI] 日志。`,
+      });
     } finally {
       setIsToolbarAiLoading(false);
     }
@@ -295,7 +305,7 @@ export function useAiActions({
     if (searchIntent) {
       const key = (aiConfig.metasoApiKey || '').trim();
       if (!key) {
-        alert(t('nodes.search_no_metaso_key'));
+        void appAlert({ message: t('nodes.search_no_metaso_key') });
         return;
       }
 
@@ -303,7 +313,7 @@ export function useAiActions({
         searchIntent.explicitQuery ||
         deriveSearchQueryFromNoteText(previous.replace(/#{1,6}\s+/g, ''));
       if (!query) {
-        alert(t('nodes.search_need_text'));
+        void appAlert({ message: t('nodes.search_need_text') });
         return;
       }
 
@@ -313,7 +323,7 @@ export function useAiActions({
         const res = await metasoSearch(query, { apiKey: key });
         const pages = res.webpages ?? [];
         if (pages.length === 0) {
-          alert(t('nodes.search_no_results'));
+          void appAlert({ message: t('nodes.search_no_results') });
           return;
         }
 
@@ -355,7 +365,7 @@ export function useAiActions({
         console.error('[Scribe AI] thread web search failed', {
           error: msg,
         });
-        alert(`${t('nodes.search_failed')}\n\n${msg}`);
+        void appAlert({ message: `${t('nodes.search_failed')}\n\n${msg}` });
       } finally {
         followUpGuardRef.current = false;
         setFollowUpParentId(null);
@@ -459,7 +469,9 @@ export function useAiActions({
         model: aiConfig.model,
         apiKey: maskApiKeyForLog(aiConfig.apiKey),
       });
-      alert(`AI 生成失败\n\n${msg}\n\n打开开发者工具 (F12) → Console 查看 [Scribe AI] 详细日志。`);
+      void appAlert({
+        message: `AI 生成失败\n\n${msg}\n\n打开开发者工具 (F12) → Console 查看 [Scribe AI] 详细日志。`,
+      });
     } finally {
       followUpGuardRef.current = false;
       setFollowUpParentId(null);

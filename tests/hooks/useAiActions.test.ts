@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, screen } from '@testing-library/react';
 import { useRef, useState } from 'react';
 import { useAiActions } from '../../src/hooks/useAiActions';
 import { db } from '../../src/db';
@@ -610,7 +610,6 @@ describe('useAiActions', () => {
 
     it('无秘塔 Key 时不调用检索', async () => {
       await db.nodes.add({ ...parentCard });
-      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
       const { result } = renderHook(() =>
         useTestAiActions({
@@ -624,8 +623,7 @@ describe('useAiActions', () => {
       });
 
       expect(metasoSearch).not.toHaveBeenCalled();
-      expect(alertSpy).toHaveBeenCalled();
-      alertSpy.mockRestore();
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
 
     it('AI 失败时不标记 followUpSent', async () => {

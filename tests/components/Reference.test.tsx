@@ -5,6 +5,7 @@ import React from 'react';
 import { Reference } from '../../src/components/Reference';
 import { db } from '../../src/db';
 import type { Article } from '../../src/db';
+import { withAppDialogProvider } from '../testUtils';
 
 vi.mock('react-i18next', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-i18next')>();
@@ -35,7 +36,7 @@ vi.mock('remark-breaks', () => ({ default: () => null }));
 
 vi.mock('lucide-react', () => {
   const iconNames = [
-    'Library', 'Plus', 'Search', 'ChevronLeft', 'Minimize2', 'Maximize2', 'Link2', 'BookOpen', 'X',
+    'Library', 'Plus', 'Search', 'ChevronLeft', 'Minimize2', 'Maximize2', 'Link2', 'BookOpen', 'X', 'Trash2',
   ];
   const icons: Record<string, React.FC> = {};
   for (const name of iconNames) {
@@ -66,6 +67,11 @@ const articleB: Article = {
   category: 'journal',
 };
 
+const renderReference = (
+  ui: React.ReactElement,
+  options?: Parameters<typeof render>[1],
+) => render(withAppDialogProvider(ui), options);
+
 describe('Reference', () => {
   beforeEach(async () => {
     await db.articles.clear();
@@ -82,7 +88,7 @@ describe('Reference', () => {
     await db.articles.bulkAdd([articleA, articleB]);
     const setId = vi.fn();
 
-    render(
+    renderReference(
       <Reference articles={[articleA, articleB]} activeReferenceId="a-alpha" setActiveReferenceId={setId} />,
     );
 
@@ -103,7 +109,7 @@ describe('Reference', () => {
     const setId = vi.fn();
     await db.articles.add(articleA);
 
-    render(<Reference articles={[articleA]} activeReferenceId="a-alpha" setActiveReferenceId={setId} />);
+    renderReference(<Reference articles={[articleA]} activeReferenceId="a-alpha" setActiveReferenceId={setId} />);
 
     const addBtn = screen.getByRole('button', { name: 'reference.add_article' });
     await user.click(addBtn);
@@ -128,7 +134,7 @@ describe('Reference', () => {
     const withAuthor = { ...articleA, author: 'Jane' };
     await db.articles.add(withAuthor);
 
-    render(<Reference articles={[withAuthor]} activeReferenceId="a-alpha" setActiveReferenceId={vi.fn()} />);
+    renderReference(<Reference articles={[withAuthor]} activeReferenceId="a-alpha" setActiveReferenceId={vi.fn()} />);
 
     await user.click(screen.getByRole('button', { name: 'reference.citation' }));
 
@@ -153,7 +159,7 @@ describe('Reference', () => {
     };
     const onOpen = vi.fn();
 
-    render(
+    renderReference(
       <Reference articles={[linked]} activeReferenceId="a-alpha" setActiveReferenceId={vi.fn()} onOpenCanvas={onOpen} />,
     );
 
@@ -172,7 +178,7 @@ describe('Reference', () => {
 
     await db.articles.add(articleA);
 
-    render(<Reference articles={[articleA]} activeReferenceId="a-alpha" setActiveReferenceId={vi.fn()} />);
+    renderReference(<Reference articles={[articleA]} activeReferenceId="a-alpha" setActiveReferenceId={vi.fn()} />);
 
     await user.clear(screen.getByTestId('reference-meta-author'));
     await user.type(screen.getByTestId('reference-meta-author'), 'Draft Author');
@@ -192,7 +198,7 @@ describe('Reference', () => {
     const user = userEvent.setup();
     await db.articles.add(articleA);
 
-    render(<Reference articles={[articleA]} activeReferenceId="a-alpha" setActiveReferenceId={vi.fn()} />);
+    renderReference(<Reference articles={[articleA]} activeReferenceId="a-alpha" setActiveReferenceId={vi.fn()} />);
 
     await user.clear(screen.getByTestId('reference-meta-author'));
     await user.type(screen.getByTestId('reference-meta-author'), 'Debounced Name');
@@ -211,7 +217,7 @@ describe('Reference', () => {
       ...articleA,
       content: '## 用不确定性交换可能性\n\n段落正文。',
     };
-    render(
+    renderReference(
       <Reference articles={[withMd]} activeReferenceId="a-alpha" setActiveReferenceId={vi.fn()} />,
     );
     expect(screen.getByRole('heading', { level: 2, name: '用不确定性交换可能性' })).toBeInTheDocument();
@@ -226,7 +232,7 @@ describe('Reference', () => {
     };
     await db.articles.add(withHeadings);
 
-    render(
+    renderReference(
       <Reference articles={[withHeadings]} activeReferenceId="a-alpha" setActiveReferenceId={vi.fn()} />,
     );
 
@@ -235,12 +241,44 @@ describe('Reference', () => {
     expect(screen.getByRole('button', { name: 'Section Two' })).toBeInTheDocument();
   });
 
+  it('侧栏删除按钮经确认后从 IndexedDB 移除文献', async () => {
+    const user = userEvent.setup();
+    await db.articles.bulkAdd([articleA, articleB]);
+    const setId = vi.fn();
+
+    renderReference(
+      <Reference articles={[articleA, articleB]} activeReferenceId="a-alpha" setActiveReferenceId={setId} />,
+    );
+
+    await user.click(screen.getByTestId('reference-delete-a-alpha'));
+    await user.click(screen.getByRole('button', { name: 'dialog.confirm' }));
+
+    await waitFor(async () => {
+      expect(await db.articles.count()).toBe(1);
+    });
+    expect((await db.articles.get('b-beta'))).toBeDefined();
+    expect(setId).toHaveBeenCalledWith('b-beta');
+  });
+
+  it('取消删除确认时不移除文献', async () => {
+    const user = userEvent.setup();
+    await db.articles.add(articleA);
+
+    renderReference(
+      <Reference articles={[articleA]} activeReferenceId="a-alpha" setActiveReferenceId={vi.fn()} />,
+    );
+
+    await user.click(screen.getByTestId('reference-delete-a-alpha'));
+    await user.click(screen.getByRole('button', { name: 'dialog.cancel' }));
+    expect(await db.articles.count()).toBe(1);
+  });
+
   it('分类筛选为 map 时隐藏非 map 文献卡片', async () => {
     const user = userEvent.setup();
     const mapArt: Article = { ...articleB, id: 'm1', category: 'map', title: 'Map Doc' };
     await db.articles.bulkAdd([articleA, mapArt]);
 
-    render(<Reference articles={[articleA, mapArt]} activeReferenceId="m1" setActiveReferenceId={vi.fn()} />);
+    renderReference(<Reference articles={[articleA, mapArt]} activeReferenceId="m1" setActiveReferenceId={vi.fn()} />);
 
     const mapPill = screen.getByRole('button', { name: 'reference.filter_map' });
     await user.click(mapPill);

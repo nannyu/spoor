@@ -148,6 +148,7 @@ describe('AgentsStudio 沙盒', () => {
 
     const clearBtn = screen.getByLabelText('agents.sandbox_clear_aria');
     await user.click(clearBtn);
+    await user.click(screen.getByRole('button', { name: 'dialog.confirm' }));
 
     await waitFor(() => {
       expect(screen.queryByText('To clear')).not.toBeInTheDocument();

@@ -154,64 +154,61 @@ describe('ResearchLab', () => {
   });
 
   it('deletes a session from IndexedDB after confirm', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-    try {
-      const callAI = vi.fn();
-      await db.researchSessions.add({
-        id: 'sess-del',
-        query: 'To delete',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        researchPlan: [{ title: 'S', desc: 'D' }],
-        researchReport: { intro: 'I', points: [], conclusion: 'C' },
-        sourceCount: 0,
-        searchStatus: 'idle',
-      });
+    const callAI = vi.fn();
+    await db.researchSessions.add({
+      id: 'sess-del',
+      query: 'To delete',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      researchPlan: [{ title: 'S', desc: 'D' }],
+      researchReport: { intro: 'I', points: [], conclusion: 'C' },
+      sourceCount: 0,
+      searchStatus: 'idle',
+    });
 
-      render(<ResearchLab aiConfig={baseConfig} callAI={callAI} />);
+    render(<ResearchLab aiConfig={baseConfig} callAI={callAI} />);
 
-      await waitFor(() => {
-        expect(screen.getByTestId('research-session-delete-sess-del')).toBeTruthy();
-      });
+    await waitFor(() => {
+      expect(screen.getByTestId('research-session-delete-sess-del')).toBeTruthy();
+    });
 
-      fireEvent.click(screen.getByTestId('research-session-delete-sess-del'));
+    fireEvent.click(screen.getByTestId('research-session-delete-sess-del'));
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'dialog.confirm' }));
 
-      await waitFor(async () => {
-        expect(await db.researchSessions.count()).toBe(0);
-      });
-      expect(confirmSpy).toHaveBeenCalled();
-    } finally {
-      confirmSpy.mockRestore();
-    }
+    await waitFor(async () => {
+      expect(await db.researchSessions.count()).toBe(0);
+    });
   });
 
   it('does not delete a session when confirm is dismissed', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
-    try {
-      const callAI = vi.fn();
-      await db.researchSessions.add({
-        id: 'sess-keep',
-        query: 'Keep me',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        researchPlan: [{ title: 'S', desc: 'D' }],
-        researchReport: { intro: 'I', points: [], conclusion: 'C' },
-        sourceCount: 0,
-        searchStatus: 'idle',
-      });
+    const callAI = vi.fn();
+    await db.researchSessions.add({
+      id: 'sess-keep',
+      query: 'Keep me',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      researchPlan: [{ title: 'S', desc: 'D' }],
+      researchReport: { intro: 'I', points: [], conclusion: 'C' },
+      sourceCount: 0,
+      searchStatus: 'idle',
+    });
 
-      render(<ResearchLab aiConfig={baseConfig} callAI={callAI} />);
+    render(<ResearchLab aiConfig={baseConfig} callAI={callAI} />);
 
-      await waitFor(() => {
-        expect(screen.getByTestId('research-session-delete-sess-keep')).toBeTruthy();
-      });
+    await waitFor(() => {
+      expect(screen.getByTestId('research-session-delete-sess-keep')).toBeTruthy();
+    });
 
-      fireEvent.click(screen.getByTestId('research-session-delete-sess-keep'));
+    fireEvent.click(screen.getByTestId('research-session-delete-sess-keep'));
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'dialog.cancel' }));
 
-      expect(await db.researchSessions.count()).toBe(1);
-    } finally {
-      confirmSpy.mockRestore();
-    }
+    expect(await db.researchSessions.count()).toBe(1);
   });
 
   it('calls callAI without search context when no metasoApiKey', async () => {
