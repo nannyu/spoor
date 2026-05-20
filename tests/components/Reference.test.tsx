@@ -17,6 +17,22 @@ vi.mock('react-i18next', async (importOriginal) => {
   };
 });
 
+vi.mock('react-markdown', () => ({
+  default: ({ children }: { children: string }) => {
+    const { createElement, Fragment } = require('react');
+    const text = String(children ?? '');
+    const nodes = text.split('\n').map((line: string, i: number) => {
+      const h2 = line.match(/^##\s+(.+)$/);
+      if (h2) return createElement('h2', { key: i }, h2[1]);
+      if (line.trim()) return createElement('p', { key: i }, line);
+      return null;
+    });
+    return createElement('div', { 'data-testid': 'reference-markdown' }, createElement(Fragment, null, ...nodes));
+  },
+}));
+
+vi.mock('remark-breaks', () => ({ default: () => null }));
+
 vi.mock('lucide-react', () => {
   const iconNames = [
     'Library', 'Plus', 'Search', 'ChevronLeft', 'Minimize2', 'Maximize2', 'Link2', 'BookOpen', 'X',
@@ -188,6 +204,18 @@ describe('Reference', () => {
       },
       { timeout: 3000 },
     );
+  });
+
+  it('正文以 Markdown 预览渲染（不裸露 ## 符号）', () => {
+    const withMd: Article = {
+      ...articleA,
+      content: '## 用不确定性交换可能性\n\n段落正文。',
+    };
+    render(
+      <Reference articles={[withMd]} activeReferenceId="a-alpha" setActiveReferenceId={vi.fn()} />,
+    );
+    expect(screen.getByRole('heading', { level: 2, name: '用不确定性交换可能性' })).toBeInTheDocument();
+    expect(screen.getByText('段落正文。')).toBeInTheDocument();
   });
 
   it('含 Markdown 标题的正文显示目录并可点击', async () => {

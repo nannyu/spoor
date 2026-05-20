@@ -11,8 +11,15 @@ function stableMockFn<T extends (...args: any[]) => any>(): T {
   return useRef(vi.fn()).current as T;
 }
 
+const publishJsonResponse = vi.hoisted(() =>
+  JSON.stringify({
+    title: 'Synthesized Title',
+    body: '## Section\n\nParagraph one.',
+  }),
+);
+
 vi.mock('../../src/services/ai', () => ({
-  callUniversalAI: vi.fn().mockResolvedValue('AI generated text'),
+  callUniversalAI: vi.fn().mockResolvedValue(publishJsonResponse),
   formatAiError: (e: unknown) => (e instanceof Error ? e.message : String(e)),
   maskApiKeyForLog: (k: string) => (k ? `${k.slice(0, 2)}…` : ''),
 }));
@@ -121,6 +128,8 @@ describe('useAiActions', () => {
         result.current.nodesRef.current.n1 = el;
       });
 
+      vi.mocked(callUniversalAI).mockResolvedValueOnce(publishJsonResponse);
+
       await act(async () => {
         await result.current.handlePublish();
       });
@@ -131,7 +140,8 @@ describe('useAiActions', () => {
 
       const rows = await db.articles.toArray();
       expect(rows).toHaveLength(1);
-      expect(rows[0].content).toBe('AI generated text');
+      expect(rows[0].title).toBe('Synthesized Title');
+      expect(rows[0].content).toContain('## Section');
       expect(rows[0].category).toBe('journal');
       expect(rows[0].tags).toEqual([]);
       expect(rows[0].linkedCanvasIds).toEqual([]);

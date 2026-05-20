@@ -1,6 +1,8 @@
 import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLiveQuery } from 'dexie-react-hooks';
+import Markdown from 'react-markdown';
+import remarkBreaks from 'remark-breaks';
 import {
   Library,
   Plus,
@@ -15,6 +17,9 @@ import {
 import { db } from '../db';
 import type { Article, ArticleCategory } from '../db';
 import { isContentBlurPersistenceDisabled } from '../config/persistence';
+import { extractToc, slugifyHeading } from '../utils/referenceToc';
+
+const REFERENCE_MARKDOWN_PLUGINS = [remarkBreaks];
 
 function articleCategory(a: Article): ArticleCategory {
   return a.category ?? 'journal';
@@ -42,19 +47,6 @@ export interface ReferenceProps {
 
 type FilterKey = 'all' | ArticleCategory;
 
-function extractToc(content: string): { level: number; text: string; blockIndex: number }[] {
-  const blocks = content.split(/\n\n/);
-  const out: { level: number; text: string; blockIndex: number }[] = [];
-  blocks.forEach((block, i) => {
-    const firstLine = (block.split('\n')[0] ?? '').trim();
-    const m = firstLine.match(/^(#{1,3})\s+(.+)$/);
-    if (m) {
-      out.push({ level: m[1].length, text: m[2].trim(), blockIndex: i });
-    }
-  });
-  return out;
-}
-
 export function Reference({
   articles,
   activeReferenceId,
@@ -72,6 +64,7 @@ export function Reference({
   const [tagInput, setTagInput] = useState('');
   const [linkSelect, setLinkSelect] = useState('');
   const [contentsOpen, setContentsOpen] = useState(false);
+  const [isEditingBody, setIsEditingBody] = useState(false);
   const [citationStatus, setCitationStatus] = useState('');
   /** 正文区作者 / 日期：本地草稿，避免 IndexedDB 回写节流时控件「弹回」或与 flex 挤压导致难以点击 */
   const [draftAuthor, setDraftAuthor] = useState('');
@@ -96,6 +89,7 @@ export function Reference({
   }, [articles, activeReferenceId]);
 
   useEffect(() => {
+    setIsEditingBody(false);
     setNotesLocal(activeArticle?.privateNotes ?? '');
     setDraftAuthor(activeArticle?.author ?? '');
     setDraftDateField(activeArticle?.date ?? '');
@@ -165,8 +159,8 @@ export function Reference({
 
   const toc = useMemo(() => (activeArticle ? extractToc(activeArticle.content) : []), [activeArticle]);
 
-  const scrollToBlock = (blockIndex: number) => {
-    const el = document.getElementById(`ref-para-${activeArticle?.id}-${blockIndex}`);
+  const scrollToHeading = (slug: string) => {
+    const el = document.getElementById(`ref-heading-${activeArticle?.id}-${slug}`);
     el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     setContentsOpen(false);
   };
@@ -236,11 +230,37 @@ export function Reference({
   const linkedIds = activeArticle?.linkedCanvasIds ?? [];
   const linkableCanvases = canvases.filter((c) => !linkedIds.includes(c.id));
 
-  const contentBlocks = activeArticle?.content?.length
-    ? activeArticle.content.split(/\n\n/)
-    : activeArticle
-      ? ['']
-      : [];
+  const markdownHeadingId = (slug: string) =>
+    activeArticle ? `ref-heading-${activeArticle.id}-${slug}` : undefined;
+
+  const markdownComponents = useMemo(() => {
+    if (!activeArticle) return undefined;
+    const mk =
+      (Tag: 'h1' | 'h2' | 'h3') =>
+      ({ children }: { children?: React.ReactNode }) => {
+        const text = String(children ?? '').trim();
+        const slug = slugifyHeading(text);
+        const levelClass =
+          Tag === 'h1'
+            ? 'text-2xl font-bold mt-8 mb-4'
+            : Tag === 'h2'
+              ? 'text-xl font-bold mt-6 mb-3'
+              : 'text-lg font-semibold mt-4 mb-2';
+        return (
+          <Tag id={markdownHeadingId(slug)} className={`scroll-mt-24 ${levelClass}`}>
+            {children}
+          </Tag>
+        );
+      };
+    return {
+      h1: mk('h1'),
+      h2: mk('h2'),
+      h3: mk('h3'),
+      p: ({ children }: { children?: React.ReactNode }) => (
+        <p className="mb-4 last:mb-0">{children}</p>
+      ),
+    };
+  }, [activeArticle?.id]);
 
   return (
     <div className="flex-1 flex min-h-0 bg-[#FAF9F6] paper-texture overflow-hidden">
@@ -357,9 +377,9 @@ export function Reference({
                   ) : (
                     toc.map((item, idx) => (
                       <button
-                        key={`${item.blockIndex}-${idx}`}
+                        key={`${item.slug}-${idx}`}
                         type="button"
-                        onClick={() => scrollToBlock(item.blockIndex)}
+                        onClick={() => scrollToHeading(item.slug)}
                         className="w-full text-left px-3 py-1.5 text-[11px] text-[#1a1a1a] hover:bg-[#F4F1ED]"
                         style={{ paddingLeft: `${8 + (item.level - 1) * 10}px` }}
                       >
@@ -477,28 +497,33 @@ export function Reference({
                 </div>
               </div>
 
-              <div className="font-serif text-lg leading-relaxed text-[#1a1a1a] space-y-6">
-                {contentBlocks.map((paragraph, i) => (
-                  <p
-                    key={i}
-                    id={`ref-para-${activeArticle.id}-${i}`}
-                    className="focus:outline-none hover:bg-[#EAE7E2]/50 focus:bg-[#EAE7E2]/50 rounded px-2 -mx-2 transition-colors cursor-text scroll-mt-24"
+              <div className="font-serif text-lg leading-relaxed text-[#1a1a1a]">
+                {isEditingBody ? (
+                  <div
+                    className="min-h-[12rem] whitespace-pre-wrap focus:outline-none hover:bg-[#EAE7E2]/50 focus:bg-[#EAE7E2]/50 rounded px-2 -mx-2 transition-colors cursor-text"
                     contentEditable
                     suppressContentEditableWarning
                     onBlur={(e) => {
-                      if (isContentBlurPersistenceDisabled()) return;
-                      const paragraphs = activeArticle.content.length
-                        ? activeArticle.content.split(/\n\n/)
-                        : [''];
-                      if (i >= paragraphs.length) return;
-                      const next = [...paragraphs];
-                      next[i] = e.currentTarget.innerText;
-                      void db.articles.update(activeArticle.id, { content: next.join('\n\n') });
+                      if (!isContentBlurPersistenceDisabled()) {
+                        void db.articles.update(activeArticle.id, {
+                          content: e.currentTarget.innerText,
+                        });
+                      }
+                      setIsEditingBody(false);
                     }}
                   >
-                    {paragraph}
-                  </p>
-                ))}
+                    {activeArticle.content}
+                  </div>
+                ) : (
+                  <div
+                    className="markdown-body min-h-[12rem] cursor-text rounded px-2 -mx-2 transition-colors hover:bg-[#EAE7E2]/30"
+                    onClick={() => setIsEditingBody(true)}
+                  >
+                    <Markdown remarkPlugins={REFERENCE_MARKDOWN_PLUGINS} components={markdownComponents}>
+                      {activeArticle.content || `_${t('reference.empty_body')}_`}
+                    </Markdown>
+                  </div>
+                )}
               </div>
             </div>
           </div>

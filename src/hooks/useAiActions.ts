@@ -17,6 +17,7 @@ import {
   resolveImageDataUrlsFromNodeIds,
 } from '../utils/canvasContextImages';
 import { getCanvasNodeContextText } from '../utils/canvasNodeContextText';
+import { parsePublishArticleResponse } from '../utils/parsePublishArticleResponse';
 import { db } from '../db';
 
 interface UseAiActionsParams {
@@ -88,10 +89,12 @@ export function useAiActions({
         prompt: t('ai.prompts.publish', { content: combinedText }),
       });
 
+      const { title, body } = parsePublishArticleResponse(text || '', t('ai.generated_article_title'));
+
       const newArticle = {
         id: `gen-${Date.now()}`,
-        title: t('ai.generated_article_title'),
-        content: text || '',
+        title,
+        content: body,
         date: new Date().getFullYear().toString(),
         type: 'GEN-' + Math.floor(Math.random() * 1000),
         category: 'journal' as const,

@@ -15,13 +15,20 @@
 | **触发** | 侧边栏「合成」/`handlePublish`，需选中若干节点 |
 | **代码** | `src/hooks/useAiActions.ts` → `handlePublish` |
 | **系统提示词** | [`getLocaleDirective()`](src/utils/aiI18n.ts)（界面语言：`localeDirective`） |
-| **用户提示词** | `ai.prompts.publish`（中英文资源）+ `{{content}}` 所选节点文本： |
+| **用户提示词** | `ai.prompts.publish`（中英文资源）+ `{{content}}` 所选节点文本 |
+| **模型输出** | **仅 JSON**：`{"title":"…","body":"…"}`；`body` 为 Markdown（章节用 `##`/`###`，标题字段勿重复成文首 `#`） |
+| **落库** | [`parsePublishArticleResponse`](src/utils/parsePublishArticleResponse.ts) 解析；失败时回退默认标题 `ai.generated_article_title` + 全文作 `body` |
+| **长文展示** | [`Reference`](src/components/Reference.tsx) 用 `react-markdown` 渲染 `body`；点击正文进入 Markdown 源码编辑 |
 
 英文结构示例：
 
 ```
-Turn the following concepts, notes, and drafts into a cohesive, well-written article:
+Turn the following concepts, notes, and drafts into a cohesive, well-written article.
 
+Return ONLY valid JSON:
+{"title": "…", "body": "Markdown…"}
+
+Source material:
 {各节点 innerText，以双换行连接}
 ```
 

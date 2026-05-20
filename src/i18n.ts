@@ -149,7 +149,7 @@ const resources = {
         },
         "prompts": {
           "localeDirective": "Always reply entirely in English for this session, unless the user explicitly asks for another language.",
-          "publish": "Turn the following concepts, notes, and drafts into a cohesive, well-written article:\n\n{{content}}",
+          "publish": "Turn the following concepts, notes, and drafts into a cohesive, well-written article.\n\nReturn ONLY valid JSON (no markdown code fences, no extra commentary):\n{\"title\": \"A specific, readable article title\", \"body\": \"Full article in Markdown. Use ## and ### for section headings (do not repeat the title as # at the top). Use blank lines between paragraphs.\"}\n\nSource material:\n\n{{content}}",
           "agentContext": "Context to analyze:\n{{content}}",
           "toolbarBarePersona": "You are a concise conversational assistant: short, direct answers unless the user asks for more depth.",
           "toolbarWithNotesSystem": "The user selected notes on the canvas whose text is included below. Answer by integrating this material with the user's message: use the excerpts when relevant, note if something is missing, and stay focused on what they asked.",
@@ -234,6 +234,7 @@ const resources = {
         "document_prefix": "Document //",
         "contents": "Contents",
         "contents_empty": "No # headings in this body.",
+        "empty_body": "Empty body. Click to edit.",
         "citation_copied": "Citation copied to clipboard.",
         "citation_failed": "Could not copy. Check your browser permissions.",
         "tag_add_placeholder": "Add tag…",
@@ -441,7 +442,7 @@ const resources = {
         },
         "prompts": {
           "localeDirective": "请始终使用简体中文回复，除非用户明确要求使用其他语言。",
-          "publish": "请将以下概念、笔记与草稿整合为一篇连贯、文笔流畅的文章：\n\n{{content}}",
+          "publish": "请将以下概念、笔记与草稿整合为一篇连贯、文笔流畅的文章。\n\n只输出合法 JSON（不要 Markdown 代码块、不要额外说明）：\n{\"title\": \"具体、可读的文章标题\", \"body\": \"完整正文，使用 Markdown。章节用 ##、###（不要把标题再写成文首单个 #）。段与段之间空一行。\"}\n\n素材如下：\n\n{{content}}",
           "agentContext": "待分析上下文：\n{{content}}",
           "toolbarBarePersona": "你是一个简明对话助手：回答简短、切题，除非用户明确要求展开。",
           "toolbarWithNotesSystem": "用户勾选后的便签节选已附在下方。请综合这些节选与用户的问题作答：与节选相关处要扣住原文，信息不足时简要说明，并始终围绕用户想问的内容。",
@@ -526,6 +527,7 @@ const resources = {
         "document_prefix": "文献 //",
         "contents": "目录",
         "contents_empty": "正文中没有 # 标题。",
+        "empty_body": "正文为空。点击编辑。",
         "citation_copied": "已复制引用到剪贴板。",
         "citation_failed": "无法复制，请检查浏览器权限。",
         "tag_add_placeholder": "添加标签…",
