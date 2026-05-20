@@ -6,6 +6,8 @@ export interface CanvasNode {
   type: string;
   content?: string;
   description?: string;
+  /** Theme card footer label (editable); default differs by layout when unset/empty */
+  themeTag?: string;
   agentConfigId?: string;
   fileType?: string;
   x: number;

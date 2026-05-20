@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Sparkles, Maximize2 } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { db } from '../../db';
 import type { NodeContentProps } from './types';
 import { isContentBlurPersistenceDisabled } from '../../config/persistence';
@@ -8,6 +8,10 @@ import { CANVAS_NODE_CONTEXT_TEXT_ATTR } from '../../utils/canvasNodeContextText
 
 export function ThemeNode({ node, editingNodeId }: NodeContentProps) {
   const { t } = useTranslation();
+
+  const defaultThemeFooter = node.layout === 3 ? 'LATENT_SPACE' : 'Spatial Encoding';
+  const themeFooterDisplay =
+    node.themeTag !== undefined && node.themeTag.trim() !== '' ? node.themeTag : defaultThemeFooter;
 
   return (
     <div 
@@ -67,12 +71,23 @@ export function ThemeNode({ node, editingNodeId }: NodeContentProps) {
         </p>
       </div>
 
-      <div className={`mt-6 pt-4 flex justify-between items-center ${node.layout === 2 ? 'text-white/30 border-t border-white/10' : 'text-[#8c8a84] border-t border-[#F4F1ED]'}`}>
-        <div className="flex items-center gap-2">
-          <div className={`w-1 h-1 rounded-full ${node.layout === 2 ? 'bg-[#C2410C]' : 'bg-[#C2410C]'}`}></div>
-          <span className="text-[10px] font-sans font-medium uppercase tracking-widest">{node.layout === 3 ? 'LATENT_SPACE' : 'Spatial Encoding'}</span>
+      <div className={`mt-6 pt-4 flex justify-start items-center ${node.layout === 2 ? 'text-white/30 border-t border-white/10' : 'text-[#8c8a84] border-t border-[#F4F1ED]'}`}>
+        <div className="flex items-center gap-2 min-w-0">
+          <div className={`shrink-0 w-1 h-1 rounded-full ${node.layout === 2 ? 'bg-[#C2410C]' : 'bg-[#C2410C]'}`}></div>
+          <span
+            className="text-[10px] font-sans font-medium uppercase tracking-widest focus:outline-none focus:ring-1 focus:ring-[#C2410C]/40 rounded px-0.5 cursor-text truncate min-w-0"
+            contentEditable
+            suppressContentEditableWarning
+            onBlur={(e) => {
+              if (!isContentBlurPersistenceDisabled()) {
+                const next = e.currentTarget.innerText.replace(/\s+/g, ' ').trim();
+                db.nodes.update(node.id, { themeTag: next });
+              }
+            }}
+          >
+            {themeFooterDisplay}
+          </span>
         </div>
-        <button className={`${node.layout === 2 ? 'text-white/40 hover:text-white' : 'text-[#C2410C]'} hover:scale-110 transition-transform`}><Maximize2 className="w-3 h-3" /></button>
       </div>
     </div>
   );

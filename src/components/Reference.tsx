@@ -73,9 +73,14 @@ export function Reference({
   const [linkSelect, setLinkSelect] = useState('');
   const [contentsOpen, setContentsOpen] = useState(false);
   const [citationStatus, setCitationStatus] = useState('');
+  /** 正文区作者 / 日期：本地草稿，避免 IndexedDB 回写节流时控件「弹回」或与 flex 挤压导致难以点击 */
+  const [draftAuthor, setDraftAuthor] = useState('');
+  const [draftDateField, setDraftDateField] = useState('');
 
   const noteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const notesDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const authorMetaDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dateMetaDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const contentsRef = useRef<HTMLDivElement>(null);
 
   const filteredArticles = useMemo(() => {
@@ -92,7 +97,24 @@ export function Reference({
 
   useEffect(() => {
     setNotesLocal(activeArticle?.privateNotes ?? '');
+    setDraftAuthor(activeArticle?.author ?? '');
+    setDraftDateField(activeArticle?.date ?? '');
+    if (authorMetaDebounceRef.current) {
+      clearTimeout(authorMetaDebounceRef.current);
+      authorMetaDebounceRef.current = null;
+    }
+    if (dateMetaDebounceRef.current) {
+      clearTimeout(dateMetaDebounceRef.current);
+      dateMetaDebounceRef.current = null;
+    }
   }, [activeArticle?.id]);
+
+  useEffect(() => {
+    return () => {
+      if (authorMetaDebounceRef.current) clearTimeout(authorMetaDebounceRef.current);
+      if (dateMetaDebounceRef.current) clearTimeout(dateMetaDebounceRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (!contentsOpen) return;
@@ -151,8 +173,10 @@ export function Reference({
 
   const copyCitation = async () => {
     if (!activeArticle) return;
-    const authorPart = activeArticle.author?.trim() ? `${activeArticle.author.trim()}. ` : '';
-    const line = `${authorPart}${activeArticle.title} (${activeArticle.date}). ${activeArticle.type}.`;
+    const authorForCitation = draftAuthor.trim() || activeArticle.author?.trim();
+    const authorPart = authorForCitation ? `${authorForCitation}. ` : '';
+    const dateForCitation = draftDateField.trim() || activeArticle.date;
+    const line = `${authorPart}${activeArticle.title} (${dateForCitation}). ${activeArticle.type}.`;
     try {
       await navigator.clipboard.writeText(line);
       setCitationStatus('ok');
@@ -372,8 +396,8 @@ export function Reference({
             <div className="absolute -top-px -left-px -right-px h-1 bg-[#C2410C]" />
 
             <div className="p-16">
-              <div className="flex justify-between items-end border-b-2 border-[#1a1a1a] pb-6 mb-10">
-                <div>
+              <div className="flex flex-col gap-6 md:flex-row md:items-start md:gap-10 border-b-2 border-[#1a1a1a] pb-6 mb-10">
+                <div className="min-w-0 flex-1 pr-2">
                   <div className="text-[#8c8a84] font-mono text-xs uppercase tracking-widest mb-3 flex flex-wrap items-center gap-x-1">
                     <span>{t('reference.document_prefix')}</span>
                     <input
@@ -384,7 +408,7 @@ export function Reference({
                     />
                   </div>
                   <h1
-                    className="font-serif text-4xl font-bold text-[#1a1a1a] leading-tight max-w-xl focus:outline-none hover:bg-[#EAE7E2]/50 focus:bg-[#EAE7E2]/50 rounded px-2 -mx-2 transition-colors cursor-text"
+                    className="font-serif text-4xl font-bold text-[#1a1a1a] leading-tight max-w-full focus:outline-none hover:bg-[#EAE7E2]/50 focus:bg-[#EAE7E2]/50 rounded px-2 -mx-2 transition-colors cursor-text"
                     contentEditable
                     suppressContentEditableWarning
                     onBlur={(e) => {
@@ -395,24 +419,61 @@ export function Reference({
                     {activeArticle.title}
                   </h1>
                 </div>
-                <div className="text-right text-xs font-sans text-[#5a5a54] space-y-1">
-                  <p>
-                    <strong>{t('reference.author_label')}:</strong>{' '}
+                <div className="flex shrink-0 w-full flex-col gap-3 text-xs font-sans text-[#5a5a54] sm:w-auto sm:max-w-[11rem] md:items-end md:text-right">
+                  <label className="flex flex-col gap-0.5 sm:items-stretch md:items-end">
+                    <span className="shrink-0 font-bold">{t('reference.author_label')}:</span>
                     <input
-                      className="text-right bg-transparent border-0 border-b border-transparent focus:border-[#C2410C] outline-none w-40"
-                      value={activeArticle.author ?? ''}
-                      placeholder="—"
-                      onChange={(e) => void db.articles.update(activeArticle.id, { author: e.target.value })}
+                      type="text"
+                      data-testid="reference-meta-author"
+                      className="w-full shrink-0 min-w-0 border-0 bg-transparent px-0.5 py-1 text-[#5a5a54] outline-none rounded-sm hover:bg-[#F4F1ED]/80 focus-visible:bg-[#F4F1ED]/80 focus-visible:ring-1 focus-visible:ring-[#C2410C]/35 md:text-right"
+                      value={draftAuthor}
+                      aria-label={t('reference.author_label')}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setDraftAuthor(v);
+                        const id = activeArticle.id;
+                        if (authorMetaDebounceRef.current) clearTimeout(authorMetaDebounceRef.current);
+                        authorMetaDebounceRef.current = setTimeout(() => {
+                          authorMetaDebounceRef.current = null;
+                          void db.articles.update(id, { author: v });
+                        }, 450);
+                      }}
+                      onBlur={(e) => {
+                        if (authorMetaDebounceRef.current) {
+                          clearTimeout(authorMetaDebounceRef.current);
+                          authorMetaDebounceRef.current = null;
+                        }
+                        void db.articles.update(activeArticle.id, { author: e.currentTarget.value });
+                      }}
                     />
-                  </p>
-                  <p>
-                    <strong>{t('reference.published_label')}:</strong>{' '}
+                  </label>
+                  <label className="flex flex-col gap-0.5 sm:items-stretch md:items-end">
+                    <span className="shrink-0 font-bold">{t('reference.published_label')}:</span>
                     <input
-                      className="text-right bg-transparent border-0 border-b border-transparent focus:border-[#C2410C] outline-none w-24"
-                      value={activeArticle.date}
-                      onChange={(e) => void db.articles.update(activeArticle.id, { date: e.target.value })}
+                      type="text"
+                      data-testid="reference-meta-date"
+                      className="w-full shrink-0 min-w-0 border-0 bg-transparent px-0.5 py-1 text-[#5a5a54] outline-none rounded-sm hover:bg-[#F4F1ED]/80 focus-visible:bg-[#F4F1ED]/80 focus-visible:ring-1 focus-visible:ring-[#C2410C]/35 md:text-right"
+                      value={draftDateField}
+                      aria-label={t('reference.published_label')}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setDraftDateField(v);
+                        const id = activeArticle.id;
+                        if (dateMetaDebounceRef.current) clearTimeout(dateMetaDebounceRef.current);
+                        dateMetaDebounceRef.current = setTimeout(() => {
+                          dateMetaDebounceRef.current = null;
+                          void db.articles.update(id, { date: v });
+                        }, 450);
+                      }}
+                      onBlur={(e) => {
+                        if (dateMetaDebounceRef.current) {
+                          clearTimeout(dateMetaDebounceRef.current);
+                          dateMetaDebounceRef.current = null;
+                        }
+                        void db.articles.update(activeArticle.id, { date: e.currentTarget.value });
+                      }}
                     />
-                  </p>
+                  </label>
                 </div>
               </div>
 
