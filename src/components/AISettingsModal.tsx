@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Settings, X, Sparkles } from 'lucide-react';
 import { MIMO_TOKEN_PLAN_BASE_URL } from '../constants/mimo';
+import { AISettingsDocsPanel } from './AISettingsDocsPanel';
 
 export interface AIConfig {
   provider: string;
@@ -189,7 +190,9 @@ export function AISettingsModal({ isOpen, onClose, config, setConfig }: AISettin
             />
             <p className="text-[10px] text-[#8c8a84] leading-relaxed">{t('settings.metaso_key_hint')}</p>
           </div>
-          
+
+          <AISettingsDocsPanel provider={config.provider} />
+
           <div className="p-4 bg-[#F4F1ED] rounded-xl border border-[#E6E4DF] border-dashed">
             <div className="flex gap-3">
               <Sparkles className="w-4 h-4 text-[#C2410C] flex-shrink-0 mt-0.5" />
