@@ -13,9 +13,8 @@ export function commitCanvasInlineEditing(params: {
   nodeType: string | undefined;
 }): void {
   const { editingNodeId, nodesRef, nodeType } = params;
-  if (!editingNodeId) return;
 
-  if (nodeType === 'note' || nodeType === 'text') {
+  if (editingNodeId && (nodeType === 'note' || nodeType === 'text')) {
     const root = nodesRef.current[editingNodeId];
     const ce = root?.querySelector('[contenteditable="true"]') as HTMLElement | null;
     if (ce) {
@@ -24,6 +23,15 @@ export function commitCanvasInlineEditing(params: {
     }
   }
 
+  /** 主题卡等始终 contentEditable、不设 editingNodeId 的节点，靠焦点元素 blur 触发 onBlur 写库 */
+  const ae = document.activeElement;
+  if (ae instanceof HTMLElement && ae.isContentEditable) {
+    ae.blur();
+  }
+}
+
+/** 刷新/关闭页面前调用：让当前焦点上的 contentEditable 先失焦写库 */
+export function blurActiveContentEditable(): void {
   const ae = document.activeElement;
   if (ae instanceof HTMLElement && ae.isContentEditable) {
     ae.blur();

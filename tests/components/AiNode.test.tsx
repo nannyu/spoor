@@ -1,9 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { AiNode } from '../../src/components/nodes/AiNode';
+import { db } from '../../src/db';
 import type { CanvasNode } from '../../src/db';
+
+vi.mock('../../src/db', () => ({
+  db: {
+    nodes: { update: vi.fn() },
+  },
+}));
+
+vi.mock('../../src/config/persistence', () => ({
+  isContentBlurPersistenceDisabled: () => false,
+}));
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -44,6 +55,24 @@ const baseAi = (overrides?: Partial<CanvasNode>): CanvasNode => ({
 describe('AiNode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(db.nodes.update).mockClear();
+  });
+
+  it('编辑 AI 回复失焦时持久化 content', () => {
+    const setEditing = vi.fn();
+    render(
+      <AiNode
+        node={baseAi({ content: '初始回复' })}
+        editingNodeId="ai-1"
+        setEditingNodeId={setEditing}
+      />
+    );
+    const editable = document.querySelector('[contenteditable="true"]') as HTMLElement;
+    expect(editable).toBeTruthy();
+    editable.innerText = '更新后的回复';
+    fireEvent.blur(editable);
+    expect(db.nodes.update).toHaveBeenCalledWith('ai-1', { content: '更新后的回复' });
+    expect(setEditing).toHaveBeenCalledWith(null);
   });
 
   it('提供 onSubmitFollowUp 且未 followUpSent 时显示追问输入与发送按钮', () => {

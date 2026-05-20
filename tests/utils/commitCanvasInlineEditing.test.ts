@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { MutableRefObject } from 'react';
-import { commitCanvasInlineEditing } from '../../src/utils/commitCanvasInlineEditing';
+import { blurActiveContentEditable, commitCanvasInlineEditing } from '../../src/utils/commitCanvasInlineEditing';
 
 function makeRef(map: Record<string, HTMLElement | null> = {}): MutableRefObject<Record<string, HTMLElement | null>> {
   return { current: map } as MutableRefObject<Record<string, HTMLElement | null>>;
@@ -11,9 +11,37 @@ describe('commitCanvasInlineEditing', () => {
     document.body.innerHTML = '';
   });
 
-  it('无 editingNodeId 时不触发任何 blur', () => {
+  it('无 editingNodeId 但焦点在 contentEditable 上时仍 blur（主题卡等）', () => {
     const ce = document.createElement('div');
     ce.contentEditable = 'true';
+    Object.defineProperty(ce, 'isContentEditable', { get: () => true });
+    const blurSpy = vi.spyOn(ce, 'blur');
+    document.body.appendChild(ce);
+    vi.spyOn(document, 'activeElement', 'get').mockReturnValue(ce);
+
+    commitCanvasInlineEditing({
+      editingNodeId: null,
+      nodesRef: makeRef(),
+      nodeType: undefined,
+    });
+
+    expect(blurSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('blurActiveContentEditable 在刷新前触发当前焦点失焦', () => {
+    const ce = document.createElement('div');
+    Object.defineProperty(ce, 'isContentEditable', { get: () => true });
+    const blurSpy = vi.spyOn(ce, 'blur');
+    vi.spyOn(document, 'activeElement', 'get').mockReturnValue(ce);
+
+    blurActiveContentEditable();
+
+    expect(blurSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('无 editingNodeId 且焦点不在 contentEditable 时不误 blur', () => {
+    const ce = document.createElement('div');
+    ce.setAttribute('contenteditable', 'true');
     const blurSpy = vi.spyOn(ce, 'blur');
     document.body.appendChild(ce);
 

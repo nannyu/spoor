@@ -8,7 +8,7 @@ import {
   Loader2,
   PenLine,
 } from 'lucide-react';
-import { commitCanvasInlineEditing } from './utils/commitCanvasInlineEditing';
+import { blurActiveContentEditable, commitCanvasInlineEditing } from './utils/commitCanvasInlineEditing';
 import { getCanvasNodeContextText } from './utils/canvasNodeContextText';
 import { nodeSupportsCycleLayout } from './constants/nodeCapabilities';
 import { NOTE_LAYOUT_COUNT } from './constants/noteLayouts';
@@ -145,6 +145,16 @@ export default function App() {
   }, [articles, activeReferenceId, setActiveReferenceId]);
 
   useSeedData();
+
+  useEffect(() => {
+    const flushBeforeUnload = () => blurActiveContentEditable();
+    window.addEventListener('pagehide', flushBeforeUnload);
+    window.addEventListener('beforeunload', flushBeforeUnload);
+    return () => {
+      window.removeEventListener('pagehide', flushBeforeUnload);
+      window.removeEventListener('beforeunload', flushBeforeUnload);
+    };
+  }, []);
 
   const lastStickyClickIdRef = useRef<string | null>(null);
   useEffect(() => {

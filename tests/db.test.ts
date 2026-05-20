@@ -130,6 +130,21 @@ describe('MyDatabase', () => {
       await db.nodes.update('n-theme', { themeTag: 'Updated' });
       expect((await db.nodes.get('n-theme'))?.themeTag).toBe('Updated');
     });
+
+    it('支持 theme 节点 description 正文说明', async () => {
+      await db.nodes.add({
+        id: 'n-theme-desc',
+        type: 'theme',
+        content: '主题标题',
+        description: '研究目标说明',
+        x: 0,
+        y: 0,
+      });
+      const result = await db.nodes.get('n-theme-desc');
+      expect(result?.description).toBe('研究目标说明');
+      await db.nodes.update('n-theme-desc', { description: '更新后的说明' });
+      expect((await db.nodes.get('n-theme-desc'))?.description).toBe('更新后的说明');
+    });
   });
 
   // --- 文章 (articles) ---

@@ -90,6 +90,19 @@ describe('NodeRenderer', () => {
     expect(getByText('My Theme Label')).toBeInTheDocument();
   });
 
+  it('theme 节点显示已持久化的 description 正文', () => {
+    const { getByText } = render(
+      <NodeRenderer
+        node={makeNode('theme', { description: '围绕创业意义展开研究' })}
+        editingNodeId={null}
+        setEditingNodeId={vi.fn()}
+        agentConfigs={mockAgentConfigs}
+        analyzingAgentNodeId={null}
+      />
+    );
+    expect(getByText('围绕创业意义展开研究')).toBeInTheDocument();
+  });
+
   it('theme 节点 layout=3 时默认页脚为 LATENT_SPACE', () => {
     const { getByText } = render(
       <NodeRenderer

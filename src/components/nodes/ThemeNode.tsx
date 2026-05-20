@@ -1,13 +1,13 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Sparkles } from 'lucide-react';
-import { db } from '../../db';
 import type { NodeContentProps } from './types';
-import { isContentBlurPersistenceDisabled } from '../../config/persistence';
 import { CANVAS_NODE_CONTEXT_TEXT_ATTR } from '../../utils/canvasNodeContextText';
+import { createDebouncedThemePersist, persistThemeField } from '../../utils/themeNodePersistence';
 
 export function ThemeNode({ node, editingNodeId }: NodeContentProps) {
   const { t } = useTranslation();
+  const schedulePersist = useMemo(() => createDebouncedThemePersist(node.id), [node.id]);
 
   const defaultThemeFooter = node.layout === 3 ? 'LATENT_SPACE' : 'Spatial Encoding';
   const themeFooterDisplay =
@@ -52,21 +52,24 @@ export function ThemeNode({ node, editingNodeId }: NodeContentProps) {
           }`} 
           contentEditable 
           suppressContentEditableWarning
-          onBlur={(e) => {
-            if (!isContentBlurPersistenceDisabled()) {
-              db.nodes.update(node.id, { content: e.currentTarget.innerText });
-            }
-          }}
+          onInput={(e) => schedulePersist('content', e.currentTarget.innerText)}
+          onBlur={(e) => persistThemeField(node.id, 'content', e.currentTarget.innerText)}
         >
           {node.content}
         </h3>
 
-        <p className={`focus:outline-none rounded px-1 -mx-1 transition-all cursor-text ${
-          node.layout === 1 ? 'text-base font-serif leading-relaxed italic text-[#5a5a54]' :
-          node.layout === 2 ? 'text-sm font-sans opacity-60 leading-relaxed' :
-          node.layout === 3 ? 'text-xs font-mono leading-5 bg-[#F4F1ED] p-4 text-[#1a1a1a] border-l-2 border-black' :
-          'text-sm font-serif leading-relaxed text-[#4a4a44]'
-        }`} contentEditable suppressContentEditableWarning>
+        <p
+          className={`focus:outline-none rounded px-1 -mx-1 transition-all cursor-text ${
+            node.layout === 1 ? 'text-base font-serif leading-relaxed italic text-[#5a5a54]' :
+            node.layout === 2 ? 'text-sm font-sans opacity-60 leading-relaxed' :
+            node.layout === 3 ? 'text-xs font-mono leading-5 bg-[#F4F1ED] p-4 text-[#1a1a1a] border-l-2 border-black' :
+            'text-sm font-serif leading-relaxed text-[#4a4a44]'
+          }`}
+          contentEditable
+          suppressContentEditableWarning
+          onInput={(e) => schedulePersist('description', e.currentTarget.innerText)}
+          onBlur={(e) => persistThemeField(node.id, 'description', e.currentTarget.innerText)}
+        >
           {node.description || 'Central research objective for the current workspace.'}
         </p>
       </div>
@@ -78,12 +81,8 @@ export function ThemeNode({ node, editingNodeId }: NodeContentProps) {
             className="text-[10px] font-sans font-medium uppercase tracking-widest focus:outline-none focus:ring-1 focus:ring-[#C2410C]/40 rounded px-0.5 cursor-text truncate min-w-0"
             contentEditable
             suppressContentEditableWarning
-            onBlur={(e) => {
-              if (!isContentBlurPersistenceDisabled()) {
-                const next = e.currentTarget.innerText.replace(/\s+/g, ' ').trim();
-                db.nodes.update(node.id, { themeTag: next });
-              }
-            }}
+            onInput={(e) => schedulePersist('themeTag', e.currentTarget.innerText)}
+            onBlur={(e) => persistThemeField(node.id, 'themeTag', e.currentTarget.innerText)}
           >
             {themeFooterDisplay}
           </span>
