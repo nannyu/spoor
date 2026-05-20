@@ -1,6 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { db, MyDatabase } from '../src/db';
-import type { CanvasNode, Canvas, Article, AgentConfig, Edge, ResearchSession } from '../src/db';
+import type {
+  CanvasNode,
+  Canvas,
+  Article,
+  AgentConfig,
+  Edge,
+  ResearchSession,
+} from '../src/db';
 
 describe('MyDatabase', () => {
   beforeEach(async () => {
@@ -10,6 +17,7 @@ describe('MyDatabase', () => {
     await db.edges.clear();
     await db.canvases.clear();
     await db.researchSessions.clear();
+    await db.agentSandboxThreads.clear();
   });
 
   // --- 节点 (nodes) ---
@@ -340,6 +348,18 @@ describe('MyDatabase', () => {
     });
   });
 
+  describe('agentSandboxThreads 表', () => {
+    it('能按 agentId 写入与读取沙盒对话', async () => {
+      await db.agentSandboxThreads.put({
+        agentId: 'sandbox-agent-1',
+        messages: [{ role: 'user', text: 'Hi' }],
+        updatedAt: Date.now(),
+      });
+      const got = await db.agentSandboxThreads.get('sandbox-agent-1');
+      expect(got?.messages).toEqual([{ role: 'user', text: 'Hi' }]);
+    });
+  });
+
   // --- 数据库结构完整性 ---
   describe('数据库结构', () => {
     it('导出的 db 实例是 MyDatabase 的实例', () => {
@@ -350,9 +370,9 @@ describe('MyDatabase', () => {
       expect(db.name).toBe('CortexLocalDB');
     });
 
-    it('包含所有 6 张表', () => {
-      expect(db.tables.map(t => t.name).sort()).toEqual(
-        ['agents', 'articles', 'canvases', 'edges', 'nodes', 'researchSessions']
+    it('包含所有 7 张表', () => {
+      expect(db.tables.map((t) => t.name).sort()).toEqual(
+        ['agentSandboxThreads', 'agents', 'articles', 'canvases', 'edges', 'nodes', 'researchSessions'],
       );
     });
   });

@@ -12,6 +12,7 @@ describe('useSeedData', () => {
     await db.agents.clear();
     await db.edges.clear();
     await db.canvases.clear();
+    await db.agentSandboxThreads.clear();
   });
 
   it('首次运行创建默认画布', async () => {

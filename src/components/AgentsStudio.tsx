@@ -11,8 +11,10 @@ import {
   FileText,
   Loader2,
   Trash2,
+  RotateCcw,
 } from 'lucide-react';
 import type { AgentConfig, AgentMarkdownKnowledgeFile } from '../db';
+import { db } from '../db';
 import type { CallAIFn } from '../types';
 import { formatAiError } from '../services/ai';
 import {
@@ -26,6 +28,16 @@ import {
   AGENT_KNOWLEDGE_MAX_FILE_BYTES,
   isAgentMarkdownFilename,
 } from '../utils/agentMarkdownKnowledge';
+
+type SandboxChatMessage = { role: 'user' | 'model'; text: string };
+
+async function persistSandboxThread(agentId: string, messages: SandboxChatMessage[]) {
+  await db.agentSandboxThreads.put({
+    agentId,
+    messages,
+    updatedAt: Date.now(),
+  });
+}
 
 export interface AgentsStudioProps {
   agentConfigs: AgentConfig[];
@@ -45,11 +57,12 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
   const [searchQuery, setSearchQuery] = useState('');
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [isSandboxOpen, setIsSandboxOpen] = useState(false);
-  const [sandboxMessages, setSandboxMessages] = useState<{role: 'user' | 'model'; text: string}[]>([]);
+  const [sandboxMessages, setSandboxMessages] = useState<SandboxChatMessage[]>([]);
   const [sandboxInput, setSandboxInput] = useState('');
   const [isSandboxLoading, setIsSandboxLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const knowledgeFileInputRef = useRef<HTMLInputElement>(null);
+  const sandboxUiAgentRef = useRef<string | null>(null);
 
   const activeAgent = agentConfigs.find((a) => a.id === activeAgentId) || agentConfigs[0];
 
@@ -57,10 +70,30 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
   const displayPrompt = activeAgent ? resolveAgentSystemPrompt(activeAgent) : '';
 
   useEffect(() => {
+    sandboxUiAgentRef.current = activeAgentId;
+    setIsSandboxLoading(false);
+
+    let cancelled = false;
+    (async () => {
+      if (!activeAgentId) {
+        setSandboxMessages([]);
+        return;
+      }
+      const row = await db.agentSandboxThreads.get(activeAgentId);
+      if (cancelled) return;
+      setSandboxMessages(row?.messages ?? []);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeAgentId]);
+
+  useEffect(() => {
     if (chatEndRef.current) {
       chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [sandboxMessages]);
+  }, [sandboxMessages, isSandboxLoading]);
 
   const handleAddAgent = () => {
     const newId = "agent-" + Math.random().toString(36).substr(2, 9);
@@ -170,10 +203,19 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
     if (e) e.preventDefault();
     if (!sandboxInput.trim() || isSandboxLoading || !activeAgent) return;
 
+    const scopedAgentId = activeAgent.id;
     const userMsg = sandboxInput.trim();
-    setSandboxMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+
+    const afterUser: SandboxChatMessage[] = [...sandboxMessages, { role: 'user', text: userMsg }];
+    setSandboxMessages(afterUser);
     setSandboxInput('');
     setIsSandboxLoading(true);
+
+    try {
+      await persistSandboxThread(scopedAgentId, afterUser);
+    } catch (err) {
+      console.error('[Scribe AI] sandbox persist (user msg) failed', err);
+    }
 
     try {
       const responseText = await callAI({
@@ -185,13 +227,46 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
         temperature: activeAgent.temperature ?? 0.7,
         topP: activeAgent.creativity ?? 0.4,
       });
-      setSandboxMessages(prev => [...prev, { role: 'model', text: responseText }]);
+      const afterModel: SandboxChatMessage[] = [...afterUser, { role: 'model', text: responseText }];
+      if (sandboxUiAgentRef.current === scopedAgentId) {
+        setSandboxMessages(afterModel);
+      }
+      try {
+        await persistSandboxThread(scopedAgentId, afterModel);
+      } catch (err) {
+        console.error('[Scribe AI] sandbox persist (assistant) failed', err);
+      }
     } catch (error) {
       const msg = formatAiError(error);
       console.error('[Scribe AI] sandbox chat failed', msg);
-      setSandboxMessages(prev => [...prev, { role: 'model', text: `Error: ${msg}（详见 Console [Scribe AI]）` }]);
+      const errLine: SandboxChatMessage = {
+        role: 'model',
+        text: `Error: ${msg}（详见 Console [Scribe AI]）`,
+      };
+      const afterErr: SandboxChatMessage[] = [...afterUser, errLine];
+      if (sandboxUiAgentRef.current === scopedAgentId) {
+        setSandboxMessages(afterErr);
+      }
+      try {
+        await persistSandboxThread(scopedAgentId, afterErr);
+      } catch (err) {
+        console.error('[Scribe AI] sandbox persist (error bubble) failed', err);
+      }
     } finally {
-      setIsSandboxLoading(false);
+      if (sandboxUiAgentRef.current === scopedAgentId) {
+        setIsSandboxLoading(false);
+      }
+    }
+  };
+
+  const handleClearSandboxChat = async () => {
+    if (!activeAgentId || sandboxMessages.length === 0) return;
+    if (!window.confirm(t('agents.sandbox_clear_confirm'))) return;
+    setSandboxMessages([]);
+    try {
+      await db.agentSandboxThreads.delete(activeAgentId);
+    } catch (err) {
+      console.error('[Scribe AI] sandbox clear failed', err);
     }
   };
 
@@ -199,6 +274,11 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
     if (!window.confirm(t('agents.delete_confirm'))) return;
     const newConfigs = agentConfigs.filter((a) => a.id !== id);
     await setAgentConfigs(newConfigs);
+    try {
+      await db.agentSandboxThreads.delete(id);
+    } catch (err) {
+      console.error('[Scribe AI] sandbox thread delete failed', err);
+    }
     if (activeAgentId === id) {
       setActiveAgentId(newConfigs[0]?.id || null);
     }
@@ -241,7 +321,6 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
                 key={agent.id}
                 onClick={() => {
                   setActiveAgentId(agent.id);
-                  setSandboxMessages([]); // Clear sandbox messages when switching agent
                 }}
                 className={`p-4 cursor-pointer transition-colors border-l-4 ${activeAgentId === agent.id ? 'bg-[#F4F1ED] border-[#C2410C]' : 'hover:bg-[#F4F1ED]/50 border-transparent'}`}
               >
@@ -437,18 +516,37 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
 
             {/* Test Sandbox Panel */}
             {isSandboxOpen && (
-              <div className="absolute right-0 bottom-0 top-0 w-[400px] bg-white border-l border-[#E6E4DF] shadow-[0_-20px_50px_rgba(0,0,0,0.1)] flex flex-col z-20 animate-in slide-in-from-right duration-300">
-                <div className="p-4 border-b border-[#E6E4DF] flex items-center justify-between bg-[#F4F1ED]/50">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="w-4 h-4 text-[#C2410C]" />
-                    <span className="font-serif font-bold text-[#1a1a1a]">{t('agents.sandbox_title', { name: displayName })}</span>
+              <div className="absolute inset-y-0 right-0 z-20 flex w-[min(100vw,400px)] min-h-0 flex-col border-l border-[#E6E4DF] bg-[#FAF9F6] shadow-[-12px_0_32px_rgba(0,0,0,0.06)] animate-in slide-in-from-right duration-300">
+                <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[#E6E4DF] bg-[#F4F1ED]/50 px-4 py-3">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <MessageSquare className="h-4 w-4 shrink-0 text-[#C2410C]" />
+                    <span className="truncate font-serif font-bold text-[#1a1a1a]">
+                      {t('agents.sandbox_title', { name: displayName })}
+                    </span>
                   </div>
-                  <button onClick={() => setIsSandboxOpen(false)} className="text-[#8c8a84] hover:text-[#1a1a1a]">
-                    <X className="w-5 h-5" />
-                  </button>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => void handleClearSandboxChat()}
+                      disabled={sandboxMessages.length === 0 || isSandboxLoading}
+                      title={t('agents.sandbox_clear')}
+                      aria-label={t('agents.sandbox_clear_aria')}
+                      className="rounded-md p-2 text-[#8c8a84] transition-colors hover:bg-[#E6E4DF]/60 hover:text-[#1a1a1a] disabled:pointer-events-none disabled:opacity-30"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsSandboxOpen(false)}
+                      className="rounded-md p-2 text-[#8c8a84] hover:bg-[#E6E4DF]/60 hover:text-[#1a1a1a]"
+                      aria-label={t('agents.close_sandbox')}
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
                 </div>
-                
-                <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#FAF9F6]">
+
+                <div className="min-h-0 flex-1 overflow-y-auto p-4 space-y-4">
                   {sandboxMessages.length === 0 && (
                     <div className="text-center py-10 px-4">
                       <Bot className="w-10 h-10 text-[#E6E4DF] mx-auto mb-3" />
@@ -479,11 +577,11 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
                   <div ref={chatEndRef} />
                 </div>
 
-                <div className="p-4 bg-white border-t border-[#E6E4DF]">
+                <div className="shrink-0 border-t border-[#E6E4DF] bg-[#FAF9F6] p-4">
                   <form onSubmit={handleSendMessage} className="relative">
                     <input 
                       type="text"
-                      className="w-full pl-4 pr-12 py-3 bg-[#FAF9F6] border border-[#E6E4DF] rounded-xl text-sm font-sans focus:outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C] transition-all"
+                      className="w-full rounded-xl border border-[#E6E4DF] bg-white py-3 pl-4 pr-12 text-sm font-sans shadow-sm transition-all focus:border-[#C2410C] focus:outline-none focus:ring-1 focus:ring-[#C2410C]"
                       placeholder={t('agents.message_placeholder', { name: displayName })}
                       value={sandboxInput}
                       onChange={e => setSandboxInput(e.target.value)}

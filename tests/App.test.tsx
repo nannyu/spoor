@@ -193,6 +193,7 @@ describe('App 组件', () => {
     await db.edges.clear();
     await db.canvases.clear();
     await db.researchSessions.clear();
+    await db.agentSandboxThreads.clear();
     localStorage.clear();
   });
 

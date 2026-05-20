@@ -94,6 +94,13 @@ export interface ResearchSessionWebpageSnapshot {
   snippet: string;
 }
 
+/** AI 助手「测试沙盒」：按人设 id 持久化多轮对话（仅本地 IndexedDB）。 */
+export interface AgentSandboxThread {
+  agentId: string;
+  messages: { role: 'user' | 'model'; text: string }[];
+  updatedAt: number;
+}
+
 export interface ResearchSession {
   id: string;
   query: string;
@@ -114,6 +121,7 @@ export class MyDatabase extends Dexie {
   edges!: Table<Edge>;
   canvases!: Table<Canvas>;
   researchSessions!: Table<ResearchSession>;
+  agentSandboxThreads!: Table<AgentSandboxThread>;
 
   constructor() {
     super('CortexLocalDB');
@@ -132,6 +140,10 @@ export class MyDatabase extends Dexie {
 
     this.version(3).stores({
       researchSessions: 'id, createdAt',
+    });
+
+    this.version(4).stores({
+      agentSandboxThreads: 'agentId',
     });
   }
 }
