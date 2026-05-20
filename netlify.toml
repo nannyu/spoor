@@ -1,0 +1,29 @@
+# Netlify: static SPA + same-origin API proxies (parity with vite.config.ts dev/preview)
+# https://docs.netlify.com/routing/redirects/rewrites-proxies/
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# MiMo (OpenAI-compatible): /api/mimo/* -> https://token-plan-cn.xiaomimimo.com/v1/*
+[[redirects]]
+  from = "/api/mimo/*"
+  to = "https://token-plan-cn.xiaomimimo.com/v1/:splat"
+  status = 200
+  force = true
+
+# Metaso search: /api/metaso/* -> https://metaso.cn/*
+[[redirects]]
+  from = "/api/metaso/*"
+  to = "https://metaso.cn/:splat"
+  status = 200
+  force = true
+
+# SPA: client-side routes
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
