@@ -13,13 +13,16 @@ function readSrc(rel: string): string {
 }
 
 describe('画布节点 blur 写库源码契约', () => {
-  it('ThemeNode：标题、正文、页脚三处 contentEditable 均调用 db.nodes.update', () => {
+  it('ThemeNode：三处字段失焦写库，且聚焦时不被 props 回写（无 onInput 防抖）', () => {
     const src = readSrc('src/components/nodes/ThemeNode.tsx');
-    expect(src.match(/contentEditable/g)?.length).toBe(3);
-    expect(src).toContain("persistThemeField(node.id, 'content'");
-    expect(src).toContain("persistThemeField(node.id, 'description'");
-    expect(src).toContain("persistThemeField(node.id, 'themeTag'");
-    expect(src).toContain('schedulePersist');
+    expect(src).toContain('db.nodes.update(node.id, patch)');
+    expect(src).toContain("persistField('content')");
+    expect(src).toContain("persistField('description')");
+    expect(src).toContain("persistField('themeTag')");
+    expect(src).toContain('isFocusedRef.current');
+    expect(src).not.toContain('onInput');
+    expect(src).not.toContain('schedulePersist');
+    expect(src).not.toContain('createDebouncedThemePersist');
   });
 
   it('NoteBody：编辑区 onBlur 写入 content', () => {
@@ -32,5 +35,29 @@ describe('画布节点 blur 写库源码契约', () => {
     const src = readSrc('src/components/nodes/AiNode.tsx');
     expect(src).toContain('db.nodes.update(node.id, { content: e.currentTarget.innerText');
     expect(src).toContain('isContentBlurPersistenceDisabled()');
+  });
+
+  it('commitCanvasInlineEditing：主题卡无 editingNodeId 时仍 blur 焦点元素', () => {
+    const src = readSrc('src/utils/commitCanvasInlineEditing.ts');
+    expect(src).not.toMatch(/if\s*\(\s*!editingNodeId\s*\)\s*return/);
+    expect(src).toContain('主题卡等始终 contentEditable');
+  });
+
+  it('App：通过 registerCanvasUnloadFlush 注册卸载前 flush', () => {
+    const appSrc = readSrc('src/App.tsx');
+    expect(appSrc).toContain('registerCanvasUnloadFlush');
+    expect(appSrc).not.toContain('blurActiveContentEditable');
+    const regSrc = readSrc('src/utils/registerCanvasUnloadFlush.ts');
+    expect(regSrc).toContain('pagehide');
+    expect(regSrc).toContain('beforeunload');
+    expect(regSrc).toContain('blurActiveContentEditable');
+  });
+
+  it('CanvasToolbar：提交钮为 Wand2、输入条旁无多余 Wand2', () => {
+    const src = readSrc('src/components/CanvasToolbar.tsx');
+    expect(src).not.toContain('Send');
+    expect(src).toMatch(/isToolbarAiLoading \? <Loader2[\s\S]*?: <Wand2/);
+    const wandCount = (src.match(/<Wand2/g) ?? []).length;
+    expect(wandCount).toBe(1);
   });
 });

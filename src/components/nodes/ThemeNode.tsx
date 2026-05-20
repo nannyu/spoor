@@ -1,24 +1,77 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Sparkles } from 'lucide-react';
+import { db } from '../../db';
 import type { NodeContentProps } from './types';
+import { isContentBlurPersistenceDisabled } from '../../config/persistence';
 import { CANVAS_NODE_CONTEXT_TEXT_ATTR } from '../../utils/canvasNodeContextText';
-import { createDebouncedThemePersist, persistThemeField } from '../../utils/themeNodePersistence';
+
+type ThemeEditableTag = 'h3' | 'p' | 'span';
+
+interface ThemeEditableFieldProps {
+  as: ThemeEditableTag;
+  nodeId: string;
+  displayValue: string;
+  className: string;
+  onPersist: (raw: string) => void;
+}
+
+/** 聚焦时不从 props 回写 DOM，避免 useLiveQuery 刷新导致光标乱跳、输入法中断 */
+function ThemeEditableField({ as: Tag, nodeId, displayValue, className, onPersist }: ThemeEditableFieldProps) {
+  const elRef = useRef<HTMLElement | null>(null);
+  const isFocusedRef = useRef(false);
+
+  useEffect(() => {
+    const el = elRef.current;
+    if (!el || isFocusedRef.current) return;
+    if (el.innerText !== displayValue) {
+      el.textContent = displayValue;
+    }
+  }, [displayValue, nodeId]);
+
+  return (
+    <Tag
+      ref={(el) => {
+        elRef.current = el;
+      }}
+      className={className}
+      contentEditable
+      suppressContentEditableWarning
+      onFocus={() => {
+        isFocusedRef.current = true;
+      }}
+      onBlur={(e) => {
+        isFocusedRef.current = false;
+        onPersist(e.currentTarget.innerText);
+      }}
+    />
+  );
+}
 
 export function ThemeNode({ node, editingNodeId }: NodeContentProps) {
   const { t } = useTranslation();
-  const schedulePersist = useMemo(() => createDebouncedThemePersist(node.id), [node.id]);
 
   const defaultThemeFooter = node.layout === 3 ? 'LATENT_SPACE' : 'Spatial Encoding';
   const themeFooterDisplay =
     node.themeTag !== undefined && node.themeTag.trim() !== '' ? node.themeTag : defaultThemeFooter;
+  const descriptionDisplay =
+    node.description || 'Central research objective for the current workspace.';
+
+  const persistField = (field: 'content' | 'description' | 'themeTag') => (raw: string) => {
+    if (isContentBlurPersistenceDisabled()) return;
+    const patch =
+      field === 'themeTag'
+        ? { themeTag: raw.replace(/\s+/g, ' ').trim() }
+        : { [field]: raw };
+    void db.nodes.update(node.id, patch);
+  };
 
   return (
-    <div 
+    <div
       className={`w-full h-full shadow-xl border-2 transition-all duration-500 flex flex-col ${
         node.layout === 1 ? 'p-8 border-l-4 border-[#C2410C] bg-white border-[#E6E4DF]' :
         node.layout === 2 ? 'p-10 bg-[#1a1a1a] text-white border-[#333] shadow-2xl' :
-        node.layout === 3 ? 'p-6 border-2 border-black bg-white' : 
+        node.layout === 3 ? 'p-6 border-2 border-black bg-white' :
         'p-6 bg-white border-[#E6E4DF]'
       }`}
       style={{ outline: '1px solid transparent' }}
@@ -43,49 +96,43 @@ export function ThemeNode({ node, editingNodeId }: NodeContentProps) {
         className={`flex-1 overflow-y-auto min-h-0 pr-2 custom-scrollbar ${editingNodeId === node.id ? 'select-text' : ''}`}
         {...{ [CANVAS_NODE_CONTEXT_TEXT_ATTR]: '' }}
       >
-        <h3 
+        <ThemeEditableField
+          as="h3"
+          nodeId={node.id}
+          displayValue={node.content ?? ''}
           className={`font-bold leading-tight focus:outline-none rounded px-1 -mx-1 transition-all cursor-text ${
             node.layout === 1 ? 'text-3xl font-serif mb-4' :
             node.layout === 2 ? 'text-4xl tracking-tighter mb-4' :
             node.layout === 3 ? 'text-xl font-mono uppercase mb-4' :
             'text-2xl text-[#1a1a1a] mb-2'
-          }`} 
-          contentEditable 
-          suppressContentEditableWarning
-          onInput={(e) => schedulePersist('content', e.currentTarget.innerText)}
-          onBlur={(e) => persistThemeField(node.id, 'content', e.currentTarget.innerText)}
-        >
-          {node.content}
-        </h3>
+          }`}
+          onPersist={persistField('content')}
+        />
 
-        <p
+        <ThemeEditableField
+          as="p"
+          nodeId={node.id}
+          displayValue={descriptionDisplay}
           className={`focus:outline-none rounded px-1 -mx-1 transition-all cursor-text ${
             node.layout === 1 ? 'text-base font-serif leading-relaxed italic text-[#5a5a54]' :
             node.layout === 2 ? 'text-sm font-sans opacity-60 leading-relaxed' :
             node.layout === 3 ? 'text-xs font-mono leading-5 bg-[#F4F1ED] p-4 text-[#1a1a1a] border-l-2 border-black' :
             'text-sm font-serif leading-relaxed text-[#4a4a44]'
           }`}
-          contentEditable
-          suppressContentEditableWarning
-          onInput={(e) => schedulePersist('description', e.currentTarget.innerText)}
-          onBlur={(e) => persistThemeField(node.id, 'description', e.currentTarget.innerText)}
-        >
-          {node.description || 'Central research objective for the current workspace.'}
-        </p>
+          onPersist={persistField('description')}
+        />
       </div>
 
       <div className={`mt-6 pt-4 flex justify-start items-center ${node.layout === 2 ? 'text-white/30 border-t border-white/10' : 'text-[#8c8a84] border-t border-[#F4F1ED]'}`}>
         <div className="flex items-center gap-2 min-w-0">
           <div className={`shrink-0 w-1 h-1 rounded-full ${node.layout === 2 ? 'bg-[#C2410C]' : 'bg-[#C2410C]'}`}></div>
-          <span
+          <ThemeEditableField
+            as="span"
+            nodeId={node.id}
+            displayValue={themeFooterDisplay}
             className="text-[10px] font-sans font-medium uppercase tracking-widest focus:outline-none focus:ring-1 focus:ring-[#C2410C]/40 rounded px-0.5 cursor-text truncate min-w-0"
-            contentEditable
-            suppressContentEditableWarning
-            onInput={(e) => schedulePersist('themeTag', e.currentTarget.innerText)}
-            onBlur={(e) => persistThemeField(node.id, 'themeTag', e.currentTarget.innerText)}
-          >
-            {themeFooterDisplay}
-          </span>
+            onPersist={persistField('themeTag')}
+          />
         </div>
       </div>
     </div>

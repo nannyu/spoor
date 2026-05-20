@@ -54,6 +54,30 @@ describe('commitCanvasInlineEditing', () => {
     expect(blurSpy).not.toHaveBeenCalled();
   });
 
+  it('note/text 编辑中优先 blur 节点内 contentEditable，不误触其他卡片的焦点', () => {
+    const noteRoot = document.createElement('div');
+    const noteCe = document.createElement('div');
+    noteCe.setAttribute('contenteditable', 'true');
+    noteRoot.appendChild(noteCe);
+
+    const themeCe = document.createElement('div');
+    Object.defineProperty(themeCe, 'isContentEditable', { get: () => true });
+    document.body.appendChild(themeCe);
+    vi.spyOn(document, 'activeElement', 'get').mockReturnValue(themeCe);
+
+    const noteBlurSpy = vi.spyOn(noteCe, 'blur');
+    const themeBlurSpy = vi.spyOn(themeCe, 'blur');
+
+    commitCanvasInlineEditing({
+      editingNodeId: 'n1',
+      nodesRef: makeRef({ n1: noteRoot }),
+      nodeType: 'note',
+    });
+
+    expect(noteBlurSpy).toHaveBeenCalledTimes(1);
+    expect(themeBlurSpy).not.toHaveBeenCalled();
+  });
+
   it('note/text 类型：在 nodesRef 根下找到 contentEditable 并触发其 blur（让 React onBlur 走单点写库）', () => {
     const root = document.createElement('div');
     const ce = document.createElement('div');

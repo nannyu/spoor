@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 import { ThemeNode } from '../../src/components/nodes/ThemeNode';
 import { db } from '../../src/db';
@@ -55,16 +55,38 @@ describe('ThemeNode blur 持久化', () => {
     expect(db.nodes.update).toHaveBeenCalledWith('n1', { description: '自定义正文说明' });
   });
 
-  it('正文输入时防抖写库（无需等失焦即可在刷新前落盘）', () => {
-    vi.useFakeTimers();
-    render(<ThemeNode node={makeNode()} editingNodeId={null} setEditingNodeId={vi.fn()} />);
+  it('未聚焦时 props 更新会同步到 DOM（失焦后展示数据库内容）', async () => {
+    const { rerender } = render(
+      <ThemeNode node={makeNode({ content: '旧标题' })} editingNodeId={null} setEditingNodeId={vi.fn()} />
+    );
+    const title = screen.getByRole('heading', { level: 3 });
+    await waitFor(() => expect(title.textContent).toBe('旧标题'));
+
+    rerender(
+      <ThemeNode
+        node={makeNode({ content: '来自数据库的新标题' })}
+        editingNodeId={null}
+        setEditingNodeId={vi.fn()}
+      />
+    );
+    await waitFor(() => expect(title.textContent).toBe('来自数据库的新标题'));
+  });
+
+  it('聚焦编辑时 props 更新不会重置 DOM 正文（防光标乱跳）', () => {
+    const { rerender } = render(
+      <ThemeNode node={makeNode()} editingNodeId={null} setEditingNodeId={vi.fn()} />
+    );
     const body = screen.getByText('Central research objective for the current workspace.');
-    body.innerText = '防抖保存的正文';
-    fireEvent.input(body);
-    expect(db.nodes.update).not.toHaveBeenCalled();
-    vi.advanceTimersByTime(400);
-    expect(db.nodes.update).toHaveBeenCalledWith('n1', { description: '防抖保存的正文' });
-    vi.useRealTimers();
+    body.innerText = '正在输入的中文';
+    fireEvent.focus(body);
+    rerender(
+      <ThemeNode
+        node={makeNode({ description: '数据库里的旧值' })}
+        editingNodeId={null}
+        setEditingNodeId={vi.fn()}
+      />
+    );
+    expect(body.innerText).toBe('正在输入的中文');
   });
 
   it('标题失焦时持久化 content', () => {
