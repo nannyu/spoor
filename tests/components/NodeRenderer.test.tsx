@@ -77,6 +77,32 @@ describe('NodeRenderer', () => {
     expect(getByText('Test content')).toBeInTheDocument();
   });
 
+  it('theme 节点显示自定义 themeTag', () => {
+    const { getByText } = render(
+      <NodeRenderer
+        node={makeNode('theme', { themeTag: 'My Theme Label' })}
+        editingNodeId={null}
+        setEditingNodeId={vi.fn()}
+        agentConfigs={mockAgentConfigs}
+        analyzingAgentNodeId={null}
+      />
+    );
+    expect(getByText('My Theme Label')).toBeInTheDocument();
+  });
+
+  it('theme 节点 layout=3 时默认页脚为 LATENT_SPACE', () => {
+    const { getByText } = render(
+      <NodeRenderer
+        node={makeNode('theme', { layout: 3 })}
+        editingNodeId={null}
+        setEditingNodeId={vi.fn()}
+        agentConfigs={mockAgentConfigs}
+        analyzingAgentNodeId={null}
+      />
+    );
+    expect(getByText('LATENT_SPACE')).toBeInTheDocument();
+  });
+
   it('type="note" 渲染 NoteNode', () => {
     const { getByText } = render(
       <NodeRenderer

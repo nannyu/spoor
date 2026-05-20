@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
@@ -55,6 +55,10 @@ describe('Reference', () => {
     await db.articles.clear();
     await db.canvases.clear();
     vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('搜索框按标题过滤侧栏列表项', async () => {
@@ -143,6 +147,64 @@ describe('Reference', () => {
     await user.click(canvasBtn);
 
     expect(onOpen).toHaveBeenCalledWith('cv-test');
+  });
+
+  it('引用文献使用草稿作者与日期（未保存到 DB 前）', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(navigator, 'clipboard', 'get').mockReturnValue({ writeText } as Clipboard);
+
+    await db.articles.add(articleA);
+
+    render(<Reference articles={[articleA]} activeReferenceId="a-alpha" setActiveReferenceId={vi.fn()} />);
+
+    await user.clear(screen.getByTestId('reference-meta-author'));
+    await user.type(screen.getByTestId('reference-meta-author'), 'Draft Author');
+    await user.clear(screen.getByTestId('reference-meta-date'));
+    await user.type(screen.getByTestId('reference-meta-date'), '2099');
+
+    await user.click(screen.getByRole('button', { name: 'reference.citation' }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalled());
+    const line = String(writeText.mock.calls[0][0]);
+    expect(line).toContain('Draft Author');
+    expect(line).toContain('2099');
+    expect(line).toContain('Alpha Unique Title');
+  });
+
+  it('作者元数据防抖写入 IndexedDB', async () => {
+    const user = userEvent.setup();
+    await db.articles.add(articleA);
+
+    render(<Reference articles={[articleA]} activeReferenceId="a-alpha" setActiveReferenceId={vi.fn()} />);
+
+    await user.clear(screen.getByTestId('reference-meta-author'));
+    await user.type(screen.getByTestId('reference-meta-author'), 'Debounced Name');
+
+    await waitFor(
+      async () => {
+        const row = await db.articles.get('a-alpha');
+        expect(row?.author).toBe('Debounced Name');
+      },
+      { timeout: 3000 },
+    );
+  });
+
+  it('含 Markdown 标题的正文显示目录并可点击', async () => {
+    const user = userEvent.setup();
+    const withHeadings: Article = {
+      ...articleA,
+      content: '# Intro Title\n\nBody paragraph.\n\n## Section Two\n\nMore text.',
+    };
+    await db.articles.add(withHeadings);
+
+    render(
+      <Reference articles={[withHeadings]} activeReferenceId="a-alpha" setActiveReferenceId={vi.fn()} />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'reference.contents' }));
+    expect(screen.getByRole('button', { name: 'Intro Title' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Section Two' })).toBeInTheDocument();
   });
 
   it('分类筛选为 map 时隐藏非 map 文献卡片', async () => {

@@ -79,6 +79,9 @@ describe('i18n 国际化模块', () => {
       expect(i18n.t('settings.api_key')).toBe('API Key');
       expect(i18n.t('settings.save')).toBe('Save Configuration');
       expect(i18n.t('settings.language')).toBe('Language');
+      expect(i18n.t('settings.docs_heading')).toContain('Configuration');
+      expect(i18n.t('settings.docs_blurb_gemini')).toContain('Google');
+      expect(i18n.t('settings.docs_link_gemini_console_key')).toContain('API');
     });
 
     it('agents 翻译完整', () => {
@@ -87,6 +90,8 @@ describe('i18n 国际化模块', () => {
       expect(i18n.t('agents.test_sandbox')).toBe('Test Sandbox');
       expect(i18n.t('agents.delete_confirm')).toBe('Are you sure you want to delete this persona?');
       expect(i18n.t('agents.delete_persona')).toBe('Delete persona');
+      expect(i18n.t('agents.sandbox_clear')).toBe('Clear chat');
+      expect(i18n.t('agents.sandbox_clear_confirm')).toContain('cannot be undone');
     });
 
     it('lab 翻译完整', () => {
@@ -168,6 +173,8 @@ describe('i18n 国际化模块', () => {
       expect(i18n.t('settings.title')).toBe('设置');
       expect(i18n.t('settings.api_key')).toBe('API 密钥');
       expect(i18n.t('settings.save')).toBe('保存配置');
+      expect(i18n.t('settings.docs_heading')).toContain('配置');
+      expect(i18n.t('settings.docs_blurb_mimo')).toContain('MiMo');
     });
 
     it('agents 翻译完整', () => {
@@ -175,6 +182,8 @@ describe('i18n 国际化模块', () => {
       expect(i18n.t('agents.new_persona')).toBe('新建人格');
       expect(i18n.t('agents.delete_confirm')).toBe('您确定要删除此人格设定吗？');
       expect(i18n.t('agents.delete_persona')).toBe('删除人格');
+      expect(i18n.t('agents.sandbox_clear')).toBe('清空对话');
+      expect(i18n.t('agents.sandbox_clear_confirm')).toContain('不可恢复');
     });
 
     it('ai 翻译完整', () => {

@@ -84,6 +84,16 @@ vi.mock('react-i18next', () => ({
         'agents.ai_thinking': 'AI 正在思考...',
         'agents.message_placeholder': `给 ${opts?.name ?? ''} 发送消息...`,
         'agents.sandbox_note': '沙盒使用当前的提示词和参数',
+        'agents.sandbox_clear': '清空对话',
+        'agents.sandbox_clear_aria': '清空沙盒对话',
+        'agents.sandbox_clear_confirm': '确定清空该人格沙盒中的对话记录？此操作不可恢复。',
+        'settings.docs_heading': '配置说明与官方文档',
+        'settings.docs_expand': '展开',
+        'settings.docs_blurb_gemini': '在 Google AI Studio 创建 API 密钥后填入。',
+        'settings.docs_link_gemini_console_key': 'Google AI Studio — 获取 API 密钥',
+        'settings.docs_all_providers_heading': '各 AI 服务商 — 官方文档',
+        'settings.docs_metaso_heading': '秘塔联网搜索（可选）',
+        'settings.docs_security_note': '切勿向他人泄露密钥。',
         'agents.select_persona': '请选择一个人格',
         'agents.select_subtitle': '从侧边栏选择一个人格或创建一个新人格。',
         'lab.investigate': '您想调查什么？',
@@ -603,6 +613,13 @@ describe('App 组件', () => {
         expect((modelInput as HTMLInputElement).value).toBe('gpt-4o');
       }
     });
+
+    it('设置面板展示 AI 配置说明折叠区', async () => {
+      const user = userEvent.setup();
+      await act(async () => { render(<App />); });
+      await openSettings(user);
+      expect(screen.getByText('配置说明与官方文档')).toBeInTheDocument();
+    });
   });
 
   // ============================================================
@@ -783,6 +800,7 @@ describe('App 组件', () => {
       await user.click(screen.getByText('测试沙盒'));
       expect(screen.getByText('关闭沙盒')).toBeInTheDocument();
     });
+
   });
 
   // ============================================================

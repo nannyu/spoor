@@ -122,6 +122,14 @@ describe('MyDatabase', () => {
       const result = await db.nodes.get('n1');
       expect(result?.agentConfigId).toBe('a1');
     });
+
+    it('支持 themeTag 主题卡页脚标签', async () => {
+      await db.nodes.add({ id: 'n-theme', type: 'theme', x: 0, y: 0, themeTag: 'Custom Label' });
+      const result = await db.nodes.get('n-theme');
+      expect(result?.themeTag).toBe('Custom Label');
+      await db.nodes.update('n-theme', { themeTag: 'Updated' });
+      expect((await db.nodes.get('n-theme'))?.themeTag).toBe('Updated');
+    });
   });
 
   // --- 文章 (articles) ---
