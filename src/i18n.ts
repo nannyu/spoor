@@ -10,10 +10,11 @@ const resources = {
         "description": "Spatial Thinking & Knowledge Synthesis"
       },
       "sidebar": {
-        "personal": "Library",
-        "reference": "Review",
-        "lab": "Research Lab",
-        "agents": "Agents",
+        "nav_heading": "Modules",
+        "personal": "Canvas",
+        "reference": "Long-form",
+        "lab": "Research",
+        "agents": "Personas",
         "search_placeholder": "Search memories...",
         "new_note": "New Note",
         "new_theme_card": "New Theme Card",
@@ -301,10 +302,11 @@ const resources = {
         "description": "空间思维与知识合成"
       },
       "sidebar": {
-        "personal": "素材库",
-        "reference": "回顾区",
-        "lab": "研究实验室",
-        "agents": "AI 助手",
+        "nav_heading": "导航",
+        "personal": "画布",
+        "reference": "长文",
+        "lab": "研究",
+        "agents": "角色",
         "search_placeholder": "搜索记忆...",
         "new_note": "新建便签",
         "new_theme_card": "新建主题卡",

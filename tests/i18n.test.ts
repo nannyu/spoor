@@ -47,10 +47,11 @@ describe('i18n 国际化模块', () => {
     });
 
     it('sidebar 翻译完整', () => {
-      expect(i18n.t('sidebar.personal')).toBe('Library');
-      expect(i18n.t('sidebar.reference')).toBe('Review');
-      expect(i18n.t('sidebar.lab')).toBe('Research Lab');
-      expect(i18n.t('sidebar.agents')).toBe('Agents');
+      expect(i18n.t('sidebar.nav_heading')).toBe('Modules');
+      expect(i18n.t('sidebar.personal')).toBe('Canvas');
+      expect(i18n.t('sidebar.reference')).toBe('Long-form');
+      expect(i18n.t('sidebar.lab')).toBe('Research');
+      expect(i18n.t('sidebar.agents')).toBe('Personas');
       expect(i18n.t('sidebar.new_note')).toBe('New Note');
       expect(i18n.t('sidebar.new_theme_card')).toBe('New Theme Card');
       expect(i18n.t('sidebar.publish')).toBe('Synthesize');
@@ -139,10 +140,11 @@ describe('i18n 国际化模块', () => {
     });
 
     it('sidebar 翻译完整', () => {
-      expect(i18n.t('sidebar.personal')).toBe('素材库');
-      expect(i18n.t('sidebar.reference')).toBe('回顾区');
-      expect(i18n.t('sidebar.lab')).toBe('研究实验室');
-      expect(i18n.t('sidebar.agents')).toBe('AI 助手');
+      expect(i18n.t('sidebar.nav_heading')).toBe('导航');
+      expect(i18n.t('sidebar.personal')).toBe('画布');
+      expect(i18n.t('sidebar.reference')).toBe('长文');
+      expect(i18n.t('sidebar.lab')).toBe('研究');
+      expect(i18n.t('sidebar.agents')).toBe('角色');
       expect(i18n.t('sidebar.new_note')).toBe('新建便签');
       expect(i18n.t('sidebar.new_theme_card')).toBe('新建主题卡');
       expect(i18n.t('sidebar.settings')).toBe('设置');

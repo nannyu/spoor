@@ -103,7 +103,7 @@ export function Sidebar({
         </div>
       </div>
       <nav className="flex flex-col font-sans text-sm w-full">
-        {isSidebarOpen && <div className="px-4 py-2 text-[#8c8a84] text-[11px] uppercase tracking-wider mb-2">{t('sidebar.personal')}</div>}
+        {isSidebarOpen && <div className="px-4 py-2 text-[#8c8a84] text-[11px] tracking-wider mb-2">{t('sidebar.nav_heading')}</div>}
         <a onClick={(e) => { e.preventDefault(); setActiveTab('personal'); }} className={`cursor-pointer flex items-center ${isSidebarOpen ? 'gap-3 px-4' : 'justify-center'} py-2 ${activeTab === 'personal' ? 'bg-white border-y border-[#E6E4DF] text-[#C2410C]' : 'text-[#5a5a54] hover:bg-[#EAE7E2] transition-colors'}`}>
           <BookOpen className="w-4 h-4 flex-shrink-0" />
           {isSidebarOpen && <span>{t('sidebar.personal')}</span>}

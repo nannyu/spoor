@@ -19,10 +19,11 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, opts?: Record<string, unknown>) => {
       const translations: Record<string, string> = {
-        'sidebar.personal': '素材库',
-        'sidebar.reference': '回顾区',
-        'sidebar.lab': '研究实验室',
-        'sidebar.agents': 'AI 助手',
+        'sidebar.nav_heading': '导航',
+        'sidebar.personal': '画布',
+        'sidebar.reference': '长文',
+        'sidebar.lab': '研究',
+        'sidebar.agents': '角色',
         'sidebar.search_placeholder': '搜索记忆...',
         'sidebar.new_note': '新建便签',
         'sidebar.publish': '合成文章',
@@ -148,7 +149,7 @@ vi.mock('lucide-react', () => {
     'Quote', 'Brain', 'Bot', 'Coffee', 'Wand2', 'Send', 'SlidersHorizontal', 'History', 'ZoomIn',
     'Focus', 'Image', 'FilePlus', 'Trash2', 'Link2', 'X', 'Camera', 'ChevronLeft',
     'ChevronRight', 'Check', 'Cpu', 'ArrowRight', 'ListChecks', 'CheckCircle2',
-    'Loader2', 'PenLine', 'Edit3', 'FileText', 'Globe',
+    'Loader2', 'PenLine', 'Edit3', 'FileText', 'Globe', 'ExternalLink', 'RotateCcw',
   ];
   const icons: Record<string, React.FC> = {};
   for (const name of iconNames) {
@@ -210,12 +211,14 @@ describe('App 组件', () => {
         render(<App />);
       });
       // 侧边栏导航链接应存在
+      const nav = document.querySelector('nav');
+      expect(nav?.textContent).toContain('导航');
       const links = getNavLinks();
       const linkTexts = links.map(a => a.textContent?.trim());
-      expect(linkTexts).toContain('素材库');
-      expect(linkTexts).toContain('回顾区');
-      expect(linkTexts).toContain('研究实验室');
-      expect(linkTexts).toContain('AI 助手');
+      expect(linkTexts).toContain('画布');
+      expect(linkTexts).toContain('长文');
+      expect(linkTexts).toContain('研究');
+      expect(linkTexts).toContain('角色');
     });
 
     it('渲染用户默认名称', async () => {
@@ -240,7 +243,7 @@ describe('App 组件', () => {
         render(<App />);
       });
       const links = getNavLinks();
-      const personalLink = links.find(a => a.textContent?.includes('素材库'));
+      const personalLink = links.find(a => a.textContent?.includes('画布'));
       expect(personalLink).toBeDefined();
       expect(personalLink).toHaveClass('bg-white');
     });
@@ -252,7 +255,7 @@ describe('App 组件', () => {
       });
 
       const links = getNavLinks();
-      const refLink = links.find(a => a.textContent?.includes('回顾区'))!;
+      const refLink = links.find(a => a.textContent?.includes('长文'))!;
       await user.click(refLink);
       expect(refLink).toHaveClass('bg-white');
     });
@@ -264,7 +267,7 @@ describe('App 组件', () => {
       });
 
       const links = getNavLinks();
-      const labLink = links.find(a => a.textContent?.includes('研究实验室'))!;
+      const labLink = links.find(a => a.textContent?.includes('研究'))!;
       await user.click(labLink);
       expect(labLink).toHaveClass('bg-white');
     });
@@ -276,7 +279,7 @@ describe('App 组件', () => {
       });
 
       const links = getNavLinks();
-      const agentsLink = links.find(a => a.textContent?.includes('AI 助手'))!;
+      const agentsLink = links.find(a => a.textContent?.includes('角色'))!;
       await user.click(agentsLink);
       expect(agentsLink).toHaveClass('bg-white');
     });
@@ -612,7 +615,7 @@ describe('App 组件', () => {
         await new Promise(resolve => setTimeout(resolve, 200));
       });
       const links = getNavLinks();
-      const refLink = links.find(a => a.textContent?.includes('回顾区'))!;
+      const refLink = links.find(a => a.textContent?.includes('长文'))!;
       await user.click(refLink);
     };
 
@@ -682,7 +685,7 @@ describe('App 组件', () => {
         await new Promise(resolve => setTimeout(resolve, 300));
       });
       const links = getNavLinks();
-      const agentsLink = links.find(a => a.textContent?.includes('AI 助手'))!;
+      const agentsLink = links.find(a => a.textContent?.includes('角色'))!;
       await user.click(agentsLink);
     };
 
@@ -789,7 +792,7 @@ describe('App 组件', () => {
     const goToLab = async (user: ReturnType<typeof userEvent.setup>) => {
       await act(async () => { render(<App />); });
       const links = getNavLinks();
-      const labLink = links.find(a => a.textContent?.includes('研究实验室'))!;
+      const labLink = links.find(a => a.textContent?.includes('研究'))!;
       await user.click(labLink);
     };
 
