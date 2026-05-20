@@ -5,7 +5,6 @@ import {
   Sparkles,
   Bot,
   Wand2,
-  Send,
   ZoomIn,
   FileText as FileTextIcon,
   Loader2,
@@ -105,9 +104,6 @@ export function CanvasToolbar({
               <input type="file" accept="image/*,video/*,.docx,.txt,.md" className="hidden" onChange={addFileNode} />
             </label>
           </div>
-          <div className="pl-1 text-[#C2410C]">
-            <Wand2 className={`w-5 h-5 ${isToolbarAiLoading ? 'animate-pulse' : ''}`} />
-          </div>
           <input 
             className="flex-1 bg-transparent border-none focus:outline-none focus:ring-0 font-sans text-sm py-3 text-[#1a1a1a] placeholder-[#8c8a84] disabled:opacity-50" 
             placeholder={t('ai.input_placeholder')} 
@@ -122,7 +118,7 @@ export function CanvasToolbar({
             disabled={isInputDisabled}
             className="bg-[#C2410C] text-white p-2.5 rounded-xl font-sans text-sm font-bold shadow-md flex items-center justify-center hover:bg-[#a0350a] transition-colors disabled:opacity-75 shrink-0"
           >
-            {isToolbarAiLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+            {isToolbarAiLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5" />}
           </button>
         </div>
       </div>
