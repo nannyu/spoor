@@ -21,19 +21,16 @@
 
 ## 维护者：发布新安装包
 
-### 方式 A — GitHub Actions（推荐）
+### 方式 A — GitHub Actions（推荐，需账户 Actions 可用）
 
 ```bash
 git tag v0.1.0
 git push origin v0.1.0
 ```
 
-推送 `v*` 标签后，[`.github/workflows/release-desktop.yml`](../.github/workflows/release-desktop.yml) 会自动：
+推送 `v*` 标签后，[`.github/workflows/release-desktop.yml`](../.github/workflows/release-desktop.yml) 会自动构建并上传 `Spoor_*_x64-setup.exe`。
 
-1. 在 `windows-latest` 上 `npm ci` + `npm run tauri:build`
-2. 上传 `Spoor_*_x64-setup.exe` 到 **GitHub Release**
-
-也可在 GitHub 仓库 **Actions → Release Desktop (Windows) → Run workflow** 手动触发（仅生成 Artifact，不创建 Release，除非带 tag）。
+若 Actions 失败并提示 **billing issue**，请到 GitHub **Settings → Billing** 处理，或改用下方手动发布：[`scripts/upload-release-manual.md`](../scripts/upload-release-manual.md)。
 
 ### 方式 B — 本机打包
 
