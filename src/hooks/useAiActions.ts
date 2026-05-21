@@ -100,7 +100,7 @@ export function useAiActions({
         date: new Date().getFullYear().toString(),
         type: 'GEN-' + Math.floor(Math.random() * 1000),
         tags: [] as string[],
-        linkedCanvasIds: [] as string[],
+        linkedCanvasIds: [activeCanvasId],
         author: '',
       };
 

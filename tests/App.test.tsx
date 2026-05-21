@@ -134,7 +134,7 @@ vi.mock('react-i18next', () => ({
         'reference.citation': '引用文献',
         'reference.metadata_notes': '元数据与笔记',
         'reference.tags': '标签',
-        'reference.linked_drafts': '关联草稿',
+        'reference.linked_drafts': '关联画布',
         'reference.private_notes': '私密笔记',
         'reference.notes_placeholder': '为此参考文献添加您自己的笔记...',
         'app.name': '记忆建筑师',

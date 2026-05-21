@@ -143,7 +143,7 @@ describe('useAiActions', () => {
       expect(rows[0].title).toBe('Synthesized Title');
       expect(rows[0].content).toContain('## Section');
       expect(rows[0].tags).toEqual([]);
-      expect(rows[0].linkedCanvasIds).toEqual([]);
+      expect(rows[0].linkedCanvasIds).toEqual(['default']);
       expect(rows[0].author).toBe('');
       expect(rows[0].type).toMatch(/^GEN-/);
     });

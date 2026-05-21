@@ -58,7 +58,6 @@ export function Reference({
   const [noteStatus, setNoteStatus] = useState('');
   const [notesLocal, setNotesLocal] = useState('');
   const [tagInput, setTagInput] = useState('');
-  const [linkSelect, setLinkSelect] = useState('');
   const [contentsOpen, setContentsOpen] = useState(false);
   const [isEditingBody, setIsEditingBody] = useState(false);
   const [citationStatus, setCitationStatus] = useState('');
@@ -203,24 +202,7 @@ export function Reference({
     void db.articles.update(activeArticle.id, { tags: tags.length ? tags : undefined });
   };
 
-  const addCanvasLink = (canvasId: string) => {
-    if (!activeArticle || !canvasId) return;
-    const cur = activeArticle.linkedCanvasIds ?? [];
-    if (cur.includes(canvasId)) return;
-    void db.articles.update(activeArticle.id, { linkedCanvasIds: [...cur, canvasId] });
-    setLinkSelect('');
-  };
-
-  const removeCanvasLink = (canvasId: string) => {
-    if (!activeArticle) return;
-    const next = (activeArticle.linkedCanvasIds ?? []).filter((id) => id !== canvasId);
-    void db.articles.update(activeArticle.id, {
-      linkedCanvasIds: next.length ? next : undefined,
-    });
-  };
-
   const linkedIds = activeArticle?.linkedCanvasIds ?? [];
-  const linkableCanvases = canvases.filter((c) => !linkedIds.includes(c.id));
 
   const markdownHeadingId = (slug: string) =>
     activeArticle ? `ref-heading-${activeArticle.id}-${slug}` : undefined;
@@ -588,23 +570,6 @@ export function Reference({
                   {t('reference.linked_drafts')}
                 </h4>
               </div>
-              {linkableCanvases.length > 0 && activeArticle ? (
-                <select
-                  className="w-full text-[11px] bg-white border border-[#E6E4DF] rounded px-2 py-1.5 mb-2 focus:outline-none focus:border-[#C2410C]"
-                  value={linkSelect}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    if (v) addCanvasLink(v);
-                  }}
-                >
-                  <option value="">{t('reference.select_canvas')}</option>
-                  {linkableCanvases.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              ) : null}
               <div className="space-y-2">
                 {linkedIds.length === 0 ? (
                   <p className="text-[11px] text-[#8c8a84]">{t('reference.linked_empty')}</p>
@@ -612,10 +577,7 @@ export function Reference({
                   linkedIds.map((cid) => {
                     const c = canvases.find((x) => x.id === cid);
                     return (
-                      <div
-                        key={cid}
-                        className="flex items-start gap-2 p-3 bg-[#FAF9F6] border border-[#E6E4DF] rounded"
-                      >
+                      <div key={cid} className="flex items-start gap-2 p-3 bg-[#FAF9F6] border border-[#E6E4DF] rounded">
                         <BookOpen className="w-4 h-4 text-[#C2410C] mt-0.5 shrink-0" />
                         <div className="min-w-0 flex-1">
                           <button
@@ -627,14 +589,6 @@ export function Reference({
                             {c?.name ?? cid}
                           </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => removeCanvasLink(cid)}
-                          className="shrink-0 text-[#8c8a84] hover:text-[#ef4444] p-1"
-                          aria-label={t('reference.remove_link')}
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
                       </div>
                     );
                   })
