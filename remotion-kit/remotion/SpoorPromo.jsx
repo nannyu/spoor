@@ -53,17 +53,25 @@ const STAGE = {
   height: 1080,
   margin: 96,
   headerY: 72,
-  appX: 856,
-  appY: 188,
-  appW: 968,
-  appH: 612,
+  appX: 824,
+  appY: 148,
+  appW: 1000,
+  appH: 700,
   copyX: 96,
   copyY: 248,
   copyW: 680,
-  captionY: 856,
+  /** Vertical gap between app window bottom and subtitle block */
+  captionGap: 72,
   captionH: 92,
   timelineY: 996,
 };
+
+STAGE.captionY = STAGE.appY + STAGE.appH + STAGE.captionGap;
+
+const APP_SIDEBAR_W = 200;
+const APP_CHROME_H = 44;
+const APP_CONTENT_W = STAGE.appW - APP_SIDEBAR_W;
+const APP_CONTENT_H = STAGE.appH - APP_CHROME_H;
 
 function smoothFade(sec, [a, b, c, d]) {
   return Math.min(
@@ -343,7 +351,7 @@ const EDGE_GRAY = '#d1cfca';
 /** Straight connector — matches canvas node-connector lines. */
 function AgentConnector({ x1, y1, x2, y2 }) {
   return (
-    <svg width="768" height="568" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+    <svg width={APP_CONTENT_W} height={APP_CONTENT_H} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
       <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={ACCENT} strokeWidth={2} strokeLinecap="round" opacity={0.85} />
     </svg>
   );
@@ -358,7 +366,7 @@ function AppEdges({ progress }) {
   ];
 
   return (
-    <svg width="768" height="568" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+    <svg width={APP_CONTENT_W} height={APP_CONTENT_H} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
       {segments.map((seg, i) => {
         const local = Math.max(0, Math.min(1, (progress - seg.delay) / 0.32));
         const length = Math.hypot(seg.x2 - seg.x1, seg.y2 - seg.y1);
@@ -719,10 +727,10 @@ function SynthScene({ sec }) {
       <div
         style={{
           position: 'absolute',
-          right: 36,
-          top: 32,
-          width: 420,
-          height: 500,
+          right: 40,
+          top: 36,
+          width: 460,
+          height: 560,
           borderRadius: 18,
           background: '#FFFFFF',
           border: `1px solid ${LINE}`,
@@ -1191,7 +1199,7 @@ function AppWindow({ sec }) {
         <span style={{ marginLeft: 14, fontSize: 12, color: MUTED }}>{copy.windowTitle}</span>
       </div>
 
-      <div style={{ position: 'absolute', top: 44, bottom: 0, left: 0, width: 200, background: '#F4EFE6', borderRight: `1px solid ${LINE}`, padding: '22px 16px', boxSizing: 'border-box' }}>
+      <div style={{ position: 'absolute', top: APP_CHROME_H, bottom: 0, left: 0, width: APP_SIDEBAR_W, background: '#F4EFE6', borderRight: `1px solid ${LINE}`, padding: '22px 16px', boxSizing: 'border-box' }}>
         <div style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: ACCENT, fontWeight: 700 }}>{copy.brandTitle}</div>
         <div style={{ marginTop: 6, fontSize: 10, color: MUTED, letterSpacing: '0.16em' }}>{copy.focusMode}</div>
         <div style={{ marginTop: 22, fontSize: 10, color: MUTED, letterSpacing: '0.16em' }}>{copy.modules}</div>
@@ -1225,9 +1233,9 @@ function AppWindow({ sec }) {
       <div
         style={{
           position: 'absolute',
-          top: 44,
+          top: APP_CHROME_H,
           bottom: 0,
-          left: 200,
+          left: APP_SIDEBAR_W,
           right: 0,
           background: PAPER,
           overflow: 'hidden',
