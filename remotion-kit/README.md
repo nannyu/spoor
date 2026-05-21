@@ -10,8 +10,9 @@
 
 | Composition ID   | 分辨率    | 用途           |
 |------------------|-----------|----------------|
-| `MyComposition`  | 1920×1080 | 横屏推广       |
+| `MyComposition`  | 1920×1080 | 横屏推广（JustTalk 示例） |
 | `PromoVertical`  | 1080×1920 | 竖屏推广       |
+| `SpatialNotesPromo` | 1920×1080 | Spatial Notes 产品介绍（约 60s） |
 
 二者均支持通过 `inputProps` 传入标题、副标题、**音频 URL（由服务端根据 `audioPath` 生成）**、双语字幕片段时间轴。
 
@@ -118,7 +119,8 @@ PROJECT_ROOT/
   "scripts": {
     "remotion:studio": "remotion studio remotion/index.js",
     "remotion:render": "remotion render remotion/index.js MyComposition out.mp4",
-    "remotion:render:promo": "remotion render remotion/index.js PromoVertical promo-vertical.mp4"
+    "remotion:render:promo": "remotion render remotion/index.js PromoVertical promo-vertical.mp4",
+    "remotion:render:spatial-notes": "remotion render remotion/index.js SpatialNotesPromo ../../output/spatial-notes-promo.mp4 --props=remotion/spatial-notes-promo.json"
   }
 }
 ```

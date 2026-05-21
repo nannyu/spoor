@@ -1,0 +1,58 @@
+{
+  "title": "Spatial Notes",
+  "subtitle": "Spatial Thinking & Knowledge Synthesis",
+  "brandLabel": "SPATIAL NOTES",
+  "ctaUrl": "scribe-ai-canvas.netlify.app",
+  "ctaText": "Try the web app",
+  "totalDurationSec": 60,
+  "timestampSegments": [
+    {
+      "startSec": 0,
+      "endSec": 8,
+      "en": "Spatial Notes is a quiet canvas for thinking in space.",
+      "zh": "Spatial Notes 是一个安静的空间化思考画布。"
+    },
+    {
+      "startSec": 8,
+      "endSec": 17,
+      "en": "Ideas keep their position, shape, and relationship.",
+      "zh": "想法保留位置、形态，以及彼此之间的关系。"
+    },
+    {
+      "startSec": 17,
+      "endSec": 27,
+      "en": "AI works inside the room, close to the material.",
+      "zh": "AI 留在工作现场，贴近材料本身。"
+    },
+    {
+      "startSec": 27,
+      "endSec": 37,
+      "en": "Different modes of thought can share the same memory.",
+      "zh": "不同的思考方式，可以共享同一份记忆。"
+    },
+    {
+      "startSec": 37,
+      "endSec": 43,
+      "en": "Research becomes a path, not a pile.",
+      "zh": "研究变成路径，而不是材料堆。"
+    },
+    {
+      "startSec": 43,
+      "endSec": 48,
+      "en": "Writing remains linked to its source canvas.",
+      "zh": "写作始终连接回来源画布。"
+    },
+    {
+      "startSec": 48,
+      "endSec": 55,
+      "en": "Local-first. Private by default.",
+      "zh": "本地优先，默认私密。"
+    },
+    {
+      "startSec": 55,
+      "endSec": 60,
+      "en": "Build your spatial memory.",
+      "zh": "开始搭建你的空间记忆。"
+    }
+  ]
+}

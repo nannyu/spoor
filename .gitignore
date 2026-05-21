@@ -52,3 +52,6 @@ desktop.ini
 
 # Local metadata (optional, remove this line if you want to track it)
 # metadata.json
+
+# Local Netlify folder
+.netlify

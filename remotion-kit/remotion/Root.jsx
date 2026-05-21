@@ -2,15 +2,17 @@ import React from 'react';
 import { Composition } from 'remotion';
 import { MyComposition } from './Composition.jsx';
 import { PromoVertical, PromoVerticalDuration } from './PromoVertical.jsx';
+import { SpatialNotesPromo, SpatialNotesPromoDuration } from './SpatialNotesPromo.jsx';
+import spatialNotesPromoDefaults from './spatial-notes-promo.json';
 
 const FPS = 30;
 
-const durationFromProps = ({ props }) => {
+const durationFromProps = ({ props }, minFrames) => {
   const total = Number(props?.totalDurationSec) || 0;
   const segments = Array.isArray(props?.timestampSegments) ? props.timestampSegments : [];
   const last = segments.reduce((max, seg) => Math.max(max, Number(seg?.endSec) || 0), total);
   return {
-    durationInFrames: Math.max(PromoVerticalDuration, Math.ceil((last + 1) * FPS))
+    durationInFrames: Math.max(minFrames, Math.ceil((last + 1) * FPS)),
   };
 };
 
@@ -21,7 +23,7 @@ export const RemotionRoot = () => {
         id="MyComposition"
         component={MyComposition}
         durationInFrames={90}
-        calculateMetadata={durationFromProps}
+        calculateMetadata={(meta) => durationFromProps(meta, 90)}
         fps={FPS}
         width={1920}
         height={1080}
@@ -31,11 +33,21 @@ export const RemotionRoot = () => {
         id="PromoVertical"
         component={PromoVertical}
         durationInFrames={PromoVerticalDuration}
-        calculateMetadata={durationFromProps}
+        calculateMetadata={(meta) => durationFromProps(meta, PromoVerticalDuration)}
         fps={FPS}
         width={1080}
         height={1920}
         defaultProps={{}}
+      />
+      <Composition
+        id="SpatialNotesPromo"
+        component={SpatialNotesPromo}
+        durationInFrames={SpatialNotesPromoDuration}
+        calculateMetadata={(meta) => durationFromProps(meta, SpatialNotesPromoDuration)}
+        fps={FPS}
+        width={1920}
+        height={1080}
+        defaultProps={spatialNotesPromoDefaults}
       />
     </>
   );
