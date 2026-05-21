@@ -40,6 +40,7 @@ export function Sidebar({
 }: SidebarProps) {
   const { t } = useTranslation();
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const isLogoAvatar = userAvatar.includes('LOGO');
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -68,11 +69,11 @@ export function Sidebar({
             />
             <div 
               onClick={() => avatarInputRef.current?.click()}
-              className={`relative cursor-pointer group/avatar flex-shrink-0 flex items-center justify-center ${isSidebarOpen ? 'w-6' : 'w-10'}`}
+              className={`relative cursor-pointer group/avatar flex-shrink-0 flex items-center justify-center overflow-hidden rounded ${isSidebarOpen ? 'w-6' : 'w-10'}`}
             >
               <img 
                 alt="Curator Profile" 
-                className={`rounded border-2 border-[#E6E4DF] object-cover shadow-sm transition-all group-hover/avatar:opacity-80 ${isSidebarOpen ? 'w-6 h-6' : 'w-10 h-10'}`} 
+                className={`rounded border-2 border-[#E6E4DF] object-cover shadow-sm transition-all group-hover/avatar:opacity-80 ${isLogoAvatar ? 'scale-[1.45]' : ''} ${isSidebarOpen ? 'w-6 h-6' : 'w-10 h-10'}`} 
                 src={userAvatar}
               />
               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity bg-black/20 rounded">

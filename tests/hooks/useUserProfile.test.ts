@@ -11,7 +11,7 @@ describe('useUserProfile', () => {
     const { result } = renderHook(() => useUserProfile());
     expect(result.current.userName).toBe('Main Library');
     expect(result.current.userRole).toBe('Focus Mode Active');
-    expect(result.current.userAvatar).toContain('googleusercontent.com');
+    expect(result.current.userAvatar).toContain('LOGO');
   });
 
   it('从 localStorage 读取已有值', () => {
