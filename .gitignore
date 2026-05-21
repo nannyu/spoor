@@ -5,11 +5,29 @@ node_modules/
 build/
 dist/
 
-# Remotion kit render output
-remotion-kit/output/
-
-# Tauri build
+# Tauri build & desktop installers
 src-tauri/target/
+release/
+
+# --- Promo / Remotion (keep JSX/JSON sources; omit heavy media & renders) ---
+output/
+*.mp4
+*.mov
+*.webm
+*.mkv
+
+# Voiceovers at repo root (copy locally; see docs/MINIMAX_SPOOR_EN_SYNC.md, SPOOR_PROMO_ZH_SUBTITLES.md)
+/*.wav
+/en.wav
+/en2.wav
+/zh.wav
+
+# Remotion kit: deps, cache, renders, bundled narration
+remotion-kit/node_modules/
+remotion-kit/**/.cache/
+remotion-kit/output/
+remotion-kit/public/audio/
+remotion-kit/remotion/assets/audio/
 
 # Local toolchain (LLVM installer + extracted libclang for bindgen); do not commit
 .build-tools/

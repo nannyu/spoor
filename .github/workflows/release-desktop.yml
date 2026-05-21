@@ -1,0 +1,78 @@
+# Build Windows NSIS installer and attach to GitHub Releases on version tags.
+# Maintainer: git tag v0.1.0 && git push origin v0.1.0
+
+name: Release Desktop (Windows)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Build Tauri (NSIS installer)
+        run: npm run tauri:build
+        env:
+          CI: 'true'
+
+      - name: Collect installer path
+        id: artifacts
+        shell: pwsh
+        run: |
+          $dir = "src-tauri/target/release/bundle/nsis"
+          if (-not (Test-Path $dir)) {
+            Write-Error "NSIS output not found under $dir"
+          }
+          $setup = Get-ChildItem $dir -Filter "*-setup.exe" | Select-Object -First 1
+          if (-not $setup) {
+            Write-Error "No *-setup.exe in $dir"
+          }
+          "installer=$($setup.FullName)" >> $env:GITHUB_OUTPUT
+          "installer_name=$($setup.Name)" >> $env:GITHUB_OUTPUT
+          Write-Host "Built: $($setup.FullName) ($([math]::Round($setup.Length/1MB, 2)) MB)"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: spoor-windows-x64-setup
+          path: ${{ steps.artifacts.outputs.installer }}
+          if-no-files-found: error
+
+      - name: Publish GitHub Release (tag pushes only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Spoor 雪泥 v0.1.0
+          body_path: docs/RELEASE_v0.1.0.md
+          files: ${{ steps.artifacts.outputs.installer }}
+          generate_release_notes: false
+          draft: false
+          prerelease: false

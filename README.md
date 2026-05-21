@@ -8,7 +8,21 @@ This contains everything you need to run your app locally.
 
 View your app in AI Studio: https://ai.studio/apps/932383b2-6259-4dd6-b8af-27215f3c575d
 
-## Run Locally
+## 桌面版安装（Windows，推荐给普通用户）
+
+**一键下载安装包，无需 Node.js：**
+
+1. 打开 **[GitHub Releases](https://github.com/iimorning/scribe-ai-canvas/releases/latest)**
+2. 下载 **`Spoor_*_x64-setup.exe`**
+3. 运行安装向导，从开始菜单打开 **Spoor / 雪泥**
+
+详细说明与维护者发版步骤见 **[docs/DESKTOP_INSTALL.md](docs/DESKTOP_INSTALL.md)**。
+
+> 首次发布：维护者需执行 `git tag v0.1.0 && git push origin v0.1.0`，由 GitHub Actions 自动构建并上传安装包。
+
+---
+
+## Run Locally（开发者）
 
 **Prerequisites:**  Node.js
 
@@ -18,6 +32,19 @@ View your app in AI Studio: https://ai.studio/apps/932383b2-6259-4dd6-b8af-27215
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
+
+**桌面开发模式（Tauri）：**
+
+```bash
+npm run tauri:dev
+```
+
+**本地打 Windows 安装包：**
+
+```bash
+npm run tauri:build
+# 或 scripts\tauri-build-release.cmd
+```
 
 ## Deploy to Netlify (web)
 
