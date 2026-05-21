@@ -129,7 +129,7 @@ test('Root exports MyComposition, PromoVertical, and SpoorPromo compositions', (
   const compositions = [
     { id: 'MyComposition', durationInFrames: 90, fps: 30, width: 1920, height: 1080 },
     { id: 'PromoVertical', durationInFrames: 150, fps: 30, width: 1080, height: 1920 },
-    { id: 'SpoorPromo', durationInFrames: 1800, fps: 30, width: 1920, height: 1080 },
+    { id: 'SpoorPromo', durationInFrames: 1920, fps: 30, width: 1920, height: 1080 },
   ];
   assert.equal(compositions.length, 3);
   compositions.forEach((comp) => {
@@ -138,17 +138,17 @@ test('Root exports MyComposition, PromoVertical, and SpoorPromo compositions', (
   });
 });
 
-test('SpoorPromo exports 60s duration at 30fps', () => {
-  const SpoorPromoDuration = 1800;
-  assert.equal(SpoorPromoDuration, 60 * 30);
+test('SpoorPromo exports 64s duration at 30fps', () => {
+  const SpoorPromoDuration = 1920;
+  assert.equal(SpoorPromoDuration, 64 * 30);
 });
 
-test('spoor-promo.json has eight timestamp segments', () => {
+test('spoor-promo.json has nine timestamp segments', () => {
   const path = fileURLToPath(new URL('../remotion/spoor-promo.json', import.meta.url));
   const data = JSON.parse(readFileSync(path, 'utf8'));
   assert.equal(data.title, 'Spoor');
-  assert.equal(data.timestampSegments.length, 8);
-  assert.equal(data.timestampSegments[7].endSec, 60);
+  assert.equal(data.timestampSegments.length, 9);
+  assert.equal(data.timestampSegments[8].endSec, 64);
 });
 
 test('index.js registers RemotionRoot', () => {

@@ -4,7 +4,7 @@
   "brandLabel": "SPOOR",
   "ctaUrl": "scribe-ai-canvas.netlify.app",
   "ctaText": "Try the web app",
-  "totalDurationSec": 60,
+  "totalDurationSec": 64,
   "timestampSegments": [
     {
       "startSec": 0,
@@ -26,31 +26,37 @@
     },
     {
       "startSec": 24,
-      "endSec": 34,
+      "endSec": 32,
       "en": "Four personas read your notes — and the images linked to them.",
       "zh": "四个人格读你的便签，也读与之相连的图像。"
     },
     {
-      "startSec": 34,
-      "endSec": 42,
+      "startSec": 32,
+      "endSec": 40,
       "en": "Select what matters. The canvas becomes a draft.",
       "zh": "选出要紧的几张，画布便写成一篇草稿。"
     },
     {
-      "startSec": 42,
-      "endSec": 50,
+      "startSec": 40,
+      "endSec": 44,
       "en": "The article stays linked to the canvas it came from.",
       "zh": "成文之后，仍指回它落下的那片画布。"
     },
     {
-      "startSec": 50,
-      "endSec": 55,
+      "startSec": 44,
+      "endSec": 48,
       "en": "Local-first. Private by default.",
       "zh": "本地优先，默认只留在你的浏览器里。"
     },
     {
-      "startSec": 55,
-      "endSec": 60,
+      "startSec": 48,
+      "endSec": 58,
+      "en": "Talk to four distinct voices on the canvas — or define your own.",
+      "zh": "在画布上与四个人格对话，也可以自定义你的人格。"
+    },
+    {
+      "startSec": 58,
+      "endSec": 64,
       "en": "A trace of thought, left on quiet ground.",
       "zh": "念头如鸿，落处成迹。"
     }

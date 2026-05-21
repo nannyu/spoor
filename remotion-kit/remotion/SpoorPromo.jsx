@@ -3,13 +3,50 @@ import {
   AbsoluteFill,
   Audio,
   Easing,
+  Img,
   interpolate,
   spring,
   useCurrentFrame,
   useVideoConfig,
 } from 'remotion';
 
-export const SpoorPromoDuration = 1800;
+import mirrorIcon from './assets/agents/mirror.png';
+import weavingIcon from './assets/agents/weaving.png';
+import ironIcon from './assets/agents/iron.png';
+import compassIcon from './assets/agents/compass.png';
+
+export const SpoorPromoDuration = 1920;
+
+const AGENT_PERSONAS = [
+  {
+    id: 'interviewer',
+    icon: mirrorIcon,
+    name: 'The Mirror',
+    role: 'Interview',
+    reply: 'What assumption are you not naming yet?',
+  },
+  {
+    id: 'synthesizer',
+    icon: weavingIcon,
+    name: 'The Weaver',
+    role: 'Synthesize',
+    reply: 'These notes share one thread — anchor, orbit, evidence.',
+  },
+  {
+    id: 'stylist',
+    icon: ironIcon,
+    name: 'Smoothing Iron',
+    role: 'Stylize',
+    reply: 'Try: “The room remembers. The thread forgets.”',
+  },
+  {
+    id: 'futurist',
+    icon: compassIcon,
+    name: 'Star-Gazer',
+    role: 'Project forward',
+    reply: 'In ten years, this canvas becomes an index.',
+  },
+];
 
 const ACCENT = '#C2410C';
 const ACCENT_SOFT = 'rgba(194,65,12,0.10)';
@@ -70,7 +107,7 @@ const SCENES = [
   {
     id: 'agents',
     start: 24,
-    end: 34,
+    end: 32,
     layout: 'split',
     eyebrow: 'Personas',
     title: 'Four minds, one canvas.',
@@ -78,8 +115,8 @@ const SCENES = [
   },
   {
     id: 'synth',
-    start: 34,
-    end: 50,
+    start: 32,
+    end: 44,
     layout: 'split',
     eyebrow: 'Synthesize',
     title: 'Selected notes become a draft.',
@@ -87,17 +124,26 @@ const SCENES = [
   },
   {
     id: 'privacy',
-    start: 50,
-    end: 55,
+    start: 44,
+    end: 48,
     layout: 'split',
     eyebrow: 'Local-first',
     title: 'Yours, and only yours.',
     caption: 'Your canvas, your notes, your drafts — kept in your browser.',
   },
   {
+    id: 'agentChat',
+    start: 48,
+    end: 58,
+    layout: 'split',
+    eyebrow: 'Personas',
+    title: 'Talk on the canvas.',
+    caption: 'Four built-in voices — or define your own.',
+  },
+  {
     id: 'closing',
-    start: 55,
-    end: 60,
+    start: 58,
+    end: 64,
     layout: 'hero',
     eyebrow: 'Spoor',
     title: 'A place for thoughts to leave a trace.',
@@ -375,6 +421,15 @@ function NoteCard({ kind, x, y, w = 200, h = 120, title, body, highlight }) {
 
 const EDGE_GRAY = '#d1cfca';
 
+/** Straight connector — matches canvas node-connector lines. */
+function AgentConnector({ x1, y1, x2, y2 }) {
+  return (
+    <svg width="768" height="568" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={ACCENT} strokeWidth={2} strokeLinecap="round" opacity={0.85} />
+    </svg>
+  );
+}
+
 function AppEdges({ progress }) {
   const segments = [
     { x1: 250, y1: 126, x2: 170, y2: 256, delay: 0.0 },
@@ -530,112 +585,50 @@ function FormsScene({ sec }) {
 }
 
 function AgentsScene({ sec }) {
-  const frame = useCurrentFrame();
-  const personas = [
-    { id: 'mirror', name: 'The Mirror', role: 'Interview', insight: 'What if memory is shaped by movement?' },
-    { id: 'weaver', name: 'The Weaver', role: 'Synthesize', insight: 'Anchor, orbit, evidence — a recurring trio.' },
-    { id: 'iron', name: 'Smoothing Iron', role: 'Stylize', insight: 'Try: “The room remembers. The thread forgets.”' },
-    { id: 'compass', name: 'Star-Gazer', role: 'Project forward', insight: 'A canvas becomes the index of a future room.' },
-  ];
+  const activeIndex = Math.min(
+    AGENT_PERSONAS.length - 1,
+    Math.floor(interpolate(sec, [24, 32], [0, 4.2], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })),
+  );
+  const persona = AGENT_PERSONAS[activeIndex];
 
-  const activeIndex = Math.floor(interpolate(sec, [24, 34], [0, 4.2], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }));
-  const pulse = interpolate(Math.sin(frame / 30), [-1, 1], [0.65, 1]);
+  const note = { x: 264, y: 48, w: 220, h: 96 };
+  const noteBottom = { x: note.x + note.w / 2, y: note.y + note.h };
+  const agentW = 158;
+  const agentY = 260;
+  const gap = 18;
+  const rowWidth = AGENT_PERSONAS.length * agentW + (AGENT_PERSONAS.length - 1) * gap;
+  const rowStartX = (768 - rowWidth) / 2;
+  const agentPositions = AGENT_PERSONAS.map((_, i) => ({
+    x: rowStartX + i * (agentW + gap),
+    y: agentY,
+    cx: rowStartX + i * (agentW + gap) + agentW / 2,
+  }));
+  const activePos = agentPositions[activeIndex];
 
   return (
     <>
-      <NoteCard kind="base" x={92} y={36} w={220} h={90} title="Theme" body="Memory as space" highlight />
-      <NoteCard kind="glass" x={360} y={42} w={210} h={94} title="Observation" body="Spatial cues outlast the thread." />
-      <NoteCard kind="minimal" x={92} y={156} w={200} h={86} title="Linked image" body="(canvas artifact)" />
+      <NoteCard kind="base" x={note.x} y={note.y} w={note.w} h={note.h} title="Theme" body="Memory as space" highlight />
 
-      <svg width="768" height="568" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-        {personas.map((_, i) => {
-          const personaX = 132 + i * 168;
-          const personaY = 372;
-          const noteAnchors = [
-            { x: 192, y: 242 },
-            { x: 202, y: 126 },
-            { x: 465, y: 136 },
-            { x: 465, y: 136 },
-          ];
-          const a = noteAnchors[i];
-          const isLive = i <= activeIndex;
-          return (
-            <line
-              key={i}
-              x1={a.x}
-              y1={a.y}
-              x2={personaX}
-              y2={personaY}
-              stroke={isLive ? ACCENT : EDGE_GRAY}
-              strokeWidth={2}
-              opacity={isLive ? 0.7 : 0.55}
-            />
-          );
-        })}
-      </svg>
+      <AgentConnector x1={noteBottom.x} y1={noteBottom.y} x2={activePos.cx} y2={activePos.y} />
+
+      {agentPositions.map((pos, i) => (
+        <AgentNodeCard
+          key={AGENT_PERSONAS[i].id}
+          x={pos.x}
+          y={pos.y}
+          width={agentW}
+          persona={AGENT_PERSONAS[i]}
+          active={i === activeIndex}
+        />
+      ))}
 
       <div
         style={{
           position: 'absolute',
-          left: 0,
-          right: 0,
-          top: 372,
-          display: 'flex',
-          justifyContent: 'center',
-          gap: 16,
-        }}
-      >
-        {personas.map((p, i) => {
-          const isActive = i === activeIndex;
-          return (
-            <div
-              key={p.id}
-              style={{
-                width: 152,
-                padding: '12px 12px 14px',
-                borderRadius: 16,
-                border: `1px solid ${isActive ? ACCENT_LINE : LINE}`,
-                background: isActive ? 'rgba(255,247,237,0.95)' : 'rgba(255,255,255,0.78)',
-                boxShadow: isActive
-                  ? '0 18px 38px rgba(194,65,12,0.14)'
-                  : '0 10px 24px rgba(31,27,24,0.06)',
-                fontFamily: SANS,
-                textAlign: 'center',
-                transition: 'all 0.35s ease',
-              }}
-            >
-              <div
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 12,
-                  background: ACCENT_SOFT,
-                  margin: '0 auto 8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: ACCENT,
-                  fontWeight: 700,
-                  fontSize: 13,
-                  opacity: isActive ? pulse : 0.7,
-                }}
-              >
-                {p.name.split(' ').map((s) => s[0]).join('')}
-              </div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: INK }}>{p.name}</div>
-              <div style={{ fontSize: 10, color: MUTED, marginTop: 3, letterSpacing: '0.08em' }}>{p.role.toUpperCase()}</div>
-            </div>
-          );
-        })}
-      </div>
-
-      <div
-        style={{
-          position: 'absolute',
-          left: 60,
-          right: 60,
-          bottom: 36,
-          padding: '14px 18px',
+          left: 56,
+          right: 56,
+          bottom: 28,
+          padding: '12px 16px',
           borderRadius: 18,
           border: `1px solid ${ACCENT_LINE}`,
           background: 'rgba(255,247,237,0.95)',
@@ -643,29 +636,201 @@ function AgentsScene({ sec }) {
           color: INK,
           boxShadow: '0 18px 42px rgba(194,65,12,0.10)',
           display: 'flex',
-          alignItems: 'center',
-          gap: 14,
+          gap: 12,
+          alignItems: 'flex-start',
         }}
       >
+        <Img src={persona.icon} style={{ width: 30, height: 30, objectFit: 'contain', flexShrink: 0 }} />
+        <div style={{ fontSize: 15, lineHeight: 1.5 }}>{persona.reply}</div>
+      </div>
+    </>
+  );
+}
+
+function AgentNodeCard({ x, y, persona, active, width = 158 }) {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left: x,
+        top: y,
+        width,
+        padding: '12px 12px 14px',
+        borderRadius: 16,
+        border: `1px solid ${active ? ACCENT_LINE : LINE}`,
+        background: active ? 'rgba(255,247,237,0.96)' : 'rgba(255,255,255,0.88)',
+        boxShadow: active ? '0 16px 36px rgba(194,65,12,0.14)' : '0 10px 24px rgba(31,27,24,0.06)',
+        fontFamily: SANS,
+        transition: 'all 0.35s ease',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <Img src={persona.icon} style={{ width: 36, height: 36, objectFit: 'contain', flexShrink: 0 }} />
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: INK }}>{persona.name}</div>
+          <div style={{ fontSize: 9, color: MUTED, letterSpacing: '0.1em', marginTop: 2 }}>{persona.role.toUpperCase()}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AgentChatScene({ sec }) {
+  const chatPhase = interpolate(sec, [48, 54], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const studioPhase = interpolate(sec, [53.2, 55.5], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const activeChat = Math.min(
+    AGENT_PERSONAS.length - 1,
+    Math.floor(interpolate(sec, [48.5, 53.5], [0, 4], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })),
+  );
+  const persona = AGENT_PERSONAS[activeChat];
+
+  const note = { x: 264, y: 36, w: 240, h: 108 };
+  const noteBottom = { x: note.x + note.w / 2, y: note.y + note.h };
+  const agentW = 158;
+  const agentY = 248;
+  const gap = 18;
+  const rowWidth = AGENT_PERSONAS.length * agentW + (AGENT_PERSONAS.length - 1) * gap;
+  const rowStartX = (768 - rowWidth) / 2;
+  const agentPositions = AGENT_PERSONAS.map((_, i) => ({
+    x: rowStartX + i * (agentW + gap),
+    y: agentY,
+    cx: rowStartX + i * (agentW + gap) + agentW / 2,
+    cy: agentY,
+  }));
+  const activePos = agentPositions[activeChat];
+
+  return (
+    <>
+      <div style={{ position: 'absolute', inset: 0, opacity: 1 - studioPhase * 0.15 }}>
+        <NoteCard
+          kind="glass"
+          x={note.x}
+          y={note.y}
+          w={note.w}
+          h={note.h}
+          title="Observation"
+          body="How does spatial layout change recall?"
+          highlight
+        />
+
+        <AgentConnector x1={noteBottom.x} y1={noteBottom.y} x2={activePos.cx} y2={activePos.cy} />
+
+        {agentPositions.map((pos, i) => (
+          <AgentNodeCard
+            key={AGENT_PERSONAS[i].id}
+            x={pos.x}
+            y={pos.y}
+            width={agentW}
+            persona={AGENT_PERSONAS[i]}
+            active={i === activeChat}
+          />
+        ))}
+
         <div
           style={{
-            width: 32,
-            height: 32,
-            borderRadius: 10,
-            background: ACCENT,
-            color: '#fff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 12,
+            position: 'absolute',
+            left: 56,
+            right: 56,
+            bottom: 24,
+            padding: '14px 16px',
+            borderRadius: 18,
+            border: `1px solid ${ACCENT_LINE}`,
+            background: 'rgba(255,247,237,0.96)',
+            boxShadow: '0 18px 42px rgba(194,65,12,0.12)',
+            opacity: chatPhase * (1 - studioPhase * 0.6),
             fontFamily: SANS,
-            fontWeight: 700,
           }}
         >
-          AI
+          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+            <Img src={persona.icon} style={{ width: 34, height: 34, objectFit: 'contain', flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 11, color: MUTED, marginBottom: 6 }}>You · on canvas</div>
+              <div style={{ fontSize: 13, color: INK_SOFT, marginBottom: 8, borderLeft: `2px solid ${LINE}`, paddingLeft: 10 }}>
+                How do these notes connect?
+              </div>
+              <div style={{ fontSize: 15, lineHeight: 1.5, color: INK, fontFamily: SERIF }}>{persona.reply}</div>
+              <div style={{ marginTop: 8, fontSize: 10, color: ACCENT, letterSpacing: '0.12em' }}>{persona.name.toUpperCase()}</div>
+            </div>
+          </div>
         </div>
-        <div style={{ fontSize: 16, lineHeight: 1.5 }}>
-          {personas[Math.min(personas.length - 1, Math.max(0, activeIndex))].insight}
+      </div>
+
+      <div
+        style={{
+          position: 'absolute',
+          inset: '12px 14px 12px 14px',
+          borderRadius: 22,
+          background: 'rgba(255,255,255,0.94)',
+          border: `1px solid ${LINE}`,
+          boxShadow: '0 28px 70px rgba(31,27,24,0.14)',
+          opacity: studioPhase,
+          transform: `translateY(${interpolate(studioPhase, [0, 1], [16, 0])}px)`,
+          display: 'grid',
+          gridTemplateColumns: '200px 1fr',
+          overflow: 'hidden',
+          fontFamily: SANS,
+        }}
+      >
+        <div style={{ borderRight: `1px solid ${LINE}`, padding: '18px 14px', background: '#F4EFE6' }}>
+          <div style={{ fontSize: 10, letterSpacing: '0.18em', color: ACCENT, fontWeight: 700 }}>PERSONAS</div>
+          {AGENT_PERSONAS.map((p, i) => (
+            <div
+              key={p.id}
+              style={{
+                marginTop: 10,
+                padding: '10px 10px',
+                borderRadius: 12,
+                border: `1px solid ${i === activeChat ? ACCENT_LINE : 'transparent'}`,
+                background: i === activeChat ? '#fff' : 'transparent',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                fontSize: 11,
+                color: INK_SOFT,
+              }}
+            >
+              <Img src={p.icon} style={{ width: 22, height: 22, objectFit: 'contain' }} />
+              <span>{p.name}</span>
+            </div>
+          ))}
+          <div
+            style={{
+              marginTop: 12,
+              padding: '12px 10px',
+              borderRadius: 12,
+              border: `2px dashed ${ACCENT}`,
+              background: ACCENT_SOFT,
+              fontSize: 11,
+              fontWeight: 600,
+              color: ACCENT,
+              textAlign: 'center',
+            }}
+          >
+            + Custom persona
+          </div>
+        </div>
+        <div style={{ padding: '22px 24px' }}>
+          <div style={{ fontSize: 11, color: MUTED, letterSpacing: '0.14em' }}>DEFINE YOUR OWN</div>
+          <div style={{ marginTop: 14, fontSize: 22, fontWeight: 600, color: INK, fontFamily: SERIF }}>Field Ethnographer</div>
+          <div style={{ marginTop: 6, fontSize: 12, color: ACCENT }}>Role · Qualitative lens</div>
+          <div
+            style={{
+              marginTop: 18,
+              padding: 14,
+              borderRadius: 12,
+              background: '#FAF8F3',
+              border: `1px solid ${LINE}`,
+              fontSize: 12,
+              lineHeight: 1.55,
+              color: INK_SOFT,
+            }}
+          >
+            Ask one sharp question at a time. Surface what the notes imply but never say aloud.
+          </div>
+          <div style={{ marginTop: 16, display: 'flex', gap: 10 }}>
+            <span style={{ padding: '6px 12px', borderRadius: 999, background: ACCENT_SOFT, fontSize: 10, color: ACCENT }}>Temperature</span>
+            <span style={{ padding: '6px 12px', borderRadius: 999, background: '#EFE7DC', fontSize: 10, color: MUTED }}>Creativity</span>
+          </div>
         </div>
       </div>
     </>
@@ -673,13 +838,13 @@ function AgentsScene({ sec }) {
 }
 
 function SynthScene({ sec }) {
-  const selectionStart = 34;
-  const articleStart = 38;
-  const linkStart = 44;
+  const selectionStart = 32;
+  const articleStart = 36;
+  const linkStart = 42;
 
   const selectGlow = smoothFade(sec, [selectionStart, selectionStart + 0.8, articleStart, articleStart + 0.6]);
-  const article = smoothFade(sec, [articleStart, articleStart + 1.2, 50, 50.1]);
-  const linkChip = smoothFade(sec, [linkStart, linkStart + 0.8, 50, 50.1]);
+  const article = smoothFade(sec, [articleStart, articleStart + 1.2, 44, 44.1]);
+  const linkChip = smoothFade(sec, [linkStart, linkStart + 0.8, 44, 44.1]);
 
   return (
     <>
@@ -785,7 +950,7 @@ function SynthScene({ sec }) {
 }
 
 function PrivacyOverlay({ sec }) {
-  const opacity = smoothFade(sec, [50, 50.8, 55, 55.1]);
+  const opacity = smoothFade(sec, [44, 44.8, 48, 48.1]);
   if (opacity < 0.01) return null;
   return (
     <div
@@ -824,6 +989,7 @@ function AppWindow({ sec }) {
 
   const sidebarActive = (() => {
     if (scene.id === 'synth') return 'reference';
+    if (scene.id === 'agentChat' || scene.id === 'agents') return 'agents';
     if (scene.id === 'privacy') return 'canvas';
     return 'canvas';
   })();
@@ -921,14 +1087,17 @@ function AppWindow({ sec }) {
         <SceneLayer window={[15.4, 16.4, 24, 24.6]} sec={sec}>
           <FormsScene sec={sec} />
         </SceneLayer>
-        <SceneLayer window={[23.4, 24.4, 34, 34.6]} sec={sec}>
+        <SceneLayer window={[23.4, 24.4, 32, 32.6]} sec={sec}>
           <AgentsScene sec={sec} />
         </SceneLayer>
-        <SceneLayer window={[33.4, 34.4, 50, 50.6]} sec={sec}>
+        <SceneLayer window={[31.4, 32.4, 44, 44.6]} sec={sec}>
           <SynthScene sec={sec} />
         </SceneLayer>
-        <SceneLayer window={[49.4, 50.6, 55, 55.6]} sec={sec}>
+        <SceneLayer window={[43.4, 44.4, 48, 48.6]} sec={sec}>
           <CanvasGraphScene sec={sec} />
+        </SceneLayer>
+        <SceneLayer window={[47.4, 48.4, 58, 58.6]} sec={sec}>
+          <AgentChatScene sec={sec} />
         </SceneLayer>
 
         <PrivacyOverlay sec={sec} />
@@ -940,7 +1109,7 @@ function AppWindow({ sec }) {
             right: 18,
             display: 'flex',
             gap: 8,
-            opacity: smoothFade(sec, [50, 50.8, 55, 55.1]),
+            opacity: smoothFade(sec, [44, 44.8, 48, 48.1]),
           }}
         >
           <div
@@ -982,11 +1151,12 @@ function EnglishCaption({ caption, sec }) {
       <div
         style={{
           margin: '0 auto',
-          maxWidth: 1280,
-          fontSize: 24,
-          lineHeight: 1.45,
+          maxWidth: 1320,
+          fontSize: 34,
+          lineHeight: 1.42,
+          fontWeight: 450,
           color: INK_SOFT,
-          letterSpacing: '0.005em',
+          letterSpacing: '0.01em',
         }}
       >
         {caption.en}
