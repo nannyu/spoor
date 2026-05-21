@@ -1,7 +1,7 @@
 # Spatial Notes — 横屏产品介绍片脚本
 
-**成片规格：** 1920×1080，30fps，约 60 秒  
-**Composition ID：** `SpatialNotesPromo`  
+**成片规格：** 1920×1080，30fps，约 60 秒
+**Composition ID：** `SpatialNotesPromo`
 **数据文件：** [`remotion-kit/remotion/spatial-notes-promo.json`](../remotion-kit/remotion/spatial-notes-promo.json)
 
 ## 预览与导出
@@ -15,35 +15,55 @@ npm run remotion:studio --prefix remotion-kit
 npm run remotion:render:spatial-notes
 ```
 
-可选旁白：将 MP3 放在项目根目录，在 JSON 中增加 `"audioPath": "path/to/voiceover.mp3"`，或通过渲染 API 传入 `audioUrl`。
+可选旁白：将 MP3 放在项目根目录，在渲染 API 中传入 `audioUrl`，或在 `spatial-notes-promo.json` 中加 `"audioUrl"` 字段。
 
-## 录音提示
+## 设计原则（与 prompt 对齐）
 
-- 语速：约 130–140 英文词/分钟；中文可略慢，保证与字幕段对齐。
-- 语气：冷静、清晰，像「思维伙伴」而非推销主播。
-- 每段英文见下表「旁白 EN」列；可与字幕轴逐段录制后拼接为一条 60s 音轨。
+- 风格参照：Anthropic / Claude demo —— 安静、克制、产品聚焦
+- 大字版式驱动叙事，单一焦点，避免功能堆叠
+- 慢淡入、轻微上移、缓慢推镜，无炫技动画
+- 真实 App UI 浮层在右侧；不与文字争夺画面
 
-## 分镜与旁白（8 段）
+## 版面分区（避免重叠）
 
-| 时间 | 旁白 EN | 旁白 ZH | 画面 |
-|------|---------|---------|------|
-| 0:00–0:08 | Spatial Notes is a quiet canvas for thinking in space. | Spatial Notes 是一个安静的空间化思考画布。 | 极简标题、浅色空间、慢速镜头 |
-| 0:08–0:17 | Ideas keep their position, shape, and relationship. | 想法保留位置、形态，以及彼此之间的关系。 | 浮层 App 窗口 + 画布卡片轻入 |
-| 0:17–0:27 | AI works inside the room, close to the material. | AI 留在工作现场，贴近材料本身。 | AI 卡片低调高亮 |
-| 0:27–0:37 | Different modes of thought can share the same memory. | 不同的思考方式，可以共享同一份记忆。 | Personas 小胶囊依次亮起 |
-| 0:37–0:43 | Research becomes a path, not a pile. | 研究变成路径，而不是材料堆。 | Research 面板安静覆盖 |
-| 0:43–0:48 | Writing remains linked to its source canvas. | 写作始终连接回来源画布。 | Long-form 关联标签出现 |
-| 0:48–0:55 | Local-first. Private by default. | 本地优先，默认私密。 | 本地优先角标 |
-| 0:55–1:00 | Build your spatial memory. | 开始搭建你的空间记忆。 | 中央 CTA，克制收尾 |
+```
+┌─ Header  y=72  ────────────────────────────────────────────────┐
+│ BRAND (left, accent)            Subtitle (right, muted)        │
+├─ Main row  y=192..820  ────────────────────────────────────────┤
+│ Copy 左列 (x=96, w=680)         App Window 右列 (x=856, w=968) │
+│  eyebrow / title 78px / 23px caption   产品 UI                 │
+├─ Bilingual caption  y=856..948  ───────────────────────────────┤
+│ EN 22px + ZH 16px（浮层胶囊）                                  │
+├─ Scene progress  y=996  ───────────────────────────────────────┤
+│ 7 段 thin progress bar + 当前 eyebrow 标签                     │
+└────────────────────────────────────────────────────────────────┘
+```
+
+- `opening` / `closing` 切换为 **hero** 单列居中（无 App 窗口、无字幕条），用整屏大字
+- 其余场景使用 **split** 双列，App 窗口里同一时刻只显示一个焦点（连线 / 形态 / 人格 / 合成 / 隐私）
+
+## 分镜与旁白（8 段字幕 ↔ 7 段场景）
+
+| 时间 | Scene (英) | 旁白 EN | 旁白 ZH | 画面焦点 |
+|------|------------|---------|---------|----------|
+| 0:00–0:08 | opening | Spatial Notes is a quiet canvas for thinking in space. | Spatial Notes 是一个安静的空间化思考画布。 | 浅色空间 + 大字主标题，无 App 框 |
+| 0:08–0:16 | graph | Notes connect by hand — the thought becomes visible. | 亲手把便签连起来，想法就显出形状。 | App 内：主题卡 + 多张便签 + 手绘连线一笔笔画出 |
+| 0:16–0:24 | forms | Each note finds its form — standard, glass, minimal, neo-brut, receipt. | 每张便签都有自己的形态——标准、玻璃、极简、神经粗野、票据。 | 居中单张便签在 5 种版式间交叉淡变；底部胶囊指示当前形态 |
+| 0:24–0:34 | agents | Four personas read your notes — and the images linked to them. | 四个人格阅读你的便签，以及与之相连的图像。 | Theme + Observation + “Linked image”；四条线连向底部 4 个人格胶囊，最下方弹出 AI 洞察卡 |
+| 0:34–0:42 | synth (a) | Select what matters. The canvas becomes a draft. | 选出关键的几张。画布会写成草稿。 | 左列便签被选中描边；右侧 Reference 草稿面板淡入 |
+| 0:42–0:50 | synth (b) | The article stays linked to the canvas it came from. | 成文之后，仍引用回它的来源画布。 | Reference 面板继续显示；`↗ Linked to source canvas` 小标签出现 |
+| 0:50–0:55 | privacy | Local-first. Private by default. | 本地优先，默认私密。 | App 内右上角 `Local-first · IndexedDB` 角标淡入 |
+| 0:55–1:00 | closing | Build your spatial memory. | 开始搭建你的空间记忆。 | 全屏纸面渐变 + 大字 CTA + 网址 + 单一按钮 |
+
+## 调字幕 / 调时间
+
+- 改文案：编辑 `remotion-kit/remotion/spatial-notes-promo.json` 中的 `timestampSegments`
+- 改场景节奏：编辑 `remotion-kit/remotion/SpatialNotesPromo.jsx` 顶部 `SCENES` 数组的 `start` / `end`
+- 改版面分区坐标：编辑 `SpatialNotesPromo.jsx` 顶部的 `STAGE` 常量
 
 ## 品牌与视觉
 
-- 主色：`#C2410C`（强调、连线、高亮）
-- 背景：浅色纸感空间 + 柔和径向渐变，避免广告感
-- 字幕：底部小字号双语字幕，保持产品界面为主角
-- 字体：Georgia + Noto Serif SC；辅助 UI 使用系统 sans
-- 动效：慢淡入、轻微上移、缓慢推镜、低频高亮
-
-## 修改字幕
-
-编辑 `remotion-kit/remotion/spatial-notes-promo.json` 中的 `timestampSegments`，保存后在 Studio 刷新或重新 render 即可。
+- 主色：`#C2410C`（强调线、人格、CTA、活动 timeline）
+- 文字：`#1F1B18` 深色 / `#8B847C` 静音灰
+- 背景：`#FFF6EA → #FBF6EC → #EFE6D9` 浅纸渐变 + 轻微径向高光
+- 字体：标题 Georgia + Noto Serif SC（衬线驱动叙事）；UI 与字幕 Inter / Helvetica Neue / Noto Sans SC
