@@ -235,7 +235,146 @@ function SceneLayer({ window: [a, b, c, d], sec, children }) {
   );
 }
 
-function NoteCard({ kind, x, y, w = 200, h = 120, title, body, highlight }) {
+const RECEIPT_PAPER = '#fcf8f9';
+const JAGGED_TOP = {
+  height: 10,
+  width: '100%',
+  background: `linear-gradient(-45deg, transparent 5px, ${RECEIPT_PAPER} 5px) bottom left, linear-gradient(45deg, transparent 5px, ${RECEIPT_PAPER} 5px) bottom left`,
+  backgroundSize: '10px 10px',
+  backgroundRepeat: 'repeat-x',
+};
+const JAGGED_BOTTOM = {
+  height: 10,
+  width: '100%',
+  background: `linear-gradient(-45deg, ${RECEIPT_PAPER} 5px, transparent 5px) top right, linear-gradient(45deg, ${RECEIPT_PAPER} 5px, transparent 5px) top right`,
+  backgroundSize: '10px 10px',
+  backgroundRepeat: 'repeat-x',
+};
+
+function ReceiptNotePreview({ w, h, title, body, receipt, highlight }) {
+  return (
+    <div
+      style={{
+        width: w,
+        height: h,
+        display: 'flex',
+        flexDirection: 'column',
+        fontFamily: 'ui-monospace, monospace',
+        color: '#2c281f',
+        boxShadow: highlight
+          ? '0 20px 40px -10px rgba(0,0,0,0.12), 0 0 0 1px rgba(194,65,12,0.2)'
+          : '0 20px 40px -10px rgba(0,0,0,0.1), 5px 0 15px -5px rgba(0,0,0,0.02), -5px 0 15px -5px rgba(0,0,0,0.02)',
+        outline: '1px solid transparent',
+      }}
+    >
+      <div style={JAGGED_TOP} />
+      <div
+        style={{
+          flex: 1,
+          background: RECEIPT_PAPER,
+          padding: '14px 16px 12px',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          position: 'relative',
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: 0.04,
+            fontSize: 120,
+            pointerEvents: 'none',
+          }}
+        >
+          ☕
+        </div>
+        <div style={{ textAlign: 'center', borderBottom: '2px dashed #c7c5bd', paddingBottom: 10, marginBottom: 10 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase' }}>
+            {receipt.header}
+          </div>
+          <div style={{ marginTop: 6, fontSize: 11, textTransform: 'uppercase' }}>{receipt.store}</div>
+          <div style={{ marginTop: 8, fontSize: 10, lineHeight: 1.5 }}>{receipt.date}</div>
+          <div style={{ fontSize: 10, lineHeight: 1.5 }}>{receipt.time}</div>
+          <div style={{ fontSize: 10, lineHeight: 1.5 }}>{receipt.txn}</div>
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            borderBottom: '1px dashed #c7c5bd',
+            paddingBottom: 4,
+          }}
+        >
+          <span>{receipt.colItem}</span>
+          <span>{receipt.colAmt}</span>
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontSize: 10,
+            opacity: 0.85,
+            marginTop: 2,
+            marginBottom: 8,
+          }}
+        >
+          <span style={{ paddingRight: 8 }}>{receipt.rowLabel}</span>
+          <span>{receipt.rowValue ?? '—'}</span>
+        </div>
+        <div style={{ flex: 1, fontSize: 11, lineHeight: 1.45, position: 'relative', zIndex: 1 }}>{body}</div>
+        <div style={{ borderTop: '2px dashed #c7c5bd', paddingTop: 10, textAlign: 'center', marginTop: 8 }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: 9,
+              fontWeight: 700,
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              marginBottom: 6,
+            }}
+          >
+            <span>{receipt.total}</span>
+            <span>{receipt.paid}</span>
+          </div>
+          <div style={{ fontSize: 9, textTransform: 'uppercase', opacity: 0.8 }}>{receipt.thanks}</div>
+          <div style={{ marginTop: 4, fontSize: 8, opacity: 0.55 }}>{receipt.policy}</div>
+          <div
+            style={{
+              marginTop: 8,
+              height: 32,
+              width: '100%',
+              opacity: 0.75,
+              backgroundImage:
+                'repeating-linear-gradient(90deg, #1b1b1c, #1b1b1c 2px, transparent 2px, transparent 4px, #1b1b1c 4px, #1b1b1c 5px, transparent 5px, transparent 8px, #1b1b1c 8px, #1b1b1c 12px, transparent 12px, transparent 14px)',
+            }}
+          />
+          <div style={{ marginTop: 4, fontSize: 8, letterSpacing: '0.16em', opacity: 0.85 }}>{receipt.barcode}</div>
+        </div>
+      </div>
+      <div style={JAGGED_BOTTOM} />
+    </div>
+  );
+}
+
+function NoteCard({ kind, x, y, w = 200, h = 120, title, body, highlight, receipt }) {
+  if (kind === 'receipt' && receipt) {
+    return (
+      <div style={{ position: 'absolute', left: x, top: y }}>
+        <ReceiptNotePreview w={w} h={h} title={title} body={body} receipt={receipt} highlight={highlight} />
+      </div>
+    );
+  }
+
   const styles = {
     base: {
       width: w,
@@ -292,19 +431,6 @@ function NoteCard({ kind, x, y, w = 200, h = 120, title, body, highlight }) {
       boxShadow: '6px 6px 0 0 #1B1B1C',
       fontFamily: SERIF,
       color: INK,
-    },
-    receipt: {
-      width: w,
-      height: h,
-      background: '#F5F0E8',
-      border: '1px dashed #C7C5BD',
-      padding: 12,
-      display: 'flex',
-      flexDirection: 'column',
-      fontFamily: 'ui-monospace, monospace',
-      fontSize: 12,
-      color: '#2C281F',
-      boxShadow: '0 8px 18px rgba(31,27,24,0.06)',
     },
   };
 
@@ -415,22 +541,54 @@ function CanvasGraphScene({ sec }) {
   );
 }
 
+/** Forms scene beat times (sec) — last beat holds receipt longer so it reads on screen. */
+const FORMS_BEATS = [0, 0.85, 1.7, 2.55, 3.4, 6];
+
+function getFormsBeat(sec, sceneStart) {
+  const t = Math.max(0, sec - sceneStart);
+  let idx = 0;
+  for (let i = 1; i < FORMS_BEATS.length - 1; i += 1) {
+    if (t >= FORMS_BEATS[i]) idx = i;
+  }
+  const segStart = FORMS_BEATS[idx];
+  const segEnd = FORMS_BEATS[idx + 1];
+  const localT = segEnd > segStart ? (t - segStart) / (segEnd - segStart) : 0;
+  return { idx: Math.min(4, idx), localT };
+}
+
 function FormsScene({ sec }) {
-  const { copy } = usePromo();
+  const { copy, scenes } = usePromo();
+  const formsScene = scenes.find((s) => s.id === 'forms');
+  const sceneStart = formsScene?.start ?? 10;
   const layouts = copy.forms.items;
   const items = copy.forms.labels;
+  const receiptMeta = copy.forms.receipt;
 
-  const idx = Math.min(layouts.length - 1, Math.floor((sec - 10) / 1.2));
-  const localT = ((sec - 10) % 1.2) / 1.2;
+  const { idx, localT } = getFormsBeat(sec, sceneStart);
   const current = layouts[Math.max(0, idx)];
   const next = layouts[Math.max(0, Math.min(layouts.length - 1, idx + 1))];
 
-  const showNext = localT > 0.7 && idx < layouts.length - 1;
-  const crossfade = interpolate(localT, [0.7, 1], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const showNext = localT > 0.72 && idx < layouts.length - 1;
+  const crossfade = interpolate(localT, [0.72, 1], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const cardH = current.kind === 'receipt' ? 268 : 220;
+
+  const renderFormCard = (item, highlighted) => (
+    <NoteCard
+      kind={item.kind}
+      x={0}
+      y={0}
+      w={320}
+      h={cardH}
+      title={item.title}
+      body={item.body}
+      highlight={highlighted}
+      receipt={item.kind === 'receipt' ? receiptMeta : undefined}
+    />
+  );
 
   return (
     <>
-      <div style={{ position: 'absolute', left: 248, top: 96, width: 320, height: 220 }}>
+      <div style={{ position: 'absolute', left: 248, top: 84, width: 320, height: cardH }}>
         <div
           style={{
             position: 'absolute',
@@ -439,11 +597,11 @@ function FormsScene({ sec }) {
             transition: 'opacity 0.3s',
           }}
         >
-          <NoteCard kind={current.kind} x={0} y={0} w={320} h={220} title={current.title} body={current.body} highlight />
+          {renderFormCard(current, true)}
         </div>
         {showNext ? (
           <div style={{ position: 'absolute', inset: 0, opacity: crossfade }}>
-            <NoteCard kind={next.kind} x={0} y={0} w={320} h={220} title={next.title} body={next.body} highlight />
+            {renderFormCard(next, true)}
           </div>
         ) : null}
       </div>
@@ -451,15 +609,16 @@ function FormsScene({ sec }) {
       <div
         style={{
           position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: 56,
+          left: 8,
+          right: 8,
+          bottom: 48,
           display: 'flex',
           justifyContent: 'center',
-          gap: 14,
+          flexWrap: 'nowrap',
+          gap: 8,
           fontFamily: SANS,
-          fontSize: 11,
-          letterSpacing: '0.18em',
+          fontSize: 10,
+          letterSpacing: '0.12em',
           textTransform: 'uppercase',
         }}
       >
@@ -467,12 +626,13 @@ function FormsScene({ sec }) {
           <div
             key={label}
             style={{
-              padding: '8px 12px',
+              padding: '7px 10px',
               borderRadius: 999,
               border: `1px solid ${i === idx ? ACCENT_LINE : LINE}`,
               color: i === idx ? ACCENT : MUTED,
               background: i === idx ? ACCENT_SOFT : 'transparent',
-              transition: 'all 0.25s ease',
+              fontWeight: i === idx ? 600 : 400,
+              whiteSpace: 'nowrap',
             }}
           >
             {label}
