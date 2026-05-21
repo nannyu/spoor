@@ -32,3 +32,21 @@ Optional: to bake a default **Gemini** key at build time (see [`vite.config.ts`]
 ## 桌面端本地 GGUF（llama.cpp）
 
 编译、环境变量、脚本与排障见 **[docs/LOCAL_LLM.md](docs/LOCAL_LLM.md)**。
+
+## License
+
+This project is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE).
+
+- **Allowed:** personal, educational, and other noncommercial use.
+- **Not allowed without permission:** commercial use, commercial deployment, commercial integration, or commercial redistribution.
+
+For commercial licensing, contact the author via [GitHub](https://github.com/iimorning).
+
+## 许可证
+
+本项目采用 [PolyForm Noncommercial License 1.0.0](LICENSE)。
+
+- **允许：** 个人学习、研究、测试、爱好项目及其他非商业用途。
+- **未经书面授权不得：** 商业使用、商业部署、商业集成或商业再分发。
+
+商业授权请联系作者：[GitHub @iimorning](https://github.com/iimorning)。
