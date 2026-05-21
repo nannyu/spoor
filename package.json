@@ -18,7 +18,7 @@
     "remotion:studio": "npm run remotion:studio --prefix remotion-kit",
     "remotion:render": "npm run remotion:render --prefix remotion-kit",
     "remotion:render:promo": "npm run remotion:render:promo --prefix remotion-kit",
-    "remotion:render:spatial-notes": "npm run remotion:render:spatial-notes --prefix remotion-kit"
+    "remotion:render:spoor": "npm run remotion:render:spoor --prefix remotion-kit"
   },
   "dependencies": {
     "@google/genai": "^1.51.0",

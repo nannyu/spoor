@@ -2,8 +2,8 @@ import React from 'react';
 import { Composition } from 'remotion';
 import { MyComposition } from './Composition.jsx';
 import { PromoVertical, PromoVerticalDuration } from './PromoVertical.jsx';
-import { SpatialNotesPromo, SpatialNotesPromoDuration } from './SpatialNotesPromo.jsx';
-import spatialNotesPromoDefaults from './spatial-notes-promo.json';
+import { SpoorPromo, SpoorPromoDuration } from './SpoorPromo.jsx';
+import spoorPromoDefaults from './spoor-promo.json';
 
 const FPS = 30;
 
@@ -40,14 +40,14 @@ export const RemotionRoot = () => {
         defaultProps={{}}
       />
       <Composition
-        id="SpatialNotesPromo"
-        component={SpatialNotesPromo}
-        durationInFrames={SpatialNotesPromoDuration}
-        calculateMetadata={(meta) => durationFromProps(meta, SpatialNotesPromoDuration)}
+        id="SpoorPromo"
+        component={SpoorPromo}
+        durationInFrames={SpoorPromoDuration}
+        calculateMetadata={(meta) => durationFromProps(meta, SpoorPromoDuration)}
         fps={FPS}
         width={1920}
         height={1080}
-        defaultProps={spatialNotesPromoDefaults}
+        defaultProps={spoorPromoDefaults}
       />
     </>
   );

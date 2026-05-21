@@ -9,7 +9,7 @@ import {
   useVideoConfig,
 } from 'remotion';
 
-export const SpatialNotesPromoDuration = 1800;
+export const SpoorPromoDuration = 1800;
 
 const ACCENT = '#C2410C';
 const ACCENT_SOFT = 'rgba(194,65,12,0.10)';
@@ -45,7 +45,7 @@ const SCENES = [
     start: 0,
     end: 8,
     layout: 'hero',
-    eyebrow: 'Spatial Notes',
+    eyebrow: 'Spoor',
     title: 'Think in space.',
     caption: 'A quiet canvas for memory, synthesis, and AI-assisted thought.',
   },
@@ -99,8 +99,8 @@ const SCENES = [
     start: 55,
     end: 60,
     layout: 'hero',
-    eyebrow: 'Spatial Notes',
-    title: 'Build your spatial memory.',
+    eyebrow: 'Spoor',
+    title: 'A place for thoughts to leave a trace.',
     caption: 'scribe-ai-canvas.netlify.app',
   },
 ];
@@ -860,11 +860,11 @@ function AppWindow({ sec }) {
         {['#E8AAA0', '#E9D2A1', '#BFD8B8'].map((c) => (
           <span key={c} style={{ width: 11, height: 11, borderRadius: 999, background: c }} />
         ))}
-        <span style={{ marginLeft: 14, fontSize: 12, color: MUTED }}>Spatial Notes · Memory Architecture</span>
+        <span style={{ marginLeft: 14, fontSize: 12, color: MUTED }}>Spoor · Memory Architecture</span>
       </div>
 
       <div style={{ position: 'absolute', top: 44, bottom: 0, left: 0, width: 200, background: '#F4EFE6', borderRight: `1px solid ${LINE}`, padding: '22px 16px', boxSizing: 'border-box' }}>
-        <div style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: ACCENT, fontWeight: 700 }}>Spatial Notes</div>
+        <div style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: ACCENT, fontWeight: 700 }}>Spoor</div>
         <div style={{ marginTop: 6, fontSize: 10, color: MUTED, letterSpacing: '0.16em' }}>FOCUS MODE</div>
         <div style={{ marginTop: 22, fontSize: 10, color: MUTED, letterSpacing: '0.16em' }}>MODULES</div>
         {[
@@ -962,127 +962,35 @@ function AppWindow({ sec }) {
   );
 }
 
-function HeaderBar({ brandLabel, subtitle, sec }) {
-  const closing = scenePresence(SCENES[SCENES.length - 1], sec);
-  return (
-    <div
-      style={{
-        position: 'absolute',
-        top: STAGE.headerY,
-        left: STAGE.margin,
-        right: STAGE.margin,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        fontFamily: SANS,
-        opacity: 1 - closing * 0.9,
-      }}
-    >
-      <div style={{ fontSize: 14, letterSpacing: '0.28em', textTransform: 'uppercase', color: ACCENT, fontWeight: 700 }}>
-        {brandLabel}
-      </div>
-      <div style={{ fontSize: 13, color: MUTED }}>{subtitle}</div>
-    </div>
-  );
-}
-
-function BilingualCaption({ caption, sec }) {
+function EnglishCaption({ caption, sec }) {
   const closing = scenePresence(SCENES[SCENES.length - 1], sec);
   const opening = scenePresence(SCENES[0], sec);
   const opacity = (1 - closing) * (1 - opening * 0.6);
-  if (opacity < 0.02) return null;
+  if (opacity < 0.02 || !caption?.en) return null;
   return (
     <div
       style={{
         position: 'absolute',
-        left: STAGE.margin,
-        right: STAGE.margin,
+        left: 0,
+        right: 0,
         top: STAGE.captionY,
         opacity,
+        textAlign: 'center',
         fontFamily: SANS,
       }}
     >
       <div
         style={{
-          padding: '20px 26px',
-          borderRadius: 18,
-          background: 'rgba(255,255,255,0.72)',
-          border: `1px solid ${LINE}`,
-          boxShadow: '0 14px 36px rgba(31,27,24,0.06)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 6,
-          maxWidth: 1100,
+          margin: '0 auto',
+          maxWidth: 1280,
+          fontSize: 24,
+          lineHeight: 1.45,
+          color: INK_SOFT,
+          letterSpacing: '0.005em',
         }}
       >
-        <div style={{ fontSize: 22, lineHeight: 1.42, color: INK }}>{caption?.en}</div>
-        <div style={{ fontSize: 16, lineHeight: 1.5, color: MUTED }}>{caption?.zh}</div>
+        {caption.en}
       </div>
-    </div>
-  );
-}
-
-function SceneProgress({ sec }) {
-  const closing = scenePresence(SCENES[SCENES.length - 1], sec);
-  return (
-    <div
-      style={{
-        position: 'absolute',
-        left: STAGE.margin,
-        right: STAGE.margin,
-        top: STAGE.timelineY,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        opacity: 1 - closing * 0.85,
-        fontFamily: SANS,
-      }}
-    >
-      {SCENES.map((scene, i) => {
-        const isActive = sec >= scene.start && sec < scene.end;
-        const isDone = sec >= scene.end;
-        const progress = isActive
-          ? Math.max(0, Math.min(1, (sec - scene.start) / (scene.end - scene.start)))
-          : isDone
-            ? 1
-            : 0;
-        return (
-          <div key={scene.id} style={{ flex: isActive ? 1.6 : 1, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div
-              style={{
-                flex: 1,
-                height: 2,
-                borderRadius: 999,
-                background: 'rgba(31,27,24,0.12)',
-                overflow: 'hidden',
-              }}
-            >
-              <div
-                style={{
-                  width: `${progress * 100}%`,
-                  height: '100%',
-                  background: ACCENT,
-                  borderRadius: 999,
-                  transition: 'width 0.2s linear',
-                }}
-              />
-            </div>
-            {isActive ? (
-              <span
-                style={{
-                  fontSize: 10,
-                  letterSpacing: '0.18em',
-                  textTransform: 'uppercase',
-                  color: ACCENT,
-                  fontWeight: 700,
-                }}
-              >
-                {scene.eyebrow}
-              </span>
-            ) : null}
-          </div>
-        );
-      })}
     </div>
   );
 }
@@ -1162,10 +1070,10 @@ function ClosingCTA({ scene, sec, ctaText, ctaUrl }) {
   );
 }
 
-export const SpatialNotesPromo = ({
-  title = 'Spatial Notes',
-  subtitle = 'Spatial Thinking & Knowledge Synthesis',
-  brandLabel = 'SPATIAL NOTES',
+export const SpoorPromo = ({
+  title = 'Spoor',
+  subtitle = 'Notes that leave a trace',
+  brandLabel = 'SPOOR',
   ctaUrl = 'scribe-ai-canvas.netlify.app',
   ctaText = 'Try the web app',
   audioUrl = '',
@@ -1213,8 +1121,6 @@ export const SpatialNotesPromo = ({
         }}
       />
 
-      <HeaderBar brandLabel={brandLabel} subtitle={subtitle} sec={sec} />
-
       {scene.layout === 'hero' && scene.id === 'opening' ? (
         <HeroCopy scene={{ ...scene, title }} sec={sec} />
       ) : null}
@@ -1226,9 +1132,7 @@ export const SpatialNotesPromo = ({
         </>
       ) : null}
 
-      {scene.id !== 'closing' ? <BilingualCaption caption={caption} sec={sec} /> : null}
-
-      <SceneProgress sec={sec} />
+      {scene.id !== 'closing' ? <EnglishCaption caption={caption} sec={sec} /> : null}
 
       <ClosingCTA scene={SCENES[SCENES.length - 1]} sec={sec} ctaText={ctaText} ctaUrl={ctaUrl} />
     </AbsoluteFill>

@@ -1,7 +1,7 @@
 {
-  "title": "Spatial Notes",
-  "subtitle": "Spatial Thinking & Knowledge Synthesis",
-  "brandLabel": "SPATIAL NOTES",
+  "title": "Spoor",
+  "subtitle": "Notes that leave a trace",
+  "brandLabel": "SPOOR",
   "ctaUrl": "scribe-ai-canvas.netlify.app",
   "ctaText": "Try the web app",
   "totalDurationSec": 60,
@@ -9,8 +9,8 @@
     {
       "startSec": 0,
       "endSec": 8,
-      "en": "Spatial Notes is a quiet canvas for thinking in space.",
-      "zh": "Spatial Notes 是一个安静的空间化思考画布。"
+      "en": "Spoor is a quiet canvas for thinking in space.",
+      "zh": "雪泥是一个安静的空间化思考画布。"
     },
     {
       "startSec": 8,
@@ -51,8 +51,8 @@
     {
       "startSec": 55,
       "endSec": 60,
-      "en": "Build your spatial memory.",
-      "zh": "开始搭建你的空间记忆。"
+      "en": "A trace of thought, left on quiet ground.",
+      "zh": "念头如鸿，落处成迹。"
     }
   ]
 }

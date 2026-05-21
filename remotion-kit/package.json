@@ -8,7 +8,7 @@
     "remotion:studio": "remotion studio remotion/index.js",
     "remotion:render": "remotion render remotion/index.js MyComposition out.mp4",
     "remotion:render:promo": "remotion render remotion/index.js PromoVertical promo-vertical.mp4",
-    "remotion:render:spatial-notes": "remotion render remotion/index.js SpatialNotesPromo ../../output/spatial-notes-promo.mp4 --props=remotion/spatial-notes-promo.json",
+    "remotion:render:spoor": "remotion render remotion/index.js SpoorPromo ../../output/spoor-promo.mp4 --props=remotion/spoor-promo.json",
     "test": "node --test test/remotion-components.test.mjs test/remotion-api.test.mjs"
   },
   "dependencies": {

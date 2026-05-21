@@ -125,11 +125,11 @@ test('PromoVertical renders at 30 fps', () => {
   assert.equal(30, 30);
 });
 
-test('Root exports MyComposition, PromoVertical, and SpatialNotesPromo compositions', () => {
+test('Root exports MyComposition, PromoVertical, and SpoorPromo compositions', () => {
   const compositions = [
     { id: 'MyComposition', durationInFrames: 90, fps: 30, width: 1920, height: 1080 },
     { id: 'PromoVertical', durationInFrames: 150, fps: 30, width: 1080, height: 1920 },
-    { id: 'SpatialNotesPromo', durationInFrames: 1800, fps: 30, width: 1920, height: 1080 },
+    { id: 'SpoorPromo', durationInFrames: 1800, fps: 30, width: 1920, height: 1080 },
   ];
   assert.equal(compositions.length, 3);
   compositions.forEach((comp) => {
@@ -138,15 +138,15 @@ test('Root exports MyComposition, PromoVertical, and SpatialNotesPromo compositi
   });
 });
 
-test('SpatialNotesPromo exports 60s duration at 30fps', () => {
-  const SpatialNotesPromoDuration = 1800;
-  assert.equal(SpatialNotesPromoDuration, 60 * 30);
+test('SpoorPromo exports 60s duration at 30fps', () => {
+  const SpoorPromoDuration = 1800;
+  assert.equal(SpoorPromoDuration, 60 * 30);
 });
 
-test('spatial-notes-promo.json has eight timestamp segments', () => {
-  const path = fileURLToPath(new URL('../remotion/spatial-notes-promo.json', import.meta.url));
+test('spoor-promo.json has eight timestamp segments', () => {
+  const path = fileURLToPath(new URL('../remotion/spoor-promo.json', import.meta.url));
   const data = JSON.parse(readFileSync(path, 'utf8'));
-  assert.equal(data.title, 'Spatial Notes');
+  assert.equal(data.title, 'Spoor');
   assert.equal(data.timestampSegments.length, 8);
   assert.equal(data.timestampSegments[7].endSec, 60);
 });
@@ -160,7 +160,7 @@ test('Composition dimensions are within reasonable limits', () => {
   const comps = [
     { id: 'MyComposition', w: 1920, h: 1080 },
     { id: 'PromoVertical', w: 1080, h: 1920 },
-    { id: 'SpatialNotesPromo', w: 1920, h: 1080 },
+    { id: 'SpoorPromo', w: 1920, h: 1080 },
   ];
   comps.forEach(({ id, w, h }) => {
     assert.ok(w <= maxDimension, id);
