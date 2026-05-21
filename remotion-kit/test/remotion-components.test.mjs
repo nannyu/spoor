@@ -125,30 +125,40 @@ test('PromoVertical renders at 30 fps', () => {
   assert.equal(30, 30);
 });
 
-test('Root exports MyComposition, PromoVertical, and SpoorPromo compositions', () => {
+test('Root exports MyComposition, PromoVertical, SpoorPromo, and SpoorPromoZH compositions', () => {
   const compositions = [
     { id: 'MyComposition', durationInFrames: 90, fps: 30, width: 1920, height: 1080 },
     { id: 'PromoVertical', durationInFrames: 150, fps: 30, width: 1080, height: 1920 },
-    { id: 'SpoorPromo', durationInFrames: 1680, fps: 30, width: 1920, height: 1080 },
+    { id: 'SpoorPromo', durationInFrames: 1860, fps: 30, width: 1920, height: 1080 },
+    { id: 'SpoorPromoZH', durationInFrames: 1860, fps: 30, width: 1920, height: 1080 },
   ];
-  assert.equal(compositions.length, 3);
+  assert.equal(compositions.length, 4);
   compositions.forEach((comp) => {
     assert.equal(comp.fps, 30);
     assert.ok(comp.durationInFrames > 0);
   });
 });
 
-test('SpoorPromo exports 56s duration at 30fps', () => {
-  const SpoorPromoDuration = 1680;
-  assert.equal(SpoorPromoDuration, 56 * 30);
+test('SpoorPromo exports 62s duration at 30fps', () => {
+  const SpoorPromoDuration = 1860;
+  assert.equal(SpoorPromoDuration, 62 * 30);
 });
 
-test('spoor-promo.json has eight timestamp segments', () => {
+test('spoor-promo.json has ten timestamp segments', () => {
   const path = fileURLToPath(new URL('../remotion/spoor-promo.json', import.meta.url));
   const data = JSON.parse(readFileSync(path, 'utf8'));
   assert.equal(data.title, 'Spoor');
-  assert.equal(data.timestampSegments.length, 8);
-  assert.equal(data.timestampSegments[7].endSec, 56);
+  assert.equal(data.timestampSegments.length, 10);
+  assert.equal(data.timestampSegments[9].endSec, 62);
+});
+
+test('spoor-promo-zh.json is Chinese locale bundle', () => {
+  const path = fileURLToPath(new URL('../remotion/spoor-promo-zh.json', import.meta.url));
+  const data = JSON.parse(readFileSync(path, 'utf8'));
+  assert.equal(data.title, '雪泥');
+  assert.equal(data.locale, 'zh');
+  assert.equal(data.ctaText, '试用网页版');
+  assert.ok(data.timestampSegments.every((seg) => typeof seg.zh === 'string' && seg.zh.length > 0));
 });
 
 test('index.js registers RemotionRoot', () => {

@@ -9,6 +9,7 @@
     "remotion:render": "remotion render remotion/index.js MyComposition out.mp4",
     "remotion:render:promo": "remotion render remotion/index.js PromoVertical promo-vertical.mp4",
     "remotion:render:spoor": "remotion render remotion/index.js SpoorPromo ../../output/spoor-promo.mp4 --props=remotion/spoor-promo.json",
+    "remotion:render:spoor-zh": "remotion render remotion/index.js SpoorPromoZH ../../output/spoor-promo-zh.mp4 --props=remotion/spoor-promo-zh.json",
     "test": "node --test test/remotion-components.test.mjs test/remotion-api.test.mjs"
   },
   "dependencies": {

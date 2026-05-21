@@ -2,8 +2,9 @@ import React from 'react';
 import { Composition } from 'remotion';
 import { MyComposition } from './Composition.jsx';
 import { PromoVertical, PromoVerticalDuration } from './PromoVertical.jsx';
-import { SpoorPromo, SpoorPromoDuration } from './SpoorPromo.jsx';
+import { SpoorPromo, SpoorPromoZH, SpoorPromoDuration } from './SpoorPromo.jsx';
 import spoorPromoDefaults from './spoor-promo.json';
+import spoorPromoZhDefaults from './spoor-promo-zh.json';
 
 const FPS = 30;
 
@@ -48,6 +49,16 @@ export const RemotionRoot = () => {
         width={1920}
         height={1080}
         defaultProps={spoorPromoDefaults}
+      />
+      <Composition
+        id="SpoorPromoZH"
+        component={SpoorPromoZH}
+        durationInFrames={SpoorPromoDuration}
+        calculateMetadata={(meta) => durationFromProps(meta, SpoorPromoDuration)}
+        fps={FPS}
+        width={1920}
+        height={1080}
+        defaultProps={spoorPromoZhDefaults}
       />
     </>
   );

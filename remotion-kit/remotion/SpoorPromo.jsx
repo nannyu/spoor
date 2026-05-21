@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { createContext, useContext, useMemo } from 'react';
 import {
   AbsoluteFill,
   Audio,
@@ -14,39 +14,28 @@ import mirrorIcon from './assets/agents/mirror.png';
 import weavingIcon from './assets/agents/weaving.png';
 import ironIcon from './assets/agents/iron.png';
 import compassIcon from './assets/agents/compass.png';
+import { getPromoCopy } from './spoor-promo-copy.js';
 
-export const SpoorPromoDuration = 1680;
+export const SpoorPromoDuration = 1860;
 
-const AGENT_PERSONAS = [
-  {
-    id: 'interviewer',
-    icon: mirrorIcon,
-    name: 'The Mirror',
-    role: 'Interview',
-    reply: 'What assumption are you not naming yet?',
-  },
-  {
-    id: 'synthesizer',
-    icon: weavingIcon,
-    name: 'The Weaver',
-    role: 'Synthesize',
-    reply: 'These notes share one thread — anchor, orbit, evidence.',
-  },
-  {
-    id: 'stylist',
-    icon: ironIcon,
-    name: 'Smoothing Iron',
-    role: 'Stylize',
-    reply: 'Try: “The room remembers. The thread forgets.”',
-  },
-  {
-    id: 'futurist',
-    icon: compassIcon,
-    name: 'Star-Gazer',
-    role: 'Project forward',
-    reply: 'In ten years, this canvas becomes an index.',
-  },
-];
+const AGENT_ICONS = {
+  interviewer: mirrorIcon,
+  synthesizer: weavingIcon,
+  stylist: ironIcon,
+  futurist: compassIcon,
+};
+
+const PromoContext = createContext(null);
+
+function usePromo() {
+  const ctx = useContext(PromoContext);
+  if (!ctx) throw new Error('usePromo must be used within SpoorPromo');
+  return ctx;
+}
+
+function buildAgentPersonas(copy) {
+  return copy.agents.map((agent) => ({ ...agent, icon: AGENT_ICONS[agent.id] }));
+}
 
 const ACCENT = '#C2410C';
 const ACCENT_SOFT = 'rgba(194,65,12,0.10)';
@@ -76,72 +65,6 @@ const STAGE = {
   timelineY: 996,
 };
 
-const SCENES = [
-  {
-    id: 'opening',
-    start: 0,
-    end: 8,
-    layout: 'hero',
-    eyebrow: 'Spoor',
-    title: 'Think in space.',
-    caption: 'A quiet canvas for memory, synthesis, and AI-assisted thought.',
-  },
-  {
-    id: 'graph',
-    start: 8,
-    end: 16,
-    layout: 'split',
-    eyebrow: 'Connect',
-    title: 'Notes connect by hand.',
-    caption: 'Draw the line — the thought becomes visible.',
-  },
-  {
-    id: 'forms',
-    start: 16,
-    end: 24,
-    layout: 'split',
-    eyebrow: 'Forms',
-    title: 'Every note finds its form.',
-    caption: 'Five layouts for different ways of thinking out loud.',
-  },
-  {
-    id: 'synth',
-    start: 24,
-    end: 36,
-    layout: 'split',
-    eyebrow: 'Synthesize',
-    title: 'Selected notes become a draft.',
-    caption: 'A long-form article remains linked to its source canvas.',
-  },
-  {
-    id: 'privacy',
-    start: 36,
-    end: 40,
-    layout: 'split',
-    eyebrow: 'Local-first',
-    title: 'Yours, and only yours.',
-    caption: 'Your canvas, your notes, your drafts — kept in your browser.',
-  },
-  {
-    id: 'agentChat',
-    start: 40,
-    end: 50,
-    layout: 'split',
-    eyebrow: 'Personas',
-    title: 'Four minds, one canvas.',
-    caption: 'Each persona reads your notes — and the images linked to them.',
-  },
-  {
-    id: 'closing',
-    start: 50,
-    end: 56,
-    layout: 'hero',
-    eyebrow: 'Spoor',
-    title: 'A place for thoughts to leave a trace.',
-    caption: 'scribe-ai-canvas.netlify.app',
-  },
-];
-
 function smoothFade(sec, [a, b, c, d]) {
   return Math.min(
     interpolate(sec, [a, b], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }),
@@ -149,8 +72,8 @@ function smoothFade(sec, [a, b, c, d]) {
   );
 }
 
-function currentScene(sec) {
-  return SCENES.find((scene) => sec >= scene.start && sec < scene.end) || SCENES[SCENES.length - 1];
+function currentScene(sec, scenes) {
+  return scenes.find((scene) => sec >= scene.start && sec < scene.end) || scenes[scenes.length - 1];
 }
 
 function scenePresence(scene, sec) {
@@ -182,19 +105,21 @@ function HeroCopy({ scene, sec }) {
         transform: `translateY(${lift}px)`,
       }}
     >
-      <div
-        style={{
-          fontFamily: SANS,
-          fontSize: 18,
-          letterSpacing: '0.32em',
-          textTransform: 'uppercase',
-          color: ACCENT,
-          fontWeight: 600,
-          marginBottom: 36,
-        }}
-      >
-        {scene.eyebrow}
-      </div>
+      {scene.id !== 'opening' && scene.eyebrow ? (
+        <div
+          style={{
+            fontFamily: SANS,
+            fontSize: 18,
+            letterSpacing: '0.32em',
+            textTransform: 'uppercase',
+            color: ACCENT,
+            fontWeight: 600,
+            marginBottom: 36,
+          }}
+        >
+          {scene.eyebrow}
+        </div>
+      ) : null}
       <div
         style={{
           fontFamily: SERIF,
@@ -454,7 +379,9 @@ function AppEdges({ progress }) {
 }
 
 function CanvasGraphScene({ sec }) {
-  const t = interpolate(sec, [8, 16], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const { copy } = usePromo();
+  const g = copy.graph;
+  const t = interpolate(sec, [6, 14], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
 
   return (
     <>
@@ -464,61 +391,31 @@ function CanvasGraphScene({ sec }) {
         y={32}
         w={260}
         h={94}
-        title="Theme"
-        body="Memory as a navigable space."
+        title={g.themeTitle}
+        body={g.themeBody}
         highlight
       />
-      <NoteCard kind="base" x={400} y={28} w={170} h={100} title="Image" body="Linked artifact" />
-      <NoteCard
-        kind="glass"
-        x={70}
-        y={256}
-        w={200}
-        h={108}
-        title="Thought"
-        body="The room remembers what the thread forgets."
-      />
-      <NoteCard
-        kind="minimal"
-        x={290}
-        y={282}
-        w={210}
-        h={88}
-        title="Observation"
-        body="Each placement is a memory cue."
-      />
-      <NoteCard
-        kind="base"
-        x={88}
-        y={380}
-        w={300}
-        h={90}
-        title="Quote"
-        body="Memory is not storage. It is navigation."
-      />
+      <NoteCard kind="base" x={400} y={28} w={170} h={100} title={g.imageTitle} body={g.imageBody} />
+      <NoteCard kind="glass" x={70} y={256} w={200} h={108} title={g.obsTitle} body={g.obsBody} />
+      <NoteCard kind="minimal" x={290} y={282} w={210} h={88} title={g.obsTitle} body={copy.forms.items[2].body} />
+      <NoteCard kind="base" x={88} y={380} w={300} h={90} title={copy.forms.items[0].title} body={copy.forms.items[0].body} />
       <AppEdges progress={t} />
     </>
   );
 }
 
 function FormsScene({ sec }) {
-  const layouts = [
-    { kind: 'base', body: 'Memory is not storage. It is navigation through overlapping spaces.', title: 'Note' },
-    { kind: 'glass', body: 'The room remembers what the thread forgets.', title: 'Thought' },
-    { kind: 'minimal', body: 'each placement / a small / memory cue', title: 'Observation' },
-    { kind: 'neo', body: 'MEMORY HAS A SHAPE.', title: 'Manifesto' },
-    { kind: 'receipt', body: 'THOUGHT × 1\nROOM      00.00\nPAID', title: 'Receipt' },
-  ];
+  const { copy } = usePromo();
+  const layouts = copy.forms.items;
+  const items = copy.forms.labels;
 
-  const idx = Math.min(layouts.length - 1, Math.floor((sec - 16) / 1.6));
-  const localT = ((sec - 16) % 1.6) / 1.6;
+  const idx = Math.min(layouts.length - 1, Math.floor((sec - 14) / 1.6));
+  const localT = ((sec - 14) % 1.6) / 1.6;
   const current = layouts[Math.max(0, idx)];
   const next = layouts[Math.max(0, Math.min(layouts.length - 1, idx + 1))];
 
   const showNext = localT > 0.7 && idx < layouts.length - 1;
   const crossfade = interpolate(localT, [0.7, 1], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-
-  const items = ['Standard', 'Glass', 'Minimal', 'Neo-brut', 'Receipt'];
 
   return (
     <>
@@ -596,7 +493,7 @@ function AgentNodeCard({ x, y, persona, active, width = 158 }) {
         <Img src={persona.icon} style={{ width: 36, height: 36, objectFit: 'contain', flexShrink: 0 }} />
         <div>
           <div style={{ fontSize: 12, fontWeight: 600, color: INK }}>{persona.name}</div>
-          <div style={{ fontSize: 9, color: MUTED, letterSpacing: '0.1em', marginTop: 2 }}>{persona.role.toUpperCase()}</div>
+          <div style={{ fontSize: 9, color: MUTED, letterSpacing: '0.1em', marginTop: 2 }}>{persona.role}</div>
         </div>
       </div>
     </div>
@@ -604,22 +501,24 @@ function AgentNodeCard({ x, y, persona, active, width = 158 }) {
 }
 
 function AgentChatScene({ sec }) {
-  const chatPhase = interpolate(sec, [40, 46], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-  const studioPhase = interpolate(sec, [45.2, 47.5], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const { personas, copy } = usePromo();
+  const chat = copy.agentChat;
+  const chatPhase = interpolate(sec, [46, 47.2], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const studioPhase = interpolate(sec, [56.8, 58.2], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   const activeChat = Math.min(
-    AGENT_PERSONAS.length - 1,
-    Math.floor(interpolate(sec, [40.5, 45.5], [0, 4], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })),
+    personas.length - 1,
+    Math.floor(interpolate(sec, [47, 56], [0, 4], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })),
   );
-  const persona = AGENT_PERSONAS[activeChat];
+  const persona = personas[activeChat];
 
   const note = { x: 264, y: 36, w: 240, h: 108 };
   const noteBottom = { x: note.x + note.w / 2, y: note.y + note.h };
   const agentW = 158;
   const agentY = 248;
   const gap = 18;
-  const rowWidth = AGENT_PERSONAS.length * agentW + (AGENT_PERSONAS.length - 1) * gap;
+  const rowWidth = personas.length * agentW + (personas.length - 1) * gap;
   const rowStartX = (768 - rowWidth) / 2;
-  const agentPositions = AGENT_PERSONAS.map((_, i) => ({
+  const agentPositions = personas.map((_, i) => ({
     x: rowStartX + i * (agentW + gap),
     y: agentY,
     cx: rowStartX + i * (agentW + gap) + agentW / 2,
@@ -636,8 +535,8 @@ function AgentChatScene({ sec }) {
           y={note.y}
           w={note.w}
           h={note.h}
-          title="Observation"
-          body="How does spatial layout change recall?"
+          title={chat.obsTitle}
+          body={chat.obsBody}
           highlight
         />
 
@@ -645,11 +544,11 @@ function AgentChatScene({ sec }) {
 
         {agentPositions.map((pos, i) => (
           <AgentNodeCard
-            key={AGENT_PERSONAS[i].id}
+            key={personas[i].id}
             x={pos.x}
             y={pos.y}
             width={agentW}
-            persona={AGENT_PERSONAS[i]}
+            persona={personas[i]}
             active={i === activeChat}
           />
         ))}
@@ -657,10 +556,10 @@ function AgentChatScene({ sec }) {
         <div
           style={{
             position: 'absolute',
-            left: 56,
-            right: 56,
-            bottom: 24,
-            padding: '14px 16px',
+            left: 40,
+            right: 40,
+            bottom: 20,
+            padding: '14px 18px',
             borderRadius: 18,
             border: `1px solid ${ACCENT_LINE}`,
             background: 'rgba(255,247,237,0.96)',
@@ -669,15 +568,39 @@ function AgentChatScene({ sec }) {
             fontFamily: SANS,
           }}
         >
-          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-            <Img src={persona.icon} style={{ width: 34, height: 34, objectFit: 'contain', flexShrink: 0 }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 11, color: MUTED, marginBottom: 6 }}>You · on canvas</div>
-              <div style={{ fontSize: 13, color: INK_SOFT, marginBottom: 8, borderLeft: `2px solid ${LINE}`, paddingLeft: 10 }}>
-                How do these notes connect?
+          <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+            <div style={{ flexShrink: 0, width: 72, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <Img src={persona.icon} style={{ width: 42, height: 42, objectFit: 'contain' }} />
+              <div
+                style={{
+                  marginTop: 8,
+                  fontSize: 9,
+                  color: ACCENT,
+                  letterSpacing: '0.1em',
+                  fontWeight: 700,
+                  textAlign: 'center',
+                  lineHeight: 1.3,
+                }}
+              >
+                {persona.name}
               </div>
-              <div style={{ fontSize: 15, lineHeight: 1.5, color: INK, fontFamily: SERIF }}>{persona.reply}</div>
-              <div style={{ marginTop: 8, fontSize: 10, color: ACCENT, letterSpacing: '0.12em' }}>{persona.name.toUpperCase()}</div>
+            </div>
+            <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
+              <div style={{ fontSize: 16, lineHeight: 1.55, color: INK, fontFamily: SERIF }}>{persona.reply}</div>
+              <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${LINE}` }}>
+                <div style={{ fontSize: 11, color: MUTED }}>{chat.youLabel}</div>
+                <div
+                  style={{
+                    marginTop: 6,
+                    fontSize: 13,
+                    color: INK_SOFT,
+                    borderLeft: `2px solid ${LINE}`,
+                    paddingLeft: 10,
+                  }}
+                >
+                  {chat.userQuestion}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -700,8 +623,8 @@ function AgentChatScene({ sec }) {
         }}
       >
         <div style={{ borderRight: `1px solid ${LINE}`, padding: '18px 14px', background: '#F4EFE6' }}>
-          <div style={{ fontSize: 10, letterSpacing: '0.18em', color: ACCENT, fontWeight: 700 }}>PERSONAS</div>
-          {AGENT_PERSONAS.map((p, i) => (
+          <div style={{ fontSize: 10, letterSpacing: '0.18em', color: ACCENT, fontWeight: 700 }}>{chat.personasPanel}</div>
+          {personas.map((p, i) => (
             <div
               key={p.id}
               style={{
@@ -734,13 +657,13 @@ function AgentChatScene({ sec }) {
               textAlign: 'center',
             }}
           >
-            + Custom persona
+            {chat.customPersona}
           </div>
         </div>
         <div style={{ padding: '22px 24px' }}>
-          <div style={{ fontSize: 11, color: MUTED, letterSpacing: '0.14em' }}>DEFINE YOUR OWN</div>
-          <div style={{ marginTop: 14, fontSize: 22, fontWeight: 600, color: INK, fontFamily: SERIF }}>Field Ethnographer</div>
-          <div style={{ marginTop: 6, fontSize: 12, color: ACCENT }}>Role · Qualitative lens</div>
+          <div style={{ fontSize: 11, color: MUTED, letterSpacing: '0.14em' }}>{chat.defineOwn}</div>
+          <div style={{ marginTop: 14, fontSize: 22, fontWeight: 600, color: INK, fontFamily: SERIF }}>{chat.sampleName}</div>
+          <div style={{ marginTop: 6, fontSize: 12, color: ACCENT }}>{chat.sampleRole}</div>
           <div
             style={{
               marginTop: 18,
@@ -753,11 +676,11 @@ function AgentChatScene({ sec }) {
               color: INK_SOFT,
             }}
           >
-            Ask one sharp question at a time. Surface what the notes imply but never say aloud.
+            {chat.samplePrompt}
           </div>
           <div style={{ marginTop: 16, display: 'flex', gap: 10 }}>
-            <span style={{ padding: '6px 12px', borderRadius: 999, background: ACCENT_SOFT, fontSize: 10, color: ACCENT }}>Temperature</span>
-            <span style={{ padding: '6px 12px', borderRadius: 999, background: '#EFE7DC', fontSize: 10, color: MUTED }}>Creativity</span>
+            <span style={{ padding: '6px 12px', borderRadius: 999, background: ACCENT_SOFT, fontSize: 10, color: ACCENT }}>{chat.temperature}</span>
+            <span style={{ padding: '6px 12px', borderRadius: 999, background: '#EFE7DC', fontSize: 10, color: MUTED }}>{chat.creativity}</span>
           </div>
         </div>
       </div>
@@ -766,13 +689,15 @@ function AgentChatScene({ sec }) {
 }
 
 function SynthScene({ sec }) {
-  const selectionStart = 24;
-  const articleStart = 28;
-  const linkStart = 34;
+  const { copy } = usePromo();
+  const s = copy.synth;
+  const selectionStart = 22;
+  const articleStart = 26;
+  const linkStart = 32;
 
   const selectGlow = smoothFade(sec, [selectionStart, selectionStart + 0.8, articleStart, articleStart + 0.6]);
-  const article = smoothFade(sec, [articleStart, articleStart + 1.2, 36, 36.1]);
-  const linkChip = smoothFade(sec, [linkStart, linkStart + 0.8, 36, 36.1]);
+  const article = smoothFade(sec, [articleStart, articleStart + 1.2, 34, 34.1]);
+  const linkChip = smoothFade(sec, [linkStart, linkStart + 0.8, 34, 34.1]);
 
   return (
     <>
@@ -783,36 +708,9 @@ function SynthScene({ sec }) {
           opacity: 1 - article * 0.55,
         }}
       >
-        <NoteCard
-          kind="base"
-          x={70}
-          y={48}
-          w={210}
-          h={92}
-          title="Theme"
-          body="Memory as space"
-          highlight={selectGlow > 0.4}
-        />
-        <NoteCard
-          kind="glass"
-          x={70}
-          y={170}
-          w={210}
-          h={102}
-          title="Observation"
-          body="The room remembers. The thread forgets."
-          highlight={selectGlow > 0.4}
-        />
-        <NoteCard
-          kind="minimal"
-          x={70}
-          y={302}
-          w={210}
-          h={86}
-          title="Linked image"
-          body="(canvas artifact)"
-          highlight={selectGlow > 0.4}
-        />
+        <NoteCard kind="base" x={70} y={48} w={210} h={92} title={s.themeTitle} body={s.themeBody} highlight={selectGlow > 0.4} />
+        <NoteCard kind="glass" x={70} y={170} w={210} h={102} title={s.obsTitle} body={s.obsBody} highlight={selectGlow > 0.4} />
+        <NoteCard kind="minimal" x={70} y={302} w={210} h={86} title={s.imageTitle} body={s.imageBody} highlight={selectGlow > 0.4} />
       </div>
 
       <div
@@ -834,7 +732,7 @@ function SynthScene({ sec }) {
           fontFamily: SANS,
         }}
       >
-        <div style={{ fontSize: 11, letterSpacing: '0.2em', color: ACCENT, fontWeight: 700 }}>REFERENCE / GEN-742</div>
+        <div style={{ fontSize: 11, letterSpacing: '0.2em', color: ACCENT, fontWeight: 700 }}>{s.refLabel}</div>
         <div
           style={{
             marginTop: 18,
@@ -846,11 +744,9 @@ function SynthScene({ sec }) {
             fontWeight: 500,
           }}
         >
-          The Architecture of Spatial Memory
+          {s.articleTitle}
         </div>
-        <div style={{ marginTop: 18, fontSize: 14, lineHeight: 1.6, color: INK_SOFT }}>
-          A field synthesized from a small canvas: anchor themes, orbiting observations, and the artifacts that hold them in place.
-        </div>
+        <div style={{ marginTop: 18, fontSize: 14, lineHeight: 1.6, color: INK_SOFT }}>{s.articleBody}</div>
         <div style={{ marginTop: 14, width: '78%', height: 8, borderRadius: 999, background: '#EFE7DC' }} />
         <div style={{ marginTop: 10, width: '64%', height: 8, borderRadius: 999, background: '#EFE7DC' }} />
         <div style={{ marginTop: 10, width: '71%', height: 8, borderRadius: 999, background: '#EFE7DC' }} />
@@ -870,15 +766,348 @@ function SynthScene({ sec }) {
             fontWeight: 600,
           }}
         >
-          ↗ Linked to source canvas
+          {s.linkChip}
         </div>
       </div>
     </>
   );
 }
 
+function ResearchLabScene({ sec }) {
+  const { copy } = usePromo();
+  const r = copy.research;
+  const queryPhase = smoothFade(sec, [38, 38.6, 39.2, 39.5]);
+  const planPhase = smoothFade(sec, [39.2, 40, 41.8, 42.2]);
+  const executePhase = smoothFade(sec, [41.6, 42.2, 43, 43.4]);
+  const sourcesPhase = smoothFade(sec, [41.6, 42.4, 46, 46.1]);
+  const reportPhase = smoothFade(sec, [43, 43.6, 46, 46.1]);
+  const activeStep = Math.min(
+    r.plan.length - 1,
+    Math.floor(interpolate(sec, [40, 41.6], [0, 3], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })),
+  );
+  const showSearching = sourcesPhase > 0.4 && reportPhase < 0.35;
+
+  const layer = (visible) => ({
+    position: 'absolute',
+    inset: 0,
+    padding: '16px 20px',
+    opacity: visible,
+    pointerEvents: 'none',
+    overflow: 'hidden',
+  });
+
+  return (
+    <div style={{ position: 'absolute', inset: 0, background: PAPER, fontFamily: SANS }}>
+      {/* Sources sidebar */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          bottom: 0,
+          left: 0,
+          width: 188,
+          borderRight: `1px solid ${LINE}`,
+          background: '#FAF8F3',
+          padding: '14px 12px',
+          opacity: interpolate(sourcesPhase, [0, 1], [0, 1]),
+        }}
+      >
+        <div style={{ fontSize: 9, letterSpacing: '0.16em', color: MUTED, fontWeight: 700 }}>{r.sourcesTitle}</div>
+        {r.sources.map((src, i) => (
+          <div
+            key={src.title}
+            style={{
+              marginTop: 10,
+              padding: '10px 10px',
+              borderRadius: 10,
+              background: '#fff',
+              border: `1px solid ${LINE}`,
+              opacity: i < 2 ? sourcesPhase : sourcesPhase * interpolate(reportPhase, [0, 1], [0.5, 1]),
+              boxShadow: '0 6px 14px rgba(31,27,24,0.05)',
+            }}
+          >
+            <div style={{ fontSize: 9, color: '#16a34a', fontWeight: 700, marginBottom: 4, fontFamily: 'ui-monospace, monospace' }}>
+              {r.processed}
+            </div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: INK, lineHeight: 1.35, fontFamily: SERIF }}>{src.title}</div>
+            <div style={{ marginTop: 4, fontSize: 10, color: MUTED, lineHeight: 1.4 }}>{src.snippet}</div>
+          </div>
+        ))}
+        {showSearching ? (
+          <div
+            style={{
+              marginTop: 10,
+              padding: '8px 10px',
+              borderRadius: 8,
+              border: `1px solid ${ACCENT_LINE}`,
+              background: '#fff',
+              fontSize: 10,
+              color: ACCENT,
+              fontFamily: 'ui-monospace, monospace',
+            }}
+          >
+            {r.searching}
+          </div>
+        ) : null}
+      </div>
+
+      {/* Main workspace — stacked layers (avoid report pushed below fold) */}
+      <div style={{ position: 'absolute', top: 0, bottom: 0, left: 188, right: 0, overflow: 'hidden' }}>
+        {/* Query entry */}
+        <div style={{ ...layer(queryPhase * (1 - planPhase)), textAlign: 'center', paddingTop: 36 }}>
+          <div
+            style={{
+              width: 48,
+              height: 48,
+              margin: '0 auto 14px',
+              borderRadius: 14,
+              background: '#fff',
+              border: `1px solid ${LINE}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 22,
+            }}
+          >
+            🔬
+          </div>
+          <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 600, color: INK }}>{r.investigate}</div>
+          <div
+            style={{
+              margin: '14px auto 0',
+              maxWidth: 420,
+              padding: '12px 44px 12px 16px',
+              borderRadius: 12,
+              background: '#fff',
+              border: `1px solid ${LINE}`,
+              boxShadow: '0 12px 28px rgba(31,27,24,0.08)',
+              fontSize: 14,
+              color: INK,
+              textAlign: 'left',
+              position: 'relative',
+            }}
+          >
+            {r.query}
+            <span
+              style={{
+                position: 'absolute',
+                right: 10,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: 28,
+                height: 28,
+                borderRadius: 8,
+                background: ACCENT,
+                color: '#fff',
+                fontSize: 14,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              →
+            </span>
+          </div>
+        </div>
+
+        {/* Research plan */}
+        <div
+          style={{
+            ...layer(planPhase * (1 - executePhase * 0.85)),
+            transform: `translateY(${interpolate(planPhase, [0, 1], [12, 0])}px)`,
+          }}
+        >
+          <div style={{ fontSize: 10, color: ACCENT, letterSpacing: '0.12em', fontFamily: 'ui-monospace, monospace' }}>
+            {r.targetInquiry}
+          </div>
+          <div style={{ marginTop: 6, fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: INK, lineHeight: 1.2 }}>
+            {r.query}
+          </div>
+          <div
+            style={{
+              marginTop: 14,
+              padding: '14px 16px',
+              borderRadius: 14,
+              background: '#fff',
+              border: `1px solid ${LINE}`,
+              boxShadow: '0 14px 32px rgba(31,27,24,0.08)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <span style={{ color: '#16a34a', fontSize: 14 }}>☑</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: INK }}>{r.planTitle}</span>
+            </div>
+            {r.plan.map((step, i) => (
+              <div
+                key={step.title}
+                style={{
+                  display: 'flex',
+                  gap: 10,
+                  marginTop: i === 0 ? 0 : 10,
+                  opacity: i <= activeStep ? 1 : 0.35,
+                }}
+              >
+                <div
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: 999,
+                    background: i === activeStep ? ACCENT_SOFT : '#F4EFE6',
+                    border: `1px solid ${i === activeStep ? ACCENT_LINE : LINE}`,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: i === activeStep ? ACCENT : MUTED,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    marginTop: 2,
+                  }}
+                >
+                  {i + 1}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: INK }}>{step.title}</div>
+                  <div style={{ marginTop: 3, fontSize: 10, lineHeight: 1.45, color: MUTED }}>{step.desc}</div>
+                </div>
+              </div>
+            ))}
+            <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end' }}>
+              <span
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: 8,
+                  background: ACCENT,
+                  color: '#fff',
+                  fontSize: 11,
+                  fontWeight: 700,
+                }}
+              >
+                {r.approve}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Executing pipeline */}
+        <div style={layer(executePhase * (1 - reportPhase * 0.9))}>
+          <div
+            style={{
+              maxWidth: 400,
+              margin: '48px auto 0',
+              padding: '18px 20px',
+              borderRadius: 14,
+              background: '#fff',
+              border: `1px solid ${LINE}`,
+              boxShadow: '0 14px 32px rgba(31,27,24,0.08)',
+              fontFamily: 'ui-monospace, monospace',
+              fontSize: 11,
+            }}
+          >
+            <div style={{ color: ACCENT, fontWeight: 700, marginBottom: 14 }}>{r.executing}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#16a34a', marginBottom: 10 }}>
+              <span>✓</span>
+              <span>{r.sourcesFound}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: INK, marginBottom: 10 }}>
+              <span style={{ color: ACCENT }}>◌</span>
+              <span>{r.resolving}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: MUTED }}>
+              <span style={{ width: 14, height: 14, borderRadius: 999, border: `2px solid ${LINE}`, display: 'inline-block' }} />
+              <span>{r.generating}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Completed report — matches Research Lab `completed` view */}
+        <div
+          style={{
+            ...layer(reportPhase),
+            background: '#FAF9F6',
+            transform: `translateY(${interpolate(reportPhase, [0, 1], [8, 0])}px)`,
+          }}
+        >
+          <div style={{ textAlign: 'center', paddingTop: 8, paddingBottom: 12 }}>
+            <div
+              style={{
+                fontSize: 10,
+                letterSpacing: '0.2em',
+                color: ACCENT,
+                fontWeight: 700,
+                fontFamily: 'ui-monospace, monospace',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+              }}
+            >
+              {r.reportLabel}
+            </div>
+            <div
+              style={{
+                marginTop: 10,
+                fontFamily: SERIF,
+                fontSize: 26,
+                fontWeight: 600,
+                color: INK,
+                lineHeight: 1.15,
+                padding: '0 12px',
+              }}
+            >
+              {r.query}
+            </div>
+            <div style={{ marginTop: 10, width: 56, height: 2, background: INK, marginLeft: 'auto', marginRight: 'auto' }} />
+            <div style={{ marginTop: 8, fontSize: 10, color: MUTED, fontFamily: 'ui-monospace, monospace' }}>
+              {r.reportFooter}
+            </div>
+          </div>
+
+          <div
+            style={{
+              padding: '0 20px 16px',
+              fontFamily: SERIF,
+              fontSize: 13,
+              lineHeight: 1.65,
+              color: INK,
+              maxHeight: 340,
+              overflow: 'hidden',
+            }}
+          >
+            <p style={{ margin: 0, color: INK_SOFT }}>{r.report.intro}</p>
+            {r.report.points.map((pt, idx) => (
+              <div key={pt.title} style={{ marginTop: 14 }}>
+                <div style={{ fontFamily: SANS, fontSize: 14, fontWeight: 700, color: INK, marginBottom: 6 }}>
+                  {idx + 1}. {pt.title}
+                </div>
+                <p style={{ margin: 0, fontSize: 12, lineHeight: 1.55, color: INK_SOFT }}>{pt.text}</p>
+              </div>
+            ))}
+            <div
+              style={{
+                marginTop: 16,
+                padding: '12px 14px',
+                borderLeft: `4px solid ${ACCENT}`,
+                background: '#FFF9E6',
+                borderRadius: '0 10px 10px 0',
+                fontFamily: SANS,
+                fontSize: 11,
+                lineHeight: 1.5,
+                color: INK_SOFT,
+              }}
+            >
+              <strong style={{ color: INK }}>{r.conclusionLabel}</strong>
+              {r.report.conclusion}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PrivacyOverlay({ sec }) {
-  const opacity = smoothFade(sec, [36, 36.8, 40, 40.1]);
+  const opacity = smoothFade(sec, [34, 34.8, 38, 38.1]);
   if (opacity < 0.01) return null;
   return (
     <div
@@ -894,7 +1123,8 @@ function PrivacyOverlay({ sec }) {
 }
 
 function AppWindow({ sec }) {
-  const scene = currentScene(sec);
+  const { copy, scenes } = usePromo();
+  const scene = currentScene(sec, scenes);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -904,12 +1134,12 @@ function AppWindow({ sec }) {
     config: { damping: 22, mass: 0.7, stiffness: 65 },
   });
   const enterOffset = interpolate(entrance, [0, 1], [28, 0]);
-  const drift = interpolate(sec, [0, 60], [-10, 10], {
+  const drift = interpolate(sec, [0, 62], [-10, 10], {
     easing: Easing.inOut(Easing.ease),
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   });
-  const zoom = interpolate(sec, [0, 60], [0.985, 1.025], {
+  const zoom = interpolate(sec, [0, 62], [0.985, 1.025], {
     easing: Easing.inOut(Easing.ease),
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
@@ -918,6 +1148,7 @@ function AppWindow({ sec }) {
   const sidebarActive = (() => {
     if (scene.id === 'synth') return 'reference';
     if (scene.id === 'agentChat') return 'agents';
+    if (scene.id === 'research') return 'lab';
     if (scene.id === 'privacy') return 'canvas';
     return 'canvas';
   })();
@@ -935,7 +1166,7 @@ function AppWindow({ sec }) {
         background: '#FBF8F2',
         border: `1px solid ${LINE}`,
         boxShadow: '0 48px 110px rgba(40,28,18,0.18), 0 0 0 1px rgba(255,255,255,0.6) inset',
-        opacity: interpolate(entrance, [0, 1], [0, 1]) * (1 - scenePresence(SCENES[SCENES.length - 1], sec) * 0.92),
+        opacity: interpolate(entrance, [0, 1], [0, 1]) * (1 - scenePresence(scenes[scenes.length - 1], sec) * 0.92),
         transform: `translate(${drift}px, ${enterOffset}px) scale(${zoom})`,
         fontFamily: SANS,
       }}
@@ -954,18 +1185,18 @@ function AppWindow({ sec }) {
         {['#E8AAA0', '#E9D2A1', '#BFD8B8'].map((c) => (
           <span key={c} style={{ width: 11, height: 11, borderRadius: 999, background: c }} />
         ))}
-        <span style={{ marginLeft: 14, fontSize: 12, color: MUTED }}>Spoor · Memory Architecture</span>
+        <span style={{ marginLeft: 14, fontSize: 12, color: MUTED }}>{copy.windowTitle}</span>
       </div>
 
       <div style={{ position: 'absolute', top: 44, bottom: 0, left: 0, width: 200, background: '#F4EFE6', borderRight: `1px solid ${LINE}`, padding: '22px 16px', boxSizing: 'border-box' }}>
-        <div style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: ACCENT, fontWeight: 700 }}>Spoor</div>
-        <div style={{ marginTop: 6, fontSize: 10, color: MUTED, letterSpacing: '0.16em' }}>FOCUS MODE</div>
-        <div style={{ marginTop: 22, fontSize: 10, color: MUTED, letterSpacing: '0.16em' }}>MODULES</div>
+        <div style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: ACCENT, fontWeight: 700 }}>{copy.brandTitle}</div>
+        <div style={{ marginTop: 6, fontSize: 10, color: MUTED, letterSpacing: '0.16em' }}>{copy.focusMode}</div>
+        <div style={{ marginTop: 22, fontSize: 10, color: MUTED, letterSpacing: '0.16em' }}>{copy.modules}</div>
         {[
-          { id: 'canvas', label: 'Canvas' },
-          { id: 'reference', label: 'Reference' },
-          { id: 'lab', label: 'Research' },
-          { id: 'agents', label: 'Personas' },
+          { id: 'canvas', label: copy.tabs.canvas },
+          { id: 'reference', label: copy.tabs.reference },
+          { id: 'lab', label: copy.tabs.lab },
+          { id: 'agents', label: copy.tabs.agents },
         ].map((tab) => {
           const active = sidebarActive === tab.id;
           return (
@@ -1009,19 +1240,22 @@ function AppWindow({ sec }) {
           }}
         />
 
-        <SceneLayer window={[7.5, 9, 16, 16.6]} sec={sec}>
+        <SceneLayer window={[5.5, 6.5, 14, 14.6]} sec={sec}>
           <CanvasGraphScene sec={sec} />
         </SceneLayer>
-        <SceneLayer window={[15.4, 16.4, 24, 24.6]} sec={sec}>
+        <SceneLayer window={[13.4, 14.4, 22, 22.6]} sec={sec}>
           <FormsScene sec={sec} />
         </SceneLayer>
-        <SceneLayer window={[23.4, 24.4, 36, 36.6]} sec={sec}>
+        <SceneLayer window={[21.4, 22.4, 34, 34.6]} sec={sec}>
           <SynthScene sec={sec} />
         </SceneLayer>
-        <SceneLayer window={[35.4, 36.4, 40, 40.6]} sec={sec}>
+        <SceneLayer window={[33.4, 34.4, 38, 38.6]} sec={sec}>
           <CanvasGraphScene sec={sec} />
         </SceneLayer>
-        <SceneLayer window={[39.4, 40.4, 50, 50.6]} sec={sec}>
+        <SceneLayer window={[37.4, 38.4, 46, 46.6]} sec={sec}>
+          <ResearchLabScene sec={sec} />
+        </SceneLayer>
+        <SceneLayer window={[45.4, 46.4, 58, 58.6]} sec={sec}>
           <AgentChatScene sec={sec} />
         </SceneLayer>
 
@@ -1034,7 +1268,7 @@ function AppWindow({ sec }) {
             right: 18,
             display: 'flex',
             gap: 8,
-            opacity: smoothFade(sec, [36, 36.8, 40, 40.1]),
+            opacity: smoothFade(sec, [34, 34.8, 38, 38.1]),
           }}
         >
           <div
@@ -1048,7 +1282,7 @@ function AppWindow({ sec }) {
               letterSpacing: '0.06em',
             }}
           >
-            Local-first · IndexedDB
+            {copy.privacyBadge}
           </div>
         </div>
       </div>
@@ -1056,11 +1290,13 @@ function AppWindow({ sec }) {
   );
 }
 
-function EnglishCaption({ caption, sec }) {
-  const closing = scenePresence(SCENES[SCENES.length - 1], sec);
-  const opening = scenePresence(SCENES[0], sec);
+function PromoCaption({ caption, sec }) {
+  const { locale, scenes } = usePromo();
+  const closing = scenePresence(scenes[scenes.length - 1], sec);
+  const opening = scenePresence(scenes[0], sec);
   const opacity = (1 - closing) * (1 - opening * 0.6);
-  if (opacity < 0.02 || !caption?.en) return null;
+  const text = locale === 'zh' ? caption?.zh : caption?.en;
+  if (opacity < 0.02 || !text) return null;
   return (
     <div
       style={{
@@ -1077,14 +1313,14 @@ function EnglishCaption({ caption, sec }) {
         style={{
           margin: '0 auto',
           maxWidth: 1320,
-          fontSize: 34,
+          fontSize: locale === 'zh' ? 32 : 34,
           lineHeight: 1.42,
           fontWeight: 450,
           color: INK_SOFT,
-          letterSpacing: '0.01em',
+          letterSpacing: locale === 'zh' ? '0.04em' : '0.01em',
         }}
       >
-        {caption.en}
+        {text}
       </div>
     </div>
   );
@@ -1165,22 +1401,23 @@ function ClosingCTA({ scene, sec, ctaText, ctaUrl }) {
   );
 }
 
-export const SpoorPromo = ({
-  title = 'Spoor',
-  subtitle = 'Notes that leave a trace',
-  brandLabel = 'SPOOR',
+function SpoorPromoInner({
+  title,
+  subtitle,
   ctaUrl = 'scribe-ai-canvas.netlify.app',
-  ctaText = 'Try the web app',
+  ctaText,
   audioUrl = '',
   timestampSegments = [],
-}) => {
+}) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const sec = frame / fps;
-  const scene = currentScene(sec);
+  const { copy, scenes } = usePromo();
+  const scene = currentScene(sec, scenes);
   const caption = findCaption(timestampSegments, sec);
-  const closingPresence = scenePresence(SCENES[SCENES.length - 1], sec);
-  const openingPresence = scenePresence(SCENES[0], sec);
+  const closingPresence = scenePresence(scenes[scenes.length - 1], sec);
+  const openingPresence = scenePresence(scenes[0], sec);
+  const heroTitle = title ?? copy.brandTitle;
 
   return (
     <AbsoluteFill
@@ -1217,7 +1454,7 @@ export const SpoorPromo = ({
       />
 
       {scene.layout === 'hero' && scene.id === 'opening' ? (
-        <HeroCopy scene={{ ...scene, title }} sec={sec} />
+        <HeroCopy scene={{ ...scene, title: heroTitle }} sec={sec} />
       ) : null}
 
       {scene.layout === 'split' ? (
@@ -1227,9 +1464,47 @@ export const SpoorPromo = ({
         </>
       ) : null}
 
-      {scene.id !== 'closing' ? <EnglishCaption caption={caption} sec={sec} /> : null}
+      {scene.id !== 'closing' ? <PromoCaption caption={caption} sec={sec} /> : null}
 
-      <ClosingCTA scene={SCENES[SCENES.length - 1]} sec={sec} ctaText={ctaText} ctaUrl={ctaUrl} />
+      <ClosingCTA scene={scenes[scenes.length - 1]} sec={sec} ctaText={ctaText} ctaUrl={ctaUrl} />
     </AbsoluteFill>
   );
+}
+
+export const SpoorPromo = ({
+  locale = 'en',
+  title,
+  subtitle,
+  brandLabel,
+  ctaUrl = 'scribe-ai-canvas.netlify.app',
+  ctaText,
+  audioUrl = '',
+  timestampSegments = [],
+}) => {
+  const copy = useMemo(() => getPromoCopy(locale), [locale]);
+  const ctx = useMemo(
+    () => ({
+      copy,
+      scenes: copy.scenes,
+      locale,
+      personas: buildAgentPersonas(copy),
+    }),
+    [copy, locale],
+  );
+
+  return (
+    <PromoContext.Provider value={ctx}>
+      <SpoorPromoInner
+        title={title ?? copy.brandTitle}
+        subtitle={subtitle ?? copy.brandSubtitle}
+        ctaUrl={ctaUrl}
+        ctaText={ctaText ?? copy.ctaText}
+        audioUrl={audioUrl}
+        timestampSegments={timestampSegments}
+      />
+    </PromoContext.Provider>
+  );
 };
+
+/** Chinese promo — same timeline and layout as SpoorPromo. */
+export const SpoorPromoZH = (props) => <SpoorPromo locale="zh" {...props} />;

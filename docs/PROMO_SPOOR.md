@@ -1,18 +1,21 @@
 # 雪泥 · Spoor — 横屏产品介绍片脚本
 
-**成片规格：** 1920×1080，30fps，约 56 秒
-**Composition ID：** `SpoorPromo`
-**数据文件：** [`remotion-kit/remotion/spoor-promo.json`](../remotion-kit/remotion/spoor-promo.json)
+**成片规格：** 1920×1080，30fps，约 62 秒
+**Composition ID：** `SpoorPromo`（英文） / `SpoorPromoZH`（中文）
+**数据文件：**
+- 英文：[`remotion-kit/remotion/spoor-promo.json`](../remotion-kit/remotion/spoor-promo.json)
+- 中文：[`remotion-kit/remotion/spoor-promo-zh.json`](../remotion-kit/remotion/spoor-promo-zh.json)
 
 ## 预览与导出
 
 ```bash
 # 在 Remotion Studio 中预览
 npm run remotion:studio --prefix remotion-kit
-# 选择 SpoorPromo
+# 选择 SpoorPromo（英文）或 SpoorPromoZH（中文）
 
 # 导出 MP4（输出到仓库根目录 output/）
 npm run remotion:render:spoor
+npm run remotion:render:spoor-zh
 ```
 
 可选旁白：将 MP3 放在项目根目录，在渲染 API 中传入 `audioUrl`，或在 `spoor-promo.json` 中加 `"audioUrl"` 字段。
@@ -42,14 +45,16 @@ npm run remotion:render:spoor
 
 | 时间 | 场景 | EN（字幕） | ZH（待用于中文版） | 画面焦点 |
 |------|------|-----------|---------------------|----------|
-| 0:00–0:08 | opening | Spoor is a quiet canvas for thinking in space. | 雪泥是一个安静的空间化思考画布。 | 浅色空间 + 大字主标题，无 App 框 |
-| 0:08–0:16 | graph | Notes connect by hand — the thought becomes visible. | 亲手把便签连起来，想法就显出形状。 | App 内：主题卡 + 多张便签 + 灰色直线一笔笔画出 |
-| 0:16–0:24 | forms | Each note finds its form — standard, glass, minimal, neo-brut, receipt. | 每张便签都有自己的形态——标准、玻璃、极简、神经粗野、票据。 | 居中单张便签在 5 种版式间交叉淡变 |
-| 0:24–0:32 | synth (a) | Select what matters. The canvas becomes a draft. | 选出关键的几张。画布会写成草稿。 | 左列便签被选中描边；右侧 Reference 草稿淡入 |
-| 0:32–0:36 | synth (b) | The article stays linked to the canvas it came from. | 成文之后，仍引用回它的来源画布。 | `↗ Linked to source canvas` 标签出现 |
-| 0:36–0:40 | privacy | Local-first. Private by default. | 本地优先，默认私密。 | App 内右上角 `Local-first · IndexedDB` 角标 |
-| 0:40–0:50 | agentChat | Four personas read your notes — and the images linked to them. | 四个人格读你的便签，也读与之相连的图像。 | 画布对话 + 人格轮播；Personas 面板 + Custom persona |
-| 0:50–0:56 | closing | A trace of thought, left on quiet ground. | 念头如鸿，落处成迹。 | 大字 CTA + 网址 |
+| 0:00–0:06 | opening | Spoor is a quiet canvas for thinking in space. | 雪泥是一个安静的空间化思考画布。 | 浅色空间 + 大字主标题，无 App 框 |
+| 0:06–0:14 | graph | Notes connect by hand — the thought becomes visible. | 亲手把便签连起来，想法就显出形状。 | App 内：主题卡 + 多张便签 + 灰色直线一笔笔画出 |
+| 0:14–0:22 | forms | Each note finds its form — standard, glass, minimal, neo-brut, receipt. | 每张便签都有自己的形态——标准、玻璃、极简、神经粗野、票据。 | 居中单张便签在 5 种版式间交叉淡变 |
+| 0:22–0:30 | synth (a) | Select what matters. The canvas becomes a draft. | 选出关键的几张。画布会写成草稿。 | 左列便签被选中描边；右侧 Reference 草稿淡入 |
+| 0:30–0:34 | synth (b) | The article stays linked to the canvas it came from. | 成文之后，仍引用回它的来源画布。 | `↗ Linked to source canvas` 标签出现 |
+| 0:34–0:38 | privacy | Local-first. Private by default. | 本地优先，默认私密。 | App 内右上角 `Local-first · IndexedDB` 角标 |
+| 0:38–0:42 | research (a) | Enter a topic — the agent decomposes it into a research plan you can edit. | 输入主题，智能体拆解为可编辑的研究计划。 | Research Lab：提问 → 推荐计划（3–5 子问题） |
+| 0:42–0:46 | research (b) | Optional web sources inform the synthesis. The report is saved in your library. | 可选联网检索支撑综合，报告保存在本地研究库。 | 来源侧栏 + 综合报告 +「Based on N web sources」 |
+| 0:46–0:58 | agentChat | Four personas read your notes — and the images linked to them. | 四个人格读你的便签，也读与之相连的图像。 | 画布对话（左侧人格图标+回复）+ 轮播；Personas 面板 |
+| 0:58–1:02 | closing | A trace of thought, left on quiet ground. | 念头如鸿，落处成迹。 | 大字 CTA + 网址 |
 
 ## 部署 URL（待换）
 

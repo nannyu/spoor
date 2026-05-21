@@ -1,9 +1,10 @@
 {
-  "title": "Spoor",
-  "subtitle": "Notes that leave a trace",
-  "brandLabel": "SPOOR",
+  "title": "雪泥",
+  "subtitle": "念头落处，自成迹",
+  "brandLabel": "雪泥",
+  "locale": "zh",
   "ctaUrl": "scribe-ai-canvas.netlify.app",
-  "ctaText": "Try the web app",
+  "ctaText": "试用网页版",
   "totalDurationSec": 62,
   "timestampSegments": [
     {
