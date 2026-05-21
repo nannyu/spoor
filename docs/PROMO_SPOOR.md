@@ -1,6 +1,6 @@
 # 雪泥 · Spoor — 横屏产品介绍片脚本
 
-**成片规格：** 1920×1080，30fps，约 64 秒
+**成片规格：** 1920×1080，30fps，约 56 秒
 **Composition ID：** `SpoorPromo`
 **数据文件：** [`remotion-kit/remotion/spoor-promo.json`](../remotion-kit/remotion/spoor-promo.json)
 
@@ -45,12 +45,11 @@ npm run remotion:render:spoor
 | 0:00–0:08 | opening | Spoor is a quiet canvas for thinking in space. | 雪泥是一个安静的空间化思考画布。 | 浅色空间 + 大字主标题，无 App 框 |
 | 0:08–0:16 | graph | Notes connect by hand — the thought becomes visible. | 亲手把便签连起来，想法就显出形状。 | App 内：主题卡 + 多张便签 + 灰色直线一笔笔画出 |
 | 0:16–0:24 | forms | Each note finds its form — standard, glass, minimal, neo-brut, receipt. | 每张便签都有自己的形态——标准、玻璃、极简、神经粗野、票据。 | 居中单张便签在 5 种版式间交叉淡变 |
-| 0:24–0:32 | agents | Four personas read your notes — and the images linked to them. | 四个人格阅读你的便签，以及与之相连的图像。 | 四个人格胶囊 + AI 回复条（快速带过） |
-| 0:32–0:40 | synth (a) | Select what matters. The canvas becomes a draft. | 选出关键的几张。画布会写成草稿。 | 左列便签被选中描边；右侧 Reference 草稿淡入 |
-| 0:40–0:44 | synth (b) | The article stays linked to the canvas it came from. | 成文之后，仍引用回它的来源画布。 | `↗ Linked to source canvas` 标签出现 |
-| 0:44–0:48 | privacy | Local-first. Private by default. | 本地优先，默认私密。 | App 内右上角 `Local-first · IndexedDB` 角标 |
-| 0:48–0:58 | agentChat | Talk to four distinct voices on the canvas — or define your own. | 在画布上与四个人格对话，也可以自定义你的人格。 | 画布四角四个人格 + 对话轮播；Personas 面板 + Custom persona |
-| 0:58–1:04 | closing | A trace of thought, left on quiet ground. | 念头如鸿，落处成迹。 | 大字 CTA + 网址 |
+| 0:24–0:32 | synth (a) | Select what matters. The canvas becomes a draft. | 选出关键的几张。画布会写成草稿。 | 左列便签被选中描边；右侧 Reference 草稿淡入 |
+| 0:32–0:36 | synth (b) | The article stays linked to the canvas it came from. | 成文之后，仍引用回它的来源画布。 | `↗ Linked to source canvas` 标签出现 |
+| 0:36–0:40 | privacy | Local-first. Private by default. | 本地优先，默认私密。 | App 内右上角 `Local-first · IndexedDB` 角标 |
+| 0:40–0:50 | agentChat | Four personas read your notes — and the images linked to them. | 四个人格读你的便签，也读与之相连的图像。 | 画布对话 + 人格轮播；Personas 面板 + Custom persona |
+| 0:50–0:56 | closing | A trace of thought, left on quiet ground. | 念头如鸿，落处成迹。 | 大字 CTA + 网址 |
 
 ## 部署 URL（待换）
 

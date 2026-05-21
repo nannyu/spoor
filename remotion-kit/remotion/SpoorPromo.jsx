@@ -15,7 +15,7 @@ import weavingIcon from './assets/agents/weaving.png';
 import ironIcon from './assets/agents/iron.png';
 import compassIcon from './assets/agents/compass.png';
 
-export const SpoorPromoDuration = 1920;
+export const SpoorPromoDuration = 1680;
 
 const AGENT_PERSONAS = [
   {
@@ -105,18 +105,9 @@ const SCENES = [
     caption: 'Five layouts for different ways of thinking out loud.',
   },
   {
-    id: 'agents',
-    start: 24,
-    end: 32,
-    layout: 'split',
-    eyebrow: 'Personas',
-    title: 'Four minds, one canvas.',
-    caption: 'Each persona reads your notes — and the images linked to them.',
-  },
-  {
     id: 'synth',
-    start: 32,
-    end: 44,
+    start: 24,
+    end: 36,
     layout: 'split',
     eyebrow: 'Synthesize',
     title: 'Selected notes become a draft.',
@@ -124,8 +115,8 @@ const SCENES = [
   },
   {
     id: 'privacy',
-    start: 44,
-    end: 48,
+    start: 36,
+    end: 40,
     layout: 'split',
     eyebrow: 'Local-first',
     title: 'Yours, and only yours.',
@@ -133,17 +124,17 @@ const SCENES = [
   },
   {
     id: 'agentChat',
-    start: 48,
-    end: 58,
+    start: 40,
+    end: 50,
     layout: 'split',
     eyebrow: 'Personas',
-    title: 'Talk on the canvas.',
-    caption: 'Four built-in voices — or define your own.',
+    title: 'Four minds, one canvas.',
+    caption: 'Each persona reads your notes — and the images linked to them.',
   },
   {
     id: 'closing',
-    start: 58,
-    end: 64,
+    start: 50,
+    end: 56,
     layout: 'hero',
     eyebrow: 'Spoor',
     title: 'A place for thoughts to leave a trace.',
@@ -584,69 +575,6 @@ function FormsScene({ sec }) {
   );
 }
 
-function AgentsScene({ sec }) {
-  const activeIndex = Math.min(
-    AGENT_PERSONAS.length - 1,
-    Math.floor(interpolate(sec, [24, 32], [0, 4.2], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })),
-  );
-  const persona = AGENT_PERSONAS[activeIndex];
-
-  const note = { x: 264, y: 48, w: 220, h: 96 };
-  const noteBottom = { x: note.x + note.w / 2, y: note.y + note.h };
-  const agentW = 158;
-  const agentY = 260;
-  const gap = 18;
-  const rowWidth = AGENT_PERSONAS.length * agentW + (AGENT_PERSONAS.length - 1) * gap;
-  const rowStartX = (768 - rowWidth) / 2;
-  const agentPositions = AGENT_PERSONAS.map((_, i) => ({
-    x: rowStartX + i * (agentW + gap),
-    y: agentY,
-    cx: rowStartX + i * (agentW + gap) + agentW / 2,
-  }));
-  const activePos = agentPositions[activeIndex];
-
-  return (
-    <>
-      <NoteCard kind="base" x={note.x} y={note.y} w={note.w} h={note.h} title="Theme" body="Memory as space" highlight />
-
-      <AgentConnector x1={noteBottom.x} y1={noteBottom.y} x2={activePos.cx} y2={activePos.y} />
-
-      {agentPositions.map((pos, i) => (
-        <AgentNodeCard
-          key={AGENT_PERSONAS[i].id}
-          x={pos.x}
-          y={pos.y}
-          width={agentW}
-          persona={AGENT_PERSONAS[i]}
-          active={i === activeIndex}
-        />
-      ))}
-
-      <div
-        style={{
-          position: 'absolute',
-          left: 56,
-          right: 56,
-          bottom: 28,
-          padding: '12px 16px',
-          borderRadius: 18,
-          border: `1px solid ${ACCENT_LINE}`,
-          background: 'rgba(255,247,237,0.95)',
-          fontFamily: SERIF,
-          color: INK,
-          boxShadow: '0 18px 42px rgba(194,65,12,0.10)',
-          display: 'flex',
-          gap: 12,
-          alignItems: 'flex-start',
-        }}
-      >
-        <Img src={persona.icon} style={{ width: 30, height: 30, objectFit: 'contain', flexShrink: 0 }} />
-        <div style={{ fontSize: 15, lineHeight: 1.5 }}>{persona.reply}</div>
-      </div>
-    </>
-  );
-}
-
 function AgentNodeCard({ x, y, persona, active, width = 158 }) {
   return (
     <div
@@ -676,11 +604,11 @@ function AgentNodeCard({ x, y, persona, active, width = 158 }) {
 }
 
 function AgentChatScene({ sec }) {
-  const chatPhase = interpolate(sec, [48, 54], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-  const studioPhase = interpolate(sec, [53.2, 55.5], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const chatPhase = interpolate(sec, [40, 46], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const studioPhase = interpolate(sec, [45.2, 47.5], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   const activeChat = Math.min(
     AGENT_PERSONAS.length - 1,
-    Math.floor(interpolate(sec, [48.5, 53.5], [0, 4], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })),
+    Math.floor(interpolate(sec, [40.5, 45.5], [0, 4], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })),
   );
   const persona = AGENT_PERSONAS[activeChat];
 
@@ -838,13 +766,13 @@ function AgentChatScene({ sec }) {
 }
 
 function SynthScene({ sec }) {
-  const selectionStart = 32;
-  const articleStart = 36;
-  const linkStart = 42;
+  const selectionStart = 24;
+  const articleStart = 28;
+  const linkStart = 34;
 
   const selectGlow = smoothFade(sec, [selectionStart, selectionStart + 0.8, articleStart, articleStart + 0.6]);
-  const article = smoothFade(sec, [articleStart, articleStart + 1.2, 44, 44.1]);
-  const linkChip = smoothFade(sec, [linkStart, linkStart + 0.8, 44, 44.1]);
+  const article = smoothFade(sec, [articleStart, articleStart + 1.2, 36, 36.1]);
+  const linkChip = smoothFade(sec, [linkStart, linkStart + 0.8, 36, 36.1]);
 
   return (
     <>
@@ -950,7 +878,7 @@ function SynthScene({ sec }) {
 }
 
 function PrivacyOverlay({ sec }) {
-  const opacity = smoothFade(sec, [44, 44.8, 48, 48.1]);
+  const opacity = smoothFade(sec, [36, 36.8, 40, 40.1]);
   if (opacity < 0.01) return null;
   return (
     <div
@@ -989,7 +917,7 @@ function AppWindow({ sec }) {
 
   const sidebarActive = (() => {
     if (scene.id === 'synth') return 'reference';
-    if (scene.id === 'agentChat' || scene.id === 'agents') return 'agents';
+    if (scene.id === 'agentChat') return 'agents';
     if (scene.id === 'privacy') return 'canvas';
     return 'canvas';
   })();
@@ -1087,16 +1015,13 @@ function AppWindow({ sec }) {
         <SceneLayer window={[15.4, 16.4, 24, 24.6]} sec={sec}>
           <FormsScene sec={sec} />
         </SceneLayer>
-        <SceneLayer window={[23.4, 24.4, 32, 32.6]} sec={sec}>
-          <AgentsScene sec={sec} />
-        </SceneLayer>
-        <SceneLayer window={[31.4, 32.4, 44, 44.6]} sec={sec}>
+        <SceneLayer window={[23.4, 24.4, 36, 36.6]} sec={sec}>
           <SynthScene sec={sec} />
         </SceneLayer>
-        <SceneLayer window={[43.4, 44.4, 48, 48.6]} sec={sec}>
+        <SceneLayer window={[35.4, 36.4, 40, 40.6]} sec={sec}>
           <CanvasGraphScene sec={sec} />
         </SceneLayer>
-        <SceneLayer window={[47.4, 48.4, 58, 58.6]} sec={sec}>
+        <SceneLayer window={[39.4, 40.4, 50, 50.6]} sec={sec}>
           <AgentChatScene sec={sec} />
         </SceneLayer>
 
@@ -1109,7 +1034,7 @@ function AppWindow({ sec }) {
             right: 18,
             display: 'flex',
             gap: 8,
-            opacity: smoothFade(sec, [44, 44.8, 48, 48.1]),
+            opacity: smoothFade(sec, [36, 36.8, 40, 40.1]),
           }}
         >
           <div
