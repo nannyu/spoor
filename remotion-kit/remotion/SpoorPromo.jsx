@@ -21,6 +21,12 @@ function resolvePromoAudioSrc(audioUrl, locale = 'en') {
   ) {
     return promoEnAudio;
   }
+  if (
+    locale === 'zh' &&
+    (!audioUrl || audioUrl === 'audio/zh.wav' || audioUrl === 'zh.wav' || audioUrl === '../zh.wav')
+  ) {
+    return promoZhAudio;
+  }
   if (audioUrl) return staticFile(audioUrl);
   return '';
 }
@@ -30,6 +36,7 @@ import weavingIcon from './assets/agents/weaving.png';
 import ironIcon from './assets/agents/iron.png';
 import compassIcon from './assets/agents/compass.png';
 import promoEnAudio from './assets/audio/en.wav';
+import promoZhAudio from './assets/audio/zh.wav';
 import { getPromoCopy } from './spoor-promo-copy.js';
 
 export const SpoorPromoDuration = 1740;
