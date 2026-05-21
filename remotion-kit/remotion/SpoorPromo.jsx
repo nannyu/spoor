@@ -89,7 +89,13 @@ function findCaption(segments, sec) {
   );
 }
 
+/** Renders title with optional `\n` line breaks (used for Chinese copy rhythm). */
+function PromoTitle({ text, style }) {
+  return <div style={{ whiteSpace: 'pre-line', ...style }}>{text}</div>;
+}
+
 function HeroCopy({ scene, sec }) {
+  const { locale } = usePromo();
   const presence = scenePresence(scene, sec);
   const lift = interpolate(presence, [0, 1], [28, 0]);
 
@@ -110,8 +116,8 @@ function HeroCopy({ scene, sec }) {
           style={{
             fontFamily: SANS,
             fontSize: 18,
-            letterSpacing: '0.32em',
-            textTransform: 'uppercase',
+            letterSpacing: locale === 'zh' ? '0.14em' : '0.32em',
+            textTransform: locale === 'zh' ? 'none' : 'uppercase',
             color: ACCENT,
             fontWeight: 600,
             marginBottom: 36,
@@ -120,38 +126,37 @@ function HeroCopy({ scene, sec }) {
           {scene.eyebrow}
         </div>
       ) : null}
-      <div
+      <PromoTitle
+        text={scene.title}
         style={{
           fontFamily: SERIF,
           fontSize: 116,
-          lineHeight: 1.02,
-          letterSpacing: '-0.045em',
+          lineHeight: locale === 'zh' ? 1.32 : 1.02,
+          letterSpacing: locale === 'zh' ? '0.02em' : '-0.045em',
           color: INK,
           fontWeight: 500,
           margin: '0 auto',
           maxWidth: 1240,
         }}
-      >
-        {scene.title}
-      </div>
-      <div
+      />
+      <PromoTitle
+        text={scene.caption}
         style={{
           marginTop: 38,
           fontFamily: SANS,
           fontSize: 26,
-          lineHeight: 1.5,
+          lineHeight: locale === 'zh' ? 1.68 : 1.5,
           color: MUTED,
           maxWidth: 820,
           margin: '38px auto 0',
         }}
-      >
-        {scene.caption}
-      </div>
+      />
     </div>
   );
 }
 
 function SplitCopy({ scene, sec }) {
+  const { locale } = usePromo();
   const presence = scenePresence(scene, sec);
   const lift = interpolate(presence, [0, 1], [22, 0]);
 
@@ -170,8 +175,8 @@ function SplitCopy({ scene, sec }) {
         style={{
           fontFamily: SANS,
           fontSize: 17,
-          letterSpacing: '0.28em',
-          textTransform: 'uppercase',
+          letterSpacing: locale === 'zh' ? '0.12em' : '0.28em',
+          textTransform: locale === 'zh' ? 'none' : 'uppercase',
           color: ACCENT,
           fontWeight: 600,
           marginBottom: 28,
@@ -179,30 +184,28 @@ function SplitCopy({ scene, sec }) {
       >
         {scene.eyebrow}
       </div>
-      <div
+      <PromoTitle
+        text={scene.title}
         style={{
           fontFamily: SERIF,
-          fontSize: 78,
-          lineHeight: 0.99,
-          letterSpacing: '-0.04em',
+          fontSize: locale === 'zh' ? 72 : 78,
+          lineHeight: locale === 'zh' ? 1.4 : 1.08,
+          letterSpacing: locale === 'zh' ? '0.02em' : '-0.04em',
           color: INK,
           fontWeight: 500,
         }}
-      >
-        {scene.title}
-      </div>
-      <div
+      />
+      <PromoTitle
+        text={scene.caption}
         style={{
           marginTop: 30,
           fontFamily: SANS,
           fontSize: 23,
-          lineHeight: 1.55,
+          lineHeight: locale === 'zh' ? 1.72 : 1.55,
           color: MUTED,
           maxWidth: 600,
         }}
-      >
-        {scene.caption}
-      </div>
+      />
     </div>
   );
 }
@@ -1309,24 +1312,24 @@ function PromoCaption({ caption, sec }) {
         fontFamily: SANS,
       }}
     >
-      <div
+      <PromoTitle
+        text={text}
         style={{
           margin: '0 auto',
           maxWidth: 1320,
           fontSize: locale === 'zh' ? 32 : 34,
-          lineHeight: 1.42,
+          lineHeight: locale === 'zh' ? 1.58 : 1.42,
           fontWeight: 450,
           color: INK_SOFT,
           letterSpacing: locale === 'zh' ? '0.04em' : '0.01em',
         }}
-      >
-        {text}
-      </div>
+      />
     </div>
   );
 }
 
 function ClosingCTA({ scene, sec, ctaText, ctaUrl }) {
+  const { locale } = usePromo();
   const presence = scenePresence(scene, sec);
   if (presence < 0.02) return null;
   const lift = interpolate(presence, [0, 1], [24, 0]);
@@ -1348,8 +1351,8 @@ function ClosingCTA({ scene, sec, ctaText, ctaUrl }) {
           style={{
             fontFamily: SANS,
             fontSize: 17,
-            letterSpacing: '0.32em',
-            textTransform: 'uppercase',
+            letterSpacing: locale === 'zh' ? '0.14em' : '0.32em',
+            textTransform: locale === 'zh' ? 'none' : 'uppercase',
             color: ACCENT,
             fontWeight: 600,
             marginBottom: 30,
@@ -1357,18 +1360,17 @@ function ClosingCTA({ scene, sec, ctaText, ctaUrl }) {
         >
           {scene.eyebrow}
         </div>
-        <div
+        <PromoTitle
+          text={scene.title}
           style={{
             fontFamily: SERIF,
             fontSize: 116,
-            lineHeight: 1.02,
-            letterSpacing: '-0.045em',
+            lineHeight: locale === 'zh' ? 1.32 : 1.02,
+            letterSpacing: locale === 'zh' ? '0.02em' : '-0.045em',
             color: INK,
             fontWeight: 500,
           }}
-        >
-          {scene.title}
-        </div>
+        />
         <div
           style={{
             marginTop: 30,
