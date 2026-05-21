@@ -184,14 +184,13 @@ describe('MyDatabase', () => {
       expect(count).toBe(0);
     });
 
-    it('可存 tags、category、linkedCanvasIds 等扩展字段', async () => {
+    it('可存 tags、linkedCanvasIds 等扩展字段', async () => {
       await db.articles.add({
         id: 'a-ext',
         title: 'T',
         content: 'c',
         date: '2024',
         type: 'REF',
-        category: 'journal',
         tags: ['x'],
         privateNotes: 'note',
         linkedCanvasIds: ['default'],
@@ -199,7 +198,6 @@ describe('MyDatabase', () => {
       });
       const r = await db.articles.get('a-ext');
       expect(r?.tags).toEqual(['x']);
-      expect(r?.category).toBe('journal');
       expect(r?.privateNotes).toBe('note');
       expect(r?.linkedCanvasIds).toEqual(['default']);
       expect(r?.author).toBe('Me');

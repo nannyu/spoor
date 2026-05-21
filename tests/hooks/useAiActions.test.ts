@@ -142,7 +142,6 @@ describe('useAiActions', () => {
       expect(rows).toHaveLength(1);
       expect(rows[0].title).toBe('Synthesized Title');
       expect(rows[0].content).toContain('## Section');
-      expect(rows[0].category).toBe('journal');
       expect(rows[0].tags).toEqual([]);
       expect(rows[0].linkedCanvasIds).toEqual([]);
       expect(rows[0].author).toBe('');

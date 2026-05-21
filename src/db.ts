@@ -34,8 +34,6 @@ export interface Canvas {
   updatedAt: number;
 }
 
-export type ArticleCategory = 'journal' | 'image' | 'map';
-
 export interface Article {
   id: string;
   title: string;
@@ -45,7 +43,6 @@ export interface Article {
   author?: string;
   tags?: string[];
   privateNotes?: string;
-  category?: ArticleCategory;
   linkedCanvasIds?: string[];
 }
 

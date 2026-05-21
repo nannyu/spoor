@@ -16,16 +16,12 @@ import {
   Trash2,
 } from 'lucide-react';
 import { db } from '../db';
-import type { Article, ArticleCategory } from '../db';
+import type { Article } from '../db';
 import { isContentBlurPersistenceDisabled } from '../config/persistence';
 import { extractToc, slugifyHeading } from '../utils/referenceToc';
 import { useAppDialog } from './AppDialogProvider';
 
 const REFERENCE_MARKDOWN_PLUGINS = [remarkBreaks];
-
-function articleCategory(a: Article): ArticleCategory {
-  return a.category ?? 'journal';
-}
 
 function articleMatchesSearch(a: Article, q: string): boolean {
   if (!q.trim()) return true;
@@ -47,8 +43,6 @@ export interface ReferenceProps {
   onOpenCanvas?: (canvasId: string) => void;
 }
 
-type FilterKey = 'all' | ArticleCategory;
-
 export function Reference({
   articles,
   activeReferenceId,
@@ -60,7 +54,6 @@ export function Reference({
   const canvases = useLiveQuery(() => db.canvases.toArray(), []) ?? [];
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [noteStatus, setNoteStatus] = useState('');
   const [notesLocal, setNotesLocal] = useState('');
@@ -80,12 +73,8 @@ export function Reference({
   const contentsRef = useRef<HTMLDivElement>(null);
 
   const filteredArticles = useMemo(() => {
-    return articles.filter((a) => {
-      if (!articleMatchesSearch(a, searchQuery)) return false;
-      if (activeFilter === 'all') return true;
-      return articleCategory(a) === activeFilter;
-    });
-  }, [articles, searchQuery, activeFilter]);
+    return articles.filter((a) => articleMatchesSearch(a, searchQuery));
+  }, [articles, searchQuery]);
 
   const activeArticle = useMemo(() => {
     return articles.find((a) => a.id === activeReferenceId) ?? articles[0];
@@ -132,7 +121,6 @@ export function Reference({
       content: '',
       date: String(new Date().getFullYear()),
       type: 'REF',
-      category: 'journal',
       tags: [],
       linkedCanvasIds: [],
       author: '',
@@ -231,21 +219,6 @@ export function Reference({
     });
   };
 
-  const filterPill = (key: FilterKey, label: string) => (
-    <button
-      key={key}
-      type="button"
-      onClick={() => setActiveFilter(key)}
-      className={`text-[9px] uppercase tracking-wider px-2 py-0.5 rounded whitespace-nowrap transition-colors ${
-        activeFilter === key
-          ? 'bg-[#C2410C] text-white'
-          : 'bg-[#EAE7E2] text-[#5a5a54] hover:bg-[#d1cfca]'
-      }`}
-    >
-      {label}
-    </button>
-  );
-
   const linkedIds = activeArticle?.linkedCanvasIds ?? [];
   const linkableCanvases = canvases.filter((c) => !linkedIds.includes(c.id));
 
@@ -310,12 +283,6 @@ export function Reference({
                 placeholder={t('reference.search_refs')}
                 className="w-full text-xs font-sans bg-white border border-[#E6E4DF] pl-9 pr-3 py-2 rounded-md focus:outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C] transition-all shadow-sm"
               />
-            </div>
-            <div className="flex gap-2 mt-3 overflow-x-auto pb-1 scrollbar-hide">
-              {filterPill('all', t('reference.filter_all'))}
-              {filterPill('journal', t('reference.filter_journal'))}
-              {filterPill('image', t('reference.filter_image'))}
-              {filterPill('map', t('reference.filter_map'))}
             </div>
           </div>
 
@@ -611,27 +578,6 @@ export function Reference({
                 >
                   <Plus className="w-3.5 h-3.5" />
                 </button>
-              </div>
-
-              <div className="mt-4">
-                <label className="text-[10px] text-[#8c8a84] uppercase tracking-wider block mb-1">
-                  {t('reference.category_label')}
-                </label>
-                <select
-                  className="w-full text-[11px] bg-white border border-[#E6E4DF] rounded px-2 py-1.5 focus:outline-none focus:border-[#C2410C]"
-                  value={activeArticle?.category ?? 'journal'}
-                  disabled={!activeArticle}
-                  onChange={(e) => {
-                    if (!activeArticle) return;
-                    void db.articles.update(activeArticle.id, {
-                      category: e.target.value as ArticleCategory,
-                    });
-                  }}
-                >
-                  <option value="journal">{t('reference.filter_journal')}</option>
-                  <option value="image">{t('reference.filter_image')}</option>
-                  <option value="map">{t('reference.filter_map')}</option>
-                </select>
               </div>
             </div>
 

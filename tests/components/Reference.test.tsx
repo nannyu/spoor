@@ -54,7 +54,6 @@ const articleA: Article = {
   content: 'Some body for alpha',
   date: '2024',
   type: 'REF-A',
-  category: 'journal',
   tags: ['memo'],
 };
 
@@ -64,7 +63,6 @@ const articleB: Article = {
   content: 'Different content',
   date: '2025',
   type: 'REF-B',
-  category: 'journal',
 };
 
 const renderReference = (
@@ -120,7 +118,6 @@ describe('Reference', () => {
     const rows = await db.articles.toArray();
     const created = rows.find((r) => r.id !== 'a-alpha');
     expect(created?.title).toBe('reference.new_article_title');
-    expect(created?.category).toBe('journal');
     expect(created?.tags).toEqual([]);
     expect(created?.linkedCanvasIds).toEqual([]);
     expect(setId).toHaveBeenCalledWith(expect.stringMatching(/.+/));
@@ -273,19 +270,13 @@ describe('Reference', () => {
     expect(await db.articles.count()).toBe(1);
   });
 
-  it('分类筛选为 map 时隐藏非 map 文献卡片', async () => {
-    const user = userEvent.setup();
-    const mapArt: Article = { ...articleB, id: 'm1', category: 'map', title: 'Map Doc' };
-    await db.articles.bulkAdd([articleA, mapArt]);
+  it('不显示分类选择控件', async () => {
+    await db.articles.bulkAdd([articleA, articleB]);
 
-    renderReference(<Reference articles={[articleA, mapArt]} activeReferenceId="m1" setActiveReferenceId={vi.fn()} />);
+    renderReference(
+      <Reference articles={[articleA, articleB]} activeReferenceId="a-alpha" setActiveReferenceId={vi.fn()} />,
+    );
 
-    const mapPill = screen.getByRole('button', { name: 'reference.filter_map' });
-    await user.click(mapPill);
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('reference-list-item-a-alpha')).toBeNull();
-    });
-    expect(screen.getByTestId('reference-list-item-m1')).toBeInTheDocument();
+    expect(screen.queryByRole('combobox')).toBeNull();
   });
 });

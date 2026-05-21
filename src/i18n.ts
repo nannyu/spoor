@@ -239,10 +239,6 @@ const resources = {
         "new_article_title": "Untitled reference",
         "empty_library": "No references yet. Use + to add one.",
         "empty_document": "Select or create a reference.",
-        "filter_all": "All",
-        "filter_journal": "Journal",
-        "filter_image": "Images",
-        "filter_map": "Maps",
         "author_label": "Author",
         "published_label": "Published",
         "document_prefix": "Document //",
@@ -259,7 +255,6 @@ const resources = {
         "immersive_exit": "Exit immersive",
         "immersive_enter": "Immersive reading",
         "remove_tag": "Remove tag",
-        "category_label": "Category",
         "no_matches": "No matching references."
       },
       "agents": {
@@ -546,10 +541,6 @@ const resources = {
         "new_article_title": "未命名文献",
         "empty_library": "暂无文献。点击 + 添加。",
         "empty_document": "请选择或新建一条文献。",
-        "filter_all": "全部",
-        "filter_journal": "期刊",
-        "filter_image": "图像",
-        "filter_map": "地图",
         "author_label": "作者",
         "published_label": "出版",
         "document_prefix": "文献 //",
@@ -566,7 +557,6 @@ const resources = {
         "immersive_exit": "退出沉浸",
         "immersive_enter": "沉浸阅读",
         "remove_tag": "移除标签",
-        "category_label": "分类",
         "no_matches": "没有匹配的文献。"
       },
       "agents": {
