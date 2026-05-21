@@ -129,8 +129,8 @@ test('Root exports MyComposition, PromoVertical, SpoorPromo, and SpoorPromoZH co
   const compositions = [
     { id: 'MyComposition', durationInFrames: 90, fps: 30, width: 1920, height: 1080 },
     { id: 'PromoVertical', durationInFrames: 150, fps: 30, width: 1080, height: 1920 },
-    { id: 'SpoorPromo', durationInFrames: 1860, fps: 30, width: 1920, height: 1080 },
-    { id: 'SpoorPromoZH', durationInFrames: 1860, fps: 30, width: 1920, height: 1080 },
+    { id: 'SpoorPromo', durationInFrames: 1740, fps: 30, width: 1920, height: 1080 },
+    { id: 'SpoorPromoZH', durationInFrames: 1740, fps: 30, width: 1920, height: 1080 },
   ];
   assert.equal(compositions.length, 4);
   compositions.forEach((comp) => {
@@ -139,9 +139,9 @@ test('Root exports MyComposition, PromoVertical, SpoorPromo, and SpoorPromoZH co
   });
 });
 
-test('SpoorPromo exports 62s duration at 30fps', () => {
-  const SpoorPromoDuration = 1860;
-  assert.equal(SpoorPromoDuration, 62 * 30);
+test('SpoorPromo exports 58s duration at 30fps', () => {
+  const SpoorPromoDuration = 1740;
+  assert.equal(SpoorPromoDuration, 58 * 30);
 });
 
 test('spoor-promo.json has ten timestamp segments', () => {
@@ -149,7 +149,7 @@ test('spoor-promo.json has ten timestamp segments', () => {
   const data = JSON.parse(readFileSync(path, 'utf8'));
   assert.equal(data.title, 'Spoor');
   assert.equal(data.timestampSegments.length, 10);
-  assert.equal(data.timestampSegments[9].endSec, 62);
+  assert.equal(data.timestampSegments[9].endSec, 58);
 });
 
 test('spoor-promo-zh.json is Chinese locale bundle', () => {

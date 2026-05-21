@@ -16,7 +16,7 @@ import ironIcon from './assets/agents/iron.png';
 import compassIcon from './assets/agents/compass.png';
 import { getPromoCopy } from './spoor-promo-copy.js';
 
-export const SpoorPromoDuration = 1860;
+export const SpoorPromoDuration = 1740;
 
 const AGENT_ICONS = {
   interviewer: mirrorIcon,
@@ -85,7 +85,7 @@ function currentScene(sec, scenes) {
 }
 
 function scenePresence(scene, sec) {
-  const fade = 1.1;
+  const fade = 0.75;
   return smoothFade(sec, [scene.start, scene.start + fade, scene.end - fade, scene.end]);
 }
 
@@ -392,7 +392,7 @@ function AppEdges({ progress }) {
 function CanvasGraphScene({ sec }) {
   const { copy } = usePromo();
   const g = copy.graph;
-  const t = interpolate(sec, [6, 14], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const t = interpolate(sec, [4, 10], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
 
   return (
     <>
@@ -420,8 +420,8 @@ function FormsScene({ sec }) {
   const layouts = copy.forms.items;
   const items = copy.forms.labels;
 
-  const idx = Math.min(layouts.length - 1, Math.floor((sec - 14) / 1.6));
-  const localT = ((sec - 14) % 1.6) / 1.6;
+  const idx = Math.min(layouts.length - 1, Math.floor((sec - 10) / 1.2));
+  const localT = ((sec - 10) % 1.2) / 1.2;
   const current = layouts[Math.max(0, idx)];
   const next = layouts[Math.max(0, Math.min(layouts.length - 1, idx + 1))];
 
@@ -514,11 +514,11 @@ function AgentNodeCard({ x, y, persona, active, width = 158 }) {
 function AgentChatScene({ sec }) {
   const { personas, copy } = usePromo();
   const chat = copy.agentChat;
-  const chatPhase = interpolate(sec, [46, 47.2], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-  const studioPhase = interpolate(sec, [56.8, 58.2], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const chatPhase = interpolate(sec, [40, 41], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const studioPhase = interpolate(sec, [50.8, 52.2], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   const activeChat = Math.min(
     personas.length - 1,
-    Math.floor(interpolate(sec, [47, 56], [0, 4], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })),
+    Math.floor(interpolate(sec, [41, 50], [0, 4], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })),
   );
   const persona = personas[activeChat];
 
@@ -702,13 +702,13 @@ function AgentChatScene({ sec }) {
 function SynthScene({ sec }) {
   const { copy } = usePromo();
   const s = copy.synth;
-  const selectionStart = 22;
-  const articleStart = 26;
-  const linkStart = 32;
+  const selectionStart = 16;
+  const articleStart = 20;
+  const linkStart = 24;
 
-  const selectGlow = smoothFade(sec, [selectionStart, selectionStart + 0.8, articleStart, articleStart + 0.6]);
-  const article = smoothFade(sec, [articleStart, articleStart + 1.2, 34, 34.1]);
-  const linkChip = smoothFade(sec, [linkStart, linkStart + 0.8, 34, 34.1]);
+  const selectGlow = smoothFade(sec, [selectionStart, selectionStart + 0.6, articleStart, articleStart + 0.5]);
+  const article = smoothFade(sec, [articleStart, articleStart + 1.0, 28, 28.1]);
+  const linkChip = smoothFade(sec, [linkStart, linkStart + 0.6, 28, 28.1]);
 
   return (
     <>
@@ -787,14 +787,14 @@ function SynthScene({ sec }) {
 function ResearchLabScene({ sec }) {
   const { copy } = usePromo();
   const r = copy.research;
-  const queryPhase = smoothFade(sec, [38, 38.6, 39.2, 39.5]);
-  const planPhase = smoothFade(sec, [39.2, 40, 41.8, 42.2]);
-  const executePhase = smoothFade(sec, [41.6, 42.2, 43, 43.4]);
-  const sourcesPhase = smoothFade(sec, [41.6, 42.4, 46, 46.1]);
-  const reportPhase = smoothFade(sec, [43, 43.6, 46, 46.1]);
+  const queryPhase = smoothFade(sec, [32, 32.5, 33, 33.3]);
+  const planPhase = smoothFade(sec, [33.2, 33.8, 35.4, 35.8]);
+  const executePhase = smoothFade(sec, [35.4, 36, 36.8, 37.2]);
+  const sourcesPhase = smoothFade(sec, [35.4, 36.2, 40, 40.1]);
+  const reportPhase = smoothFade(sec, [36.8, 37.4, 40, 40.1]);
   const activeStep = Math.min(
     r.plan.length - 1,
-    Math.floor(interpolate(sec, [40, 41.6], [0, 3], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })),
+    Math.floor(interpolate(sec, [34, 35.6], [0, 3], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })),
   );
   const showSearching = sourcesPhase > 0.4 && reportPhase < 0.35;
 
@@ -1118,7 +1118,7 @@ function ResearchLabScene({ sec }) {
 }
 
 function PrivacyOverlay({ sec }) {
-  const opacity = smoothFade(sec, [34, 34.8, 38, 38.1]);
+  const opacity = smoothFade(sec, [28, 28.6, 32, 32.1]);
   if (opacity < 0.01) return null;
   return (
     <div
@@ -1140,17 +1140,17 @@ function AppWindow({ sec }) {
   const { fps } = useVideoConfig();
 
   const entrance = spring({
-    frame: frame - 0.4 * fps,
+    frame: frame - 0.25 * fps,
     fps,
     config: { damping: 22, mass: 0.7, stiffness: 65 },
   });
   const enterOffset = interpolate(entrance, [0, 1], [28, 0]);
-  const drift = interpolate(sec, [0, 62], [-10, 10], {
+  const drift = interpolate(sec, [0, 58], [-10, 10], {
     easing: Easing.inOut(Easing.ease),
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   });
-  const zoom = interpolate(sec, [0, 62], [0.985, 1.025], {
+  const zoom = interpolate(sec, [0, 58], [0.985, 1.025], {
     easing: Easing.inOut(Easing.ease),
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
@@ -1251,22 +1251,22 @@ function AppWindow({ sec }) {
           }}
         />
 
-        <SceneLayer window={[5.5, 6.5, 14, 14.6]} sec={sec}>
+        <SceneLayer window={[3.5, 4.5, 10, 10.6]} sec={sec}>
           <CanvasGraphScene sec={sec} />
         </SceneLayer>
-        <SceneLayer window={[13.4, 14.4, 22, 22.6]} sec={sec}>
+        <SceneLayer window={[9.4, 10.4, 16, 16.6]} sec={sec}>
           <FormsScene sec={sec} />
         </SceneLayer>
-        <SceneLayer window={[21.4, 22.4, 34, 34.6]} sec={sec}>
+        <SceneLayer window={[15.4, 16.4, 28, 28.6]} sec={sec}>
           <SynthScene sec={sec} />
         </SceneLayer>
-        <SceneLayer window={[33.4, 34.4, 38, 38.6]} sec={sec}>
+        <SceneLayer window={[27.4, 28.4, 32, 32.6]} sec={sec}>
           <CanvasGraphScene sec={sec} />
         </SceneLayer>
-        <SceneLayer window={[37.4, 38.4, 46, 46.6]} sec={sec}>
+        <SceneLayer window={[31.4, 32.4, 40, 40.6]} sec={sec}>
           <ResearchLabScene sec={sec} />
         </SceneLayer>
-        <SceneLayer window={[45.4, 46.4, 58, 58.6]} sec={sec}>
+        <SceneLayer window={[39.4, 40.4, 52, 52.6]} sec={sec}>
           <AgentChatScene sec={sec} />
         </SceneLayer>
 
@@ -1279,7 +1279,7 @@ function AppWindow({ sec }) {
             right: 18,
             display: 'flex',
             gap: 8,
-            opacity: smoothFade(sec, [34, 34.8, 38, 38.1]),
+            opacity: smoothFade(sec, [28, 28.6, 32, 32.1]),
           }}
         >
           <div
@@ -1305,7 +1305,7 @@ function PromoCaption({ caption, sec }) {
   const { locale, scenes } = usePromo();
   const closing = scenePresence(scenes[scenes.length - 1], sec);
   const opening = scenePresence(scenes[0], sec);
-  const opacity = (1 - closing) * (1 - opening * 0.6);
+  const opacity = (1 - closing) * (1 - opening * 0.45);
   const text = locale === 'zh' ? caption?.zh : caption?.en;
   if (opacity < 0.02 || !text) return null;
   return (

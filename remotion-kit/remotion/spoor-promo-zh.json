@@ -5,65 +5,65 @@
   "locale": "zh",
   "ctaUrl": "scribe-ai-canvas.netlify.app",
   "ctaText": "试用网页版",
-  "totalDurationSec": 62,
+  "totalDurationSec": 58,
   "timestampSegments": [
     {
       "startSec": 0,
-      "endSec": 6,
+      "endSec": 4,
       "en": "Spoor is a quiet canvas for thinking in space.",
       "zh": "雪泥是一个安静的空间化思考画布。"
     },
     {
-      "startSec": 6,
-      "endSec": 14,
+      "startSec": 4,
+      "endSec": 10,
       "en": "Notes connect by hand —\nthe thought becomes visible.",
       "zh": "亲手把便签连成线，念头便落在雪泥上。"
     },
     {
-      "startSec": 14,
-      "endSec": 22,
+      "startSec": 10,
+      "endSec": 16,
       "en": "Each note finds its form —\nstandard, glass, minimal, neo-brut, receipt.",
       "zh": "同一张便签，五种形态，各有回响。"
     },
     {
-      "startSec": 22,
-      "endSec": 30,
+      "startSec": 16,
+      "endSec": 24,
       "en": "Select what matters. The canvas becomes a draft.",
       "zh": "选出要紧的几张，画布便写成一篇草稿。"
     },
     {
-      "startSec": 30,
-      "endSec": 34,
+      "startSec": 24,
+      "endSec": 28,
       "en": "The article stays linked to the canvas it came from.",
       "zh": "成文之后，仍指回它落下的那片画布。"
     },
     {
-      "startSec": 34,
-      "endSec": 38,
+      "startSec": 28,
+      "endSec": 32,
       "en": "Local-first. Private by default.",
       "zh": "本地优先，默认只留在你的浏览器里。"
     },
     {
-      "startSec": 38,
-      "endSec": 42,
+      "startSec": 32,
+      "endSec": 36,
       "en": "Enter a topic — the agent decomposes it\ninto a research plan you can edit.",
       "zh": "输入主题，智能体拆解为可编辑的研究计划。"
     },
     {
-      "startSec": 42,
-      "endSec": 46,
+      "startSec": 36,
+      "endSec": 40,
       "en": "Optional web sources inform the synthesis.\nThe report is saved in your library.",
       "zh": "可选联网检索支撑综合，报告保存在本地研究库。"
     },
     {
-      "startSec": 46,
-      "endSec": 58,
+      "startSec": 40,
+      "endSec": 52,
       "en": "Four personas read your notes —\nand the images linked to them.",
       "zh": "四个人格读你的便签，也读与之相连的图像。"
     },
     {
-      "startSec": 58,
-      "endSec": 62,
+      "startSec": 52,
+      "endSec": 58,
       "en": "A trace of thought, left on quiet ground.",
       "zh": "念头如鸿，落处成迹。"
     }
