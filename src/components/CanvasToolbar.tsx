@@ -14,6 +14,7 @@ import { db } from '../db';
 import { getCanvasCenterPosition } from '../utils/canvas';
 import { resolveAgentLocalizedName } from '../utils/aiI18n';
 import { IntentClarificationModal } from './IntentClarificationModal';
+import { AgentIcon } from './AgentIcon';
 
 export interface CanvasToolbarProps {
   isToolbarAiLoading: boolean;
@@ -115,7 +116,14 @@ export function CanvasToolbar({
                     const { x, y } = getCanvasCenterPosition(transformRef.current);
                     await db.nodes.add({ id: crypto.randomUUID(), canvasId: activeCanvasId, type: 'agent', agentConfigId: agent.id, x, y });
                   }} className="text-left px-3 py-2 text-sm text-[#1a1a1a] hover:bg-[#F4F1ED] rounded-lg mb-1 flex items-center gap-2 min-w-0">
-                    <div className="w-2 h-2 rounded-full bg-[#C2410C] shrink-0"></div>
+                    <span className="w-5 h-5 rounded-md bg-[#FFF7ED] border border-[#E6E4DF] flex items-center justify-center shrink-0 overflow-hidden">
+                      <AgentIcon
+                        agentId={agent.id}
+                        className="w-full h-full"
+                        imageClassName="scale-[1.32]"
+                        fallbackClassName="text-[#C2410C]"
+                      />
+                    </span>
                     <span className="font-bold truncate">{resolveAgentLocalizedName(agent)}</span>
                   </button>
                 ))}

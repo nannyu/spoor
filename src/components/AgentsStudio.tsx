@@ -29,6 +29,7 @@ import {
   isAgentMarkdownFilename,
 } from '../utils/agentMarkdownKnowledge';
 import { useAppDialog } from './AppDialogProvider';
+import { AgentIcon } from './AgentIcon';
 
 type SandboxChatMessage = { role: 'user' | 'model'; text: string };
 
@@ -331,8 +332,13 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
                 className={`p-4 cursor-pointer transition-colors border-l-4 ${activeAgentId === agent.id ? 'bg-[#F4F1ED] border-[#C2410C]' : 'hover:bg-[#F4F1ED]/50 border-transparent'}`}
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-[#EAE7E2] flex items-center justify-center">
-                    <Bot className={`w-5 h-5 ${activeAgentId === agent.id ? 'text-[#C2410C]' : 'text-[#8c8a84]'}`} />
+                  <div className="w-10 h-10 rounded-lg bg-[#FFF7ED] border border-[#E6E4DF] flex items-center justify-center overflow-hidden">
+                    <AgentIcon
+                      agentId={agent.id}
+                      className="w-full h-full"
+                      imageClassName="scale-[1.32]"
+                      fallbackClassName={activeAgentId === agent.id ? 'text-[#C2410C]' : 'text-[#8c8a84]'}
+                    />
                   </div>
                   <div className="min-w-0">
                     <h4 className={`font-bold truncate ${activeAgentId === agent.id ? 'text-[#1a1a1a]' : 'text-[#5a5a54]'}`}>{resolveAgentLocalizedName(agent)}</h4>
@@ -349,7 +355,15 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
         {activeAgent ? (
           <>
             <div className="sticky top-0 bg-[#FAF9F6]/80 backdrop-blur-md px-10 py-6 border-b border-[#E6E4DF] flex flex-col sm:flex-row justify-between items-start sm:items-end z-10 gap-4">
-              <div>
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-12 h-12 rounded-xl bg-[#FFF7ED] border border-[#E6E4DF] flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
+                  <AgentIcon
+                    agentId={activeAgent.id}
+                    className="w-full h-full"
+                    imageClassName="scale-[1.32]"
+                    fallbackClassName="text-[#C2410C]"
+                  />
+                </div>
                 <input
                   type="text"
                   className="font-serif text-3xl font-bold text-[#1a1a1a] bg-transparent border-0 border-b border-transparent hover:border-[#E6E4DF] focus:border-[#C2410C] focus:ring-0 outline-none w-full max-w-2xl py-1 px-0 transition-colors placeholder:text-[#8c8a84] placeholder:font-normal"
