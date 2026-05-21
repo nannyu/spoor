@@ -1,5 +1,5 @@
-# Build Windows NSIS installer and attach to GitHub Releases on version tags.
-# Maintainer: git tag v0.1.0 && git push origin v0.1.0
+# Build Windows NSIS installer and publish to GitHub Releases on v* tags.
+# Docs: https://v2.tauri.app/distribute/pipelines/github/
 
 name: Release Desktop (Windows)
 
@@ -13,7 +13,7 @@ permissions:
   contents: write
 
 jobs:
-  build-windows:
+  publish-tauri:
     runs-on: windows-latest
     steps:
       - name: Checkout
@@ -25,54 +25,28 @@ jobs:
           node-version: '20'
           cache: npm
 
-      - name: Install frontend dependencies
-        run: npm ci
-
-      - name: Setup Rust
+      - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-msvc
 
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: src-tauri
-
-      - name: Build Tauri (NSIS installer)
-        run: npm run tauri:build
+      - name: Build and publish release
+        uses: tauri-apps/tauri-action@v1
         env:
-          CI: 'true'
-
-      - name: Collect installer path
-        id: artifacts
-        shell: pwsh
-        run: |
-          $dir = "src-tauri/target/release/bundle/nsis"
-          if (-not (Test-Path $dir)) {
-            Write-Error "NSIS output not found under $dir"
-          }
-          $setup = Get-ChildItem $dir -Filter "*-setup.exe" | Select-Object -First 1
-          if (-not $setup) {
-            Write-Error "No *-setup.exe in $dir"
-          }
-          "installer=$($setup.FullName)" >> $env:GITHUB_OUTPUT
-          "installer_name=$($setup.Name)" >> $env:GITHUB_OUTPUT
-          Write-Host "Built: $($setup.FullName) ($([math]::Round($setup.Length/1MB, 2)) MB)"
-
-      - name: Upload workflow artifact
-        uses: actions/upload-artifact@v4
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: spoor-windows-x64-setup
-          path: ${{ steps.artifacts.outputs.installer }}
-          if-no-files-found: error
+          tagName: ${{ github.ref_name }}
+          releaseName: Spoor 雪泥 ${{ github.ref_name }}
+          releaseBody: |
+            ## Windows 安装（推荐）
 
-      - name: Publish GitHub Release (tag pushes only)
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          name: Spoor 雪泥 v0.1.0
-          body_path: docs/RELEASE_v0.1.0.md
-          files: ${{ steps.artifacts.outputs.installer }}
-          generate_release_notes: false
-          draft: false
+            下载 **`Spoor_*_x64-setup.exe`**，双击安装，从开始菜单打开 **Spoor / 雪泥**。
+
+            - 系统：Windows 10/11，64 位
+            - 首次使用：在应用 **设置** 中配置 AI 服务商与 API Key（仅存本机）
+            - 本地 GGUF 可选，见 [LOCAL_LLM.md](https://github.com/iimorning/scribe-ai-canvas/blob/master/docs/LOCAL_LLM.md)
+
+            完整说明：[docs/RELEASE_v0.1.0.md](https://github.com/iimorning/scribe-ai-canvas/blob/master/docs/RELEASE_v0.1.0.md) · [DESKTOP_INSTALL.md](https://github.com/iimorning/scribe-ai-canvas/blob/master/docs/DESKTOP_INSTALL.md)
+          releaseDraft: false
           prerelease: false
+          tauriScript: npm run tauri
