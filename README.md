@@ -2,7 +2,11 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Run and deploy your AI Studio app
+# 雪泥 · Spoor (`xue-ni-spoor`)
+
+Local-first spatial notes canvas with AI personas and research lab.
+
+> **GitHub 仓库名：** 请在 Settings 中将 `scribe-ai-canvas` 改名为 [`xue-ni-spoor`](https://github.com/iimorning/xue-ni-spoor)（URL 不支持中文，见 [docs/RENAME_GITHUB_REPO.md](docs/RENAME_GITHUB_REPO.md)）。
 
 This contains everything you need to run your app locally.
 
@@ -12,7 +16,7 @@ View your app in AI Studio: https://ai.studio/apps/932383b2-6259-4dd6-b8af-27215
 
 **一键下载安装包，无需 Node.js：**
 
-1. 打开 **[GitHub Releases](https://github.com/iimorning/scribe-ai-canvas/releases/latest)**
+1. 打开 **[GitHub Releases](https://github.com/iimorning/xue-ni-spoor/releases/latest)**
 2. 下载 **`Spoor_*_x64-setup.exe`**
 3. 运行安装向导，从开始菜单打开 **Spoor / 雪泥**
 
