@@ -22,7 +22,7 @@ async fn openai_compatible_chat(api_key: String, url: String, body: Value) -> Re
     .send()
     .await
     .map_err(|e| {
-      eprintln!("[Scribe AI] openai_compatible_chat network error: {e} (url={url})");
+      eprintln!("[Spoor] openai_compatible_chat network error: {e} (url={url})");
       e.to_string()
     })?;
 
@@ -31,7 +31,7 @@ async fn openai_compatible_chat(api_key: String, url: String, body: Value) -> Re
 
   if !status.is_success() {
     let preview: String = text.chars().take(800).collect();
-    eprintln!("[Scribe AI] openai_compatible_chat HTTP {status} url={url} body_preview={preview}");
+    eprintln!("[Spoor] openai_compatible_chat HTTP {status} url={url} body_preview={preview}");
     return Err(text);
   }
 
@@ -75,7 +75,7 @@ async fn openai_compatible_chat_stream(
     .send()
     .await
     .map_err(|e| {
-      eprintln!("[Scribe AI] openai_compatible_chat_stream network error: {e} (url={url})");
+      eprintln!("[Spoor] openai_compatible_chat_stream network error: {e} (url={url})");
       e.to_string()
     })?;
 
@@ -84,7 +84,7 @@ async fn openai_compatible_chat_stream(
     let text = response.text().await.unwrap_or_default();
     let preview: String = text.chars().take(800).collect();
     eprintln!(
-      "[Scribe AI] openai_compatible_chat_stream HTTP {status} url={url} body_preview={preview}"
+      "[Spoor] openai_compatible_chat_stream HTTP {status} url={url} body_preview={preview}"
     );
     return Err(text);
   }
@@ -157,7 +157,7 @@ async fn metaso_search(api_key: String, query: String) -> Result<String, String>
         .send()
         .await
         .map_err(|e| {
-            eprintln!("[Scribe AI] metaso_search network error: {e}");
+            eprintln!("[Spoor] metaso_search network error: {e}");
             e.to_string()
         })?;
 
@@ -166,7 +166,7 @@ async fn metaso_search(api_key: String, query: String) -> Result<String, String>
 
     if !status.is_success() {
         let preview: String = text.chars().take(800).collect();
-        eprintln!("[Scribe AI] metaso_search HTTP {status} body_preview={preview}");
+        eprintln!("[Spoor] metaso_search HTTP {status} body_preview={preview}");
         return Err(text);
     }
 

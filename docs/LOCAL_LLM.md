@@ -62,7 +62,7 @@
 | `llama-bxxxx-bin-win-cuda-12.4-x64.zip` | `llama-completion.exe` `llama-cli.exe` `ggml*.dll` `llama.dll` 等 |
 | `cudart-llama-bin-win-cuda-12.4-x64.zip` | `cudart64_12.dll` `cublas64_12.dll` `cublasLt64_12.dll` |
 
-**把以下文件全部复制到 `<exe_dir>`**（与 `spatial-notes.exe` 同目录，或 dev 模式下 `src-tauri/target/release/`）：
+**把以下文件全部复制到 `<exe_dir>`**（与 `spoor.exe` 同目录，或 dev 模式下 `src-tauri/target/release/`）：
 
 ```
 llama-completion.exe   ← 主程序，新版必备
@@ -137,14 +137,14 @@ cublasLt64_12.dll
 每次推理都会把**完整命令行、stdout、stderr、退出码、耗时**写入：
 
 ```
-%TEMP%\scribe_llama.log
+%TEMP%\spoor_llama.log
 ```
 
 打开方式：
 
 ```powershell
-notepad $env:TEMP\scribe_llama.log
-# 或在文件资源管理器地址栏输入 %TEMP% 找到 scribe_llama.log
+notepad $env:TEMP\spoor_llama.log
+# 或在文件资源管理器地址栏输入 %TEMP% 找到 spoor_llama.log
 ```
 
 日志格式（每次一段）：
@@ -160,7 +160,7 @@ ctx   : 1024
 predict: 256
 gpu_layers: 24
 threads: 8
-prompt_file: %TEMP%\scribe_llama_prompt_xxx.txt
+prompt_file: %TEMP%\spoor_llama_prompt_xxx.txt
 prompt_preview: 你是谁
 
 ========== [2026-05-08 14:23:19Z] RESULT ==========
@@ -215,7 +215,7 @@ ggml_cuda_init: found 1 CUDA devices ...
 | `No CUDA toolset found` | CMake 找不到 CUDA Visual Studio integration | 装 CUDA Toolkit 并勾选 "Visual Studio Integration"（已弃用） |
 | `MSB8020: 无法找到 cuda 的生成工具` | MSBuild 与 CUDA 集成断裂，常见且难修 | **放弃源码编译 CUDA**，改用预编译二进制 ⭐ |
 | `磁盘空间不足 (os error 112)` | C 盘剩余 < 3GB | 删 `src-tauri\target\debug` 释放空间 |
-| `error: failed to remove file 拒绝访问` | 旧 `spatial-notes.exe` 仍在跑 | `taskkill /f /im spatial-notes.exe` 后重编 |
+| `error: failed to remove file 拒绝访问` | 旧 `spoor.exe` 仍在跑 | `taskkill /f /im spoor.exe` 后重编 |
 | `bundle.targets = "all"` 时 `tauri build` 卡 timeout | WiX/MSI 工具链下载慢 | `tauri.conf.json` 设 `"bundle.targets": ["nsis"]`，只打 NSIS |
 
 ### 6.2 运行期：Tauri ↔ Rust ↔ 子进程
@@ -266,8 +266,8 @@ call npm run tauri -- build
 
 产物：
 
-- `src-tauri\target\release\spatial-notes.exe` — 应用主程序
-- `src-tauri\target\release\bundle\nsis\SpatialNotes_x.x.x_x64-setup.exe` — NSIS 安装包
+- `src-tauri\target\release\spoor.exe` — 应用主程序
+- `src-tauri\target\release\bundle\nsis\Spoor_x.x.x_x64-setup.exe` — NSIS 安装包
 
 记得**把 §2.2 的 llama.cpp 二进制和 DLL 放到 `target\release\` 下**，否则跑不起来。
 
@@ -277,7 +277,7 @@ call npm run tauri -- build
 
 | 文件 | 作用 |
 |---|---|
-| `src-tauri/src/local_llama.rs` | 组装 llama-completion 命令行、运行子进程、写日志 `%TEMP%\scribe_llama.log`、5 分钟硬超时 |
+| `src-tauri/src/local_llama.rs` | 组装 llama-completion 命令行、运行子进程、写日志 `%TEMP%\spoor_llama.log`、5 分钟硬超时 |
 | `src-tauri/src/lib.rs` | Tauri 命令 `local_llama_chat`、`get_local_llama_log_path` |
 | `src/services/ai.ts` | 前端 `provider === 'local_llama'` 分支，含调用前后 `console.info` 日志 |
 | `src/components/AISettingsModal.tsx` | 设置 UI：本地 GGUF 路径、思考模式开关 |

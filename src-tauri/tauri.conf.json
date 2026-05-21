@@ -1,7 +1,7 @@
 {
   "productName": "Spoor",
   "version": "0.1.0",
-  "identifier": "com.spatialnodes.app",
+  "identifier": "com.spoor.app",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:3000",

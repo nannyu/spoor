@@ -3146,7 +3146,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "spatial-notes"
+name = "spoor"
 version = "0.1.0"
 dependencies = [
  "encoding_rs",

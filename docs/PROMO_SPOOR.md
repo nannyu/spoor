@@ -51,6 +51,10 @@ npm run remotion:render:spoor
 | 0:50–0:55 | privacy | Local-first. Private by default. | 本地优先，默认私密。 | App 内右上角 `Local-first · IndexedDB` 角标 |
 | 0:55–1:00 | closing | A trace of thought, left on quiet ground. | 念头如鸿，落处成迹。 | 大字 CTA + 网址 |
 
+## 部署 URL（待换）
+
+当前 CTA 仍为 `scribe-ai-canvas.netlify.app`（历史 Netlify 站点）。拿到新域名（如 `spoor.app`）或在 Netlify 改站点名后，改 `spoor-promo.json` 的 `ctaUrl` 与 `SpoorPromo.jsx` 默认 `ctaUrl` 即可。
+
 ## 调字幕 / 调时间
 
 - 改文案：编辑 `remotion-kit/remotion/spoor-promo.json` 中的 `timestampSegments`

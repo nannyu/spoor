@@ -444,7 +444,7 @@ describe('callUniversalAI', () => {
 
     it('调用 local_llama_chat 时 payload 形状与字段映射正确', async () => {
       mockInvoke
-        .mockResolvedValueOnce('D:\\TEMP\\scribe_llama.log') // get_local_llama_log_path
+        .mockResolvedValueOnce('D:\\TEMP\\spoor_llama.log') // get_local_llama_log_path
         .mockResolvedValueOnce('local response'); // local_llama_chat
 
       const result = await callUniversalAI({
@@ -514,12 +514,12 @@ describe('callUniversalAI', () => {
 
     it('推理失败时错误消息附带日志路径', async () => {
       mockInvoke
-        .mockResolvedValueOnce('D:\\TEMP\\scribe_llama.log')
+        .mockResolvedValueOnce('D:\\TEMP\\spoor_llama.log')
         .mockRejectedValueOnce(new Error('cudaMalloc failed: out of memory'));
 
       await expect(
         callUniversalAI({ config: localBase, prompt: 'hi' })
-      ).rejects.toThrow(/out of memory[\s\S]*详细日志[\s\S]*scribe_llama\.log/);
+      ).rejects.toThrow(/out of memory[\s\S]*详细日志[\s\S]*spoor_llama\.log/);
     });
 
     it('get_local_llama_log_path 调用失败时不应中断主流程', async () => {

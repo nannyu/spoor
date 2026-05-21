@@ -1,7 +1,7 @@
 //! 桌面端本地推理（GGUF）—— 通过子进程调用预编译的 llama-completion.exe / llama-cli.exe
 //! 完全绕过从源码编译 CUDA 的需要；只需官方预编译二进制 + CUDA 运行时 DLL。
 //!
-//! 每次调用都会把命令行、stdout、stderr、耗时等写入 %TEMP%\scribe_llama.log，
+//! 每次调用都会把命令行、stdout、stderr、耗时等写入 %TEMP%\spoor_llama.log，
 //! 方便用户/开发者排查问题（前端也提供 get_local_llama_log_path 命令）。
 
 use std::io::Write;
@@ -33,9 +33,9 @@ pub struct LocalLlamaChatPayload {
     pub enable_thinking: Option<bool>,
 }
 
-/// 日志文件路径：`%TEMP%\scribe_llama.log`（用户可点开 %TEMP% 查看）。
+/// 日志文件路径：`%TEMP%\spoor_llama.log`（用户可点开 %TEMP% 查看）。
 pub fn log_path() -> PathBuf {
-    std::env::temp_dir().join("scribe_llama.log")
+    std::env::temp_dir().join("spoor_llama.log")
 }
 
 /// 简单的时间戳（YYYY-MM-DD HH:MM:SS）—— 不依赖 chrono 等额外 crate。
@@ -211,7 +211,7 @@ pub fn chat(payload: LocalLlamaChatPayload) -> Result<String, String> {
         .unwrap_or(24);
 
     let prompt_file = std::env::temp_dir().join(format!(
-        "scribe_llama_prompt_{}.txt",
+        "spoor_llama_prompt_{}.txt",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_nanos())
@@ -525,7 +525,7 @@ mod tests {
     #[test]
     fn log_path_under_temp_dir() {
         let p = log_path();
-        assert!(p.ends_with("scribe_llama.log"), "got: {}", p.display());
+        assert!(p.ends_with("spoor_llama.log"), "got: {}", p.display());
         // 应该在系统临时目录下
         assert!(p.starts_with(std::env::temp_dir()), "got: {}", p.display());
     }
@@ -538,7 +538,7 @@ mod tests {
     #[test]
     fn find_llama_cli_env_var_takes_precedence() {
         // 1) 设置一个真实存在的临时文件 → 应该被命中
-        let tmp = std::env::temp_dir().join("scribe_test_llama_cli.exe");
+        let tmp = std::env::temp_dir().join("spoor_test_llama_cli.exe");
         std::fs::write(&tmp, b"fake binary").expect("write tmp");
 
         std::env::set_var("LLAMA_CLI_PATH", &tmp);

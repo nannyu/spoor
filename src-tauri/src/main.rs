@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    spatial_notes_lib::run();
+    spoor_lib::run();
 }

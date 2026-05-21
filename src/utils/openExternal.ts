@@ -2,7 +2,7 @@
 export async function openExternalUrl(url: string): Promise<void> {
   const trimmed = url.trim();
   if (!/^https?:\/\//i.test(trimmed)) {
-    console.warn('[Scribe AI] openExternalUrl skipped non-http(s) URL');
+    console.warn('[Spoor] openExternalUrl skipped non-http(s) URL');
     return;
   }
 

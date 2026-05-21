@@ -110,9 +110,9 @@ export function useAiActions({
       setSelectedNodes(new Set());
     } catch (e) {
       const msg = formatAiError(e);
-      console.error('[Scribe AI] handlePublish failed', { error: msg, provider: aiConfig.provider, model: aiConfig.model, apiKey: maskApiKeyForLog(aiConfig.apiKey) });
+      console.error('[Spoor] handlePublish failed', { error: msg, provider: aiConfig.provider, model: aiConfig.model, apiKey: maskApiKeyForLog(aiConfig.apiKey) });
       void appAlert({
-        message: `合成失败\n\n${msg}\n\n打开开发者工具 (F12) → Console 查看 [Scribe AI] 日志。`,
+        message: `合成失败\n\n${msg}\n\n打开开发者工具 (F12) → Console 查看 [Spoor] 日志。`,
       });
     } finally {
       setIsPublishing(false);
@@ -166,9 +166,9 @@ export function useAiActions({
       }
     } catch (e) {
       const msg = formatAiError(e);
-      console.error('[Scribe AI] triggerAgentAnalysis failed', { error: msg, provider: aiConfig.provider, model: aiConfig.model, apiKey: maskApiKeyForLog(aiConfig.apiKey) });
+      console.error('[Spoor] triggerAgentAnalysis failed', { error: msg, provider: aiConfig.provider, model: aiConfig.model, apiKey: maskApiKeyForLog(aiConfig.apiKey) });
       void appAlert({
-        message: `AI 生成失败\n\n${msg}\n\n打开开发者工具 (F12) → Console 查看 [Scribe AI] 详细日志。`,
+        message: `AI 生成失败\n\n${msg}\n\n打开开发者工具 (F12) → Console 查看 [Spoor] 详细日志。`,
       });
     } finally {
       setAnalyzingAgentNodeId(null);
@@ -231,9 +231,9 @@ export function useAiActions({
         await runToolbarAiGeneration(request);
       } catch (error) {
         const msg = formatAiError(error);
-        console.error('[Scribe AI] handleAiSubmit failed', { error: msg, provider: aiConfig.provider, model: aiConfig.model, apiKey: maskApiKeyForLog(aiConfig.apiKey) });
+        console.error('[Spoor] handleAiSubmit failed', { error: msg, provider: aiConfig.provider, model: aiConfig.model, apiKey: maskApiKeyForLog(aiConfig.apiKey) });
         void appAlert({
-          message: `AI 生成失败\n\n${msg}\n\n请检查：1) 设置中 Provider / MiMo Key / Base URL（需含 /v1） 2) 若用浏览器，需 npm run dev 且已重启（/api/mimo 代理）；桌面端用 Tauri 可不依赖代理。\n\nF12 → Console 查看 [Scribe AI] 日志。`,
+          message: `AI 生成失败\n\n${msg}\n\n请检查：1) 设置中 Provider / MiMo Key / Base URL（需含 /v1） 2) 若用浏览器，需 npm run dev 且已重启（/api/mimo 代理）；桌面端用 Tauri 可不依赖代理。\n\nF12 → Console 查看 [Spoor] 日志。`,
         });
       } finally {
         setIsToolbarAiLoading(false);
@@ -260,7 +260,7 @@ export function useAiActions({
       }
     } catch (e) {
       const msg = formatAiError(e);
-      console.error('[Scribe AI] toolbar intent preflight failed', msg);
+      console.error('[Spoor] toolbar intent preflight failed', msg);
       proceedWithOriginal = true;
     } finally {
       setIsToolbarIntentPreflight(false);
@@ -281,9 +281,9 @@ export function useAiActions({
       await runToolbarAiGeneration(finalRequest);
     } catch (error) {
       const msg = formatAiError(error);
-      console.error('[Scribe AI] handleAiSubmit after intent clarify failed', { error: msg, provider: aiConfig.provider, model: aiConfig.model, apiKey: maskApiKeyForLog(aiConfig.apiKey) });
+      console.error('[Spoor] handleAiSubmit after intent clarify failed', { error: msg, provider: aiConfig.provider, model: aiConfig.model, apiKey: maskApiKeyForLog(aiConfig.apiKey) });
       void appAlert({
-        message: `AI 生成失败\n\n${msg}\n\n请检查：1) 设置中 Provider / MiMo Key / Base URL（需含 /v1） 2) 若用浏览器，需 npm run dev 且已重启（/api/mimo 代理）；桌面端用 Tauri 可不依赖代理。\n\nF12 → Console 查看 [Scribe AI] 日志。`,
+        message: `AI 生成失败\n\n${msg}\n\n请检查：1) 设置中 Provider / MiMo Key / Base URL（需含 /v1） 2) 若用浏览器，需 npm run dev 且已重启（/api/mimo 代理）；桌面端用 Tauri 可不依赖代理。\n\nF12 → Console 查看 [Spoor] 日志。`,
       });
     } finally {
       setIsToolbarAiLoading(false);
@@ -361,7 +361,7 @@ export function useAiActions({
         await db.nodes.update(parentNodeId, { followUpSent: true });
       } catch (e) {
         const msg = formatAiError(e);
-        console.error('[Scribe AI] thread web search failed', {
+        console.error('[Spoor] thread web search failed', {
           error: msg,
         });
         void appAlert({ message: `${t('nodes.search_failed')}\n\n${msg}` });
@@ -462,14 +462,14 @@ export function useAiActions({
       }
     } catch (e) {
       const msg = formatAiError(e);
-      console.error('[Scribe AI] submitAiThreadFollowUp failed', {
+      console.error('[Spoor] submitAiThreadFollowUp failed', {
         error: msg,
         provider: aiConfig.provider,
         model: aiConfig.model,
         apiKey: maskApiKeyForLog(aiConfig.apiKey),
       });
       void appAlert({
-        message: `AI 生成失败\n\n${msg}\n\n打开开发者工具 (F12) → Console 查看 [Scribe AI] 详细日志。`,
+        message: `AI 生成失败\n\n${msg}\n\n打开开发者工具 (F12) → Console 查看 [Spoor] 详细日志。`,
       });
     } finally {
       followUpGuardRef.current = false;
