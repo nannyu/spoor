@@ -6,14 +6,30 @@ import {
   Img,
   interpolate,
   spring,
+  staticFile,
   useCurrentFrame,
   useVideoConfig,
 } from 'remotion';
+
+/** Resolve promo audio — bundled WAV is most reliable in Studio; staticFile is fallback. */
+function resolvePromoAudioSrc(audioUrl, locale = 'en') {
+  if (/^https?:\/\//i.test(audioUrl)) return audioUrl;
+  if (audioUrl && (audioUrl.startsWith('/') || /^[a-zA-Z]:/.test(audioUrl))) return audioUrl;
+  if (
+    locale === 'en' &&
+    (!audioUrl || audioUrl === 'audio/en.wav' || audioUrl === 'en.wav' || audioUrl === '../en.wav')
+  ) {
+    return promoEnAudio;
+  }
+  if (audioUrl) return staticFile(audioUrl);
+  return '';
+}
 
 import mirrorIcon from './assets/agents/mirror.png';
 import weavingIcon from './assets/agents/weaving.png';
 import ironIcon from './assets/agents/iron.png';
 import compassIcon from './assets/agents/compass.png';
+import promoEnAudio from './assets/audio/en.wav';
 import { getPromoCopy } from './spoor-promo-copy.js';
 
 export const SpoorPromoDuration = 1740;
@@ -82,6 +98,33 @@ function smoothFade(sec, [a, b, c, d]) {
 
 function currentScene(sec, scenes) {
   return scenes.find((scene) => sec >= scene.start && sec < scene.end) || scenes[scenes.length - 1];
+}
+
+function findScene(scenes, id) {
+  return scenes.find((scene) => scene.id === id);
+}
+
+function sceneRange(scenes, id) {
+  const scene = findScene(scenes, id);
+  return scene ? [scene.start, scene.end] : [0, 0];
+}
+
+/** Fade window aligned to a scene (for App UI layers). */
+function sceneLayerWindow(scenes, id, padIn = 0.5, padOut = 0.6) {
+  const [start, end] = sceneRange(scenes, id);
+  return [start - padIn, start + padIn, end, end + padOut];
+}
+
+/** Map 0–1 progress inside a scene to absolute seconds. */
+function withinScene(scenes, id, t0, t1) {
+  const [start, end] = sceneRange(scenes, id);
+  const span = end - start;
+  return [start + span * t0, start + span * t1];
+}
+
+function promoDurationSec(scenes) {
+  const last = scenes[scenes.length - 1];
+  return last?.end ?? 58;
 }
 
 function scenePresence(scene, sec) {
@@ -516,9 +559,10 @@ function AppEdges({ progress }) {
 }
 
 function CanvasGraphScene({ sec }) {
-  const { copy } = usePromo();
+  const { copy, scenes } = usePromo();
   const g = copy.graph;
-  const t = interpolate(sec, [4, 10], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const [g0, g1] = sceneRange(scenes, 'graph');
+  const t = interpolate(sec, [g0, g1], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
 
   return (
     <>
@@ -541,30 +585,28 @@ function CanvasGraphScene({ sec }) {
   );
 }
 
-/** Forms scene beat times (sec) — last beat holds receipt longer so it reads on screen. */
-const FORMS_BEATS = [0, 0.85, 1.7, 2.55, 3.4, 6];
-
-function getFormsBeat(sec, sceneStart) {
+function getFormsBeat(sec, sceneStart, sceneEnd) {
+  const span = sceneEnd - sceneStart;
+  const beats = [0, 0.14, 0.28, 0.42, 0.56, 1].map((r) => sceneStart + span * r);
   const t = Math.max(0, sec - sceneStart);
   let idx = 0;
-  for (let i = 1; i < FORMS_BEATS.length - 1; i += 1) {
-    if (t >= FORMS_BEATS[i]) idx = i;
+  for (let i = 1; i < beats.length - 1; i += 1) {
+    if (t >= beats[i] - sceneStart) idx = i;
   }
-  const segStart = FORMS_BEATS[idx];
-  const segEnd = FORMS_BEATS[idx + 1];
+  const segStart = beats[idx] - sceneStart;
+  const segEnd = beats[idx + 1] - sceneStart;
   const localT = segEnd > segStart ? (t - segStart) / (segEnd - segStart) : 0;
   return { idx: Math.min(4, idx), localT };
 }
 
 function FormsScene({ sec }) {
   const { copy, scenes } = usePromo();
-  const formsScene = scenes.find((s) => s.id === 'forms');
-  const sceneStart = formsScene?.start ?? 10;
+  const [sceneStart, sceneEnd] = sceneRange(scenes, 'forms');
   const layouts = copy.forms.items;
   const items = copy.forms.labels;
   const receiptMeta = copy.forms.receipt;
 
-  const { idx, localT } = getFormsBeat(sec, sceneStart);
+  const { idx, localT } = getFormsBeat(sec, sceneStart, sceneEnd);
   const current = layouts[Math.max(0, idx)];
   const next = layouts[Math.max(0, Math.min(layouts.length - 1, idx + 1))];
 
@@ -672,13 +714,14 @@ function AgentNodeCard({ x, y, persona, active, width = 158 }) {
 }
 
 function AgentChatScene({ sec }) {
-  const { personas, copy } = usePromo();
+  const { personas, copy, scenes } = usePromo();
   const chat = copy.agentChat;
-  const chatPhase = interpolate(sec, [40, 41], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-  const studioPhase = interpolate(sec, [50.8, 52.2], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const [a0, a1] = sceneRange(scenes, 'agentChat');
+  const chatPhase = interpolate(sec, [a0, a0 + 1.1], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const studioPhase = interpolate(sec, [a1 - 1.8, a1 - 0.5], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   const activeChat = Math.min(
     personas.length - 1,
-    Math.floor(interpolate(sec, [41, 50], [0, 4], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })),
+    Math.floor(interpolate(sec, [a0 + 0.6, a1 - 1.8], [0, 4], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })),
   );
   const persona = personas[activeChat];
 
@@ -860,15 +903,16 @@ function AgentChatScene({ sec }) {
 }
 
 function SynthScene({ sec }) {
-  const { copy } = usePromo();
+  const { copy, scenes } = usePromo();
   const s = copy.synth;
-  const selectionStart = 16;
-  const articleStart = 20;
-  const linkStart = 24;
+  const [s0, s1] = sceneRange(scenes, 'synth');
+  const [selectionStart, selectionMid] = withinScene(scenes, 'synth', 0.08, 0.22);
+  const [articleStart, articleMid] = withinScene(scenes, 'synth', 0.32, 0.55);
+  const [linkStart, linkEnd] = withinScene(scenes, 'synth', 0.78, 0.98);
 
-  const selectGlow = smoothFade(sec, [selectionStart, selectionStart + 0.6, articleStart, articleStart + 0.5]);
-  const article = smoothFade(sec, [articleStart, articleStart + 1.0, 28, 28.1]);
-  const linkChip = smoothFade(sec, [linkStart, linkStart + 0.6, 28, 28.1]);
+  const selectGlow = smoothFade(sec, [selectionStart, selectionMid, articleStart, articleMid]);
+  const article = smoothFade(sec, [articleStart, articleMid, s1, s1 + 0.1]);
+  const linkChip = smoothFade(sec, [linkStart, linkEnd, s1 + 0.1, s1 + 0.2]);
 
   return (
     <>
@@ -945,16 +989,22 @@ function SynthScene({ sec }) {
 }
 
 function ResearchLabScene({ sec }) {
-  const { copy } = usePromo();
+  const { copy, scenes } = usePromo();
   const r = copy.research;
-  const queryPhase = smoothFade(sec, [32, 32.5, 33, 33.3]);
-  const planPhase = smoothFade(sec, [33.2, 33.8, 35.4, 35.8]);
-  const executePhase = smoothFade(sec, [35.4, 36, 36.8, 37.2]);
-  const sourcesPhase = smoothFade(sec, [35.4, 36.2, 40, 40.1]);
-  const reportPhase = smoothFade(sec, [36.8, 37.4, 40, 40.1]);
+  const [q0, q1] = withinScene(scenes, 'research', 0.02, 0.12);
+  const [p0, p1] = withinScene(scenes, 'research', 0.14, 0.42);
+  const [e0, e1] = withinScene(scenes, 'research', 0.4, 0.55);
+  const [src0, src1] = withinScene(scenes, 'research', 0.38, 0.98);
+  const [rep0, rep1] = withinScene(scenes, 'research', 0.52, 0.98);
+  const queryPhase = smoothFade(sec, [q0, q1, q1 + 0.05, q1 + 0.1]);
+  const planPhase = smoothFade(sec, [p0, p1, p1 + 0.05, p1 + 0.1]);
+  const executePhase = smoothFade(sec, [e0, e1, e1 + 0.05, e1 + 0.1]);
+  const sourcesPhase = smoothFade(sec, [src0, src0 + 0.4, sceneRange(scenes, 'research')[1], sceneRange(scenes, 'research')[1] + 0.1]);
+  const reportPhase = smoothFade(sec, [rep0, rep1, sceneRange(scenes, 'research')[1] + 0.1, sceneRange(scenes, 'research')[1] + 0.2]);
+  const [step0, step1] = withinScene(scenes, 'research', 0.2, 0.48);
   const activeStep = Math.min(
     r.plan.length - 1,
-    Math.floor(interpolate(sec, [34, 35.6], [0, 3], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })),
+    Math.floor(interpolate(sec, [step0, step1], [0, 3], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })),
   );
   const showSearching = sourcesPhase > 0.4 && reportPhase < 0.35;
 
@@ -1278,7 +1328,9 @@ function ResearchLabScene({ sec }) {
 }
 
 function PrivacyOverlay({ sec }) {
-  const opacity = smoothFade(sec, [28, 28.6, 32, 32.1]);
+  const { scenes } = usePromo();
+  const [p0, p1, p2, p3] = sceneLayerWindow(scenes, 'privacy', 0.4, 0.1);
+  const opacity = smoothFade(sec, [p0, p1, p2, p3]);
   if (opacity < 0.01) return null;
   return (
     <div
@@ -1305,12 +1357,13 @@ function AppWindow({ sec }) {
     config: { damping: 22, mass: 0.7, stiffness: 65 },
   });
   const enterOffset = interpolate(entrance, [0, 1], [28, 0]);
-  const drift = interpolate(sec, [0, 58], [-10, 10], {
+  const totalSec = promoDurationSec(scenes);
+  const drift = interpolate(sec, [0, totalSec], [-10, 10], {
     easing: Easing.inOut(Easing.ease),
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   });
-  const zoom = interpolate(sec, [0, 58], [0.985, 1.025], {
+  const zoom = interpolate(sec, [0, totalSec], [0.985, 1.025], {
     easing: Easing.inOut(Easing.ease),
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
@@ -1411,22 +1464,22 @@ function AppWindow({ sec }) {
           }}
         />
 
-        <SceneLayer window={[3.5, 4.5, 10, 10.6]} sec={sec}>
+        <SceneLayer window={sceneLayerWindow(scenes, 'graph')} sec={sec}>
           <CanvasGraphScene sec={sec} />
         </SceneLayer>
-        <SceneLayer window={[9.4, 10.4, 16, 16.6]} sec={sec}>
+        <SceneLayer window={sceneLayerWindow(scenes, 'forms')} sec={sec}>
           <FormsScene sec={sec} />
         </SceneLayer>
-        <SceneLayer window={[15.4, 16.4, 28, 28.6]} sec={sec}>
+        <SceneLayer window={sceneLayerWindow(scenes, 'synth')} sec={sec}>
           <SynthScene sec={sec} />
         </SceneLayer>
-        <SceneLayer window={[27.4, 28.4, 32, 32.6]} sec={sec}>
+        <SceneLayer window={sceneLayerWindow(scenes, 'privacy')} sec={sec}>
           <CanvasGraphScene sec={sec} />
         </SceneLayer>
-        <SceneLayer window={[31.4, 32.4, 40, 40.6]} sec={sec}>
+        <SceneLayer window={sceneLayerWindow(scenes, 'research')} sec={sec}>
           <ResearchLabScene sec={sec} />
         </SceneLayer>
-        <SceneLayer window={[39.4, 40.4, 52, 52.6]} sec={sec}>
+        <SceneLayer window={sceneLayerWindow(scenes, 'agentChat')} sec={sec}>
           <AgentChatScene sec={sec} />
         </SceneLayer>
 
@@ -1439,7 +1492,7 @@ function AppWindow({ sec }) {
             right: 18,
             display: 'flex',
             gap: 8,
-            opacity: smoothFade(sec, [28, 28.6, 32, 32.1]),
+            opacity: smoothFade(sec, sceneLayerWindow(scenes, 'privacy', 0.4, 0.1)),
           }}
         >
           <div
@@ -1578,11 +1631,13 @@ function SpoorPromoInner({
   ctaText,
   audioUrl = '',
   timestampSegments = [],
+  locale = 'en',
 }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const sec = frame / fps;
   const { copy, scenes } = usePromo();
+  const audioSrc = resolvePromoAudioSrc(audioUrl, locale);
   const scene = currentScene(sec, scenes);
   const caption = findCaption(timestampSegments, sec);
   const closingPresence = scenePresence(scenes[scenes.length - 1], sec);
@@ -1599,7 +1654,7 @@ function SpoorPromoInner({
         overflow: 'hidden',
       }}
     >
-      {audioUrl ? <Audio src={audioUrl} /> : null}
+      {audioSrc ? <Audio src={audioSrc} volume={1} /> : null}
 
       <div
         style={{
@@ -1671,6 +1726,7 @@ export const SpoorPromo = ({
         ctaText={ctaText ?? copy.ctaText}
         audioUrl={audioUrl}
         timestampSegments={timestampSegments}
+        locale={locale}
       />
     </PromoContext.Provider>
   );

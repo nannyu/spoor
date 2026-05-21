@@ -150,6 +150,7 @@ test('spoor-promo.json has ten timestamp segments', () => {
   assert.equal(data.title, 'Spoor');
   assert.equal(data.timestampSegments.length, 10);
   assert.equal(data.timestampSegments[9].endSec, 58);
+  assert.equal(data.totalDurationSec, 58);
 });
 
 test('spoor-promo-zh.json is Chinese locale bundle', () => {

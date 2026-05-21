@@ -4,6 +4,7 @@
   "brandLabel": "SPOOR",
   "ctaUrl": "scribe-ai-canvas.netlify.app",
   "ctaText": "Try the web app",
+  "audioUrl": "audio/en.wav",
   "totalDurationSec": 58,
   "timestampSegments": [
     {
