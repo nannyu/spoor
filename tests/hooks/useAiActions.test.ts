@@ -189,7 +189,7 @@ describe('useAiActions', () => {
       expect(result.current.aiPrompt).toBe('');
     });
 
-    it('无勾选所选节点时不带入便签：prompt 为用户原文且 system 含简明对话设定', async () => {
+    it('无勾选所选节点时不带入便签：prompt 为用户原文且 system 含思维伙伴设定', async () => {
       const longSkipPreflight =
         'Write a long reflective paragraph about rivers and deltas so toolbar intent gate skips preflight without question marks.';
       const { result } = renderHook(() => useTestAiActions({ selectedNodes: new Set() }));
@@ -205,12 +205,12 @@ describe('useAiActions', () => {
       expect(callUniversalAI).toHaveBeenCalledWith(
         expect.objectContaining({
           prompt: longSkipPreflight,
-          systemInstruction: expect.stringMatching(/concise conversational[\s\S]*Always reply entirely in English/i),
+          systemInstruction: expect.stringMatching(/AI thinking partner[\s\S]*not to behave like a chatbot[\s\S]*Never expose the product metaphor[\s\S]*Always reply entirely in English/i),
         }),
       );
     });
 
-    it('勾选节点时拼装所选正文，system 为综合节选与用户问题的说明', async () => {
+    it('勾选节点时拼装所选正文，system 将节选作为隐性上下文', async () => {
       const longSkipPreflight =
         'Write at length about cloud patterns and precipitation types so toolbar intent gate skips without question marks.';
       const hook = renderHook(() =>
@@ -231,7 +231,7 @@ describe('useAiActions', () => {
       expect(callUniversalAI).toHaveBeenCalledWith(
         expect.objectContaining({
           prompt: expect.stringMatching(/EXCERPT_FROM_SELECTED_NOTE[\s\S]*precipitation types/i),
-          systemInstruction: expect.stringMatching(/selected notes[\s\S]*Always reply entirely in English/i),
+          systemInstruction: expect.stringMatching(/selected material[\s\S]*private context[\s\S]*do not expose the product metaphor[\s\S]*Always reply entirely in English/i),
         }),
       );
     });

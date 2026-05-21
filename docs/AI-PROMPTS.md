@@ -80,7 +80,7 @@ Context to analyze:
 
 | 项目 | 内容 |
 |------|------|
-| **系统提示词** | `combineSystemParts(ai.prompts.toolbarBarePersona, getLocaleDirective())` — 简明对话助手 + 界面语言 |
+| **系统提示词** | `combineSystemParts(ai.prompts.toolbarBarePersona, getLocaleDirective())` — 克制的 AI 思维伙伴；强调清晰、洞察、真实心理与不暴露产品隐喻 + 界面语言 |
 | **用户提示词** | 底部输入框原文（无上下文前缀） |
 
 ### 已勾选一类或多类便签
@@ -88,7 +88,7 @@ Context to analyze:
 | 项目 | 内容 |
 |------|------|
 | **上下文** | 与合成文章同源：对每个已勾选节点用 `getCanvasNodeContextText`（优先 `data-canvas-node-context-text`）取文，前置 `ai.prompts.context_fragment_label`，拼成 `{{context}}` |
-| **系统提示词** | `combineSystemParts(ai.prompts.toolbarWithNotesSystem, getLocaleDirective())` — 要求结合节选与用户提问作答 |
+| **系统提示词** | `combineSystemParts(ai.prompts.toolbarWithNotesSystem, getLocaleDirective())` — 把选中节选作为隐性上下文；综合模式、张力与隐藏假设，但不在普通回答中暴露画布/节点/第二大脑等产品隐喻 |
 | **用户提示词** | `ai.prompts.toolbarWithNotesUser`，其中 `{{context}}` / `{{request}}` 分别为上文节选与底部输入 |
 
 英文用户提示词形如：

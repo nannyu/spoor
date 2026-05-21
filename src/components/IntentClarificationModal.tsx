@@ -87,7 +87,7 @@ export function IntentClarificationModal({
               id="intent-clarify-title"
               className="flex-1 text-[10px] leading-snug text-[#8c8a84]/95 font-medium"
             >
-              {hint || t('ai.intent.panel_hint')}
+              {t('ai.intent.panel_hint')}
             </p>
             <button
               type="button"
