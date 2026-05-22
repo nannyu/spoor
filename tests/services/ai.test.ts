@@ -110,6 +110,57 @@ describe('callUniversalAI', () => {
     });
   });
 
+  // --- MiMo (builtin key) ---
+  describe('MiMo provider', () => {
+    beforeEach(() => {
+      const okBody = JSON.stringify({
+        choices: [{ message: { content: 'MiMo response' } }],
+      });
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true,
+        text: async () => okBody,
+        json: async () => JSON.parse(okBody),
+      }));
+    });
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it('uses builtin key when user apiKey empty', async () => {
+      vi.stubEnv('VITE_BUILTIN_MIMO_API_KEY', 'tp-builtin-test');
+      const result = await callUniversalAI({
+        config: {
+          ...baseConfig,
+          provider: 'mimo',
+          apiKey: '',
+          baseUrl: 'https://token-plan-cn.xiaomimimo.com/v1',
+          model: 'mimo-v2.5-pro',
+        },
+        prompt: 'Hello MiMo',
+      });
+      expect(result).toBe('MiMo response');
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/mimo/chat/completions',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer tp-builtin-test',
+          }),
+        }),
+      );
+    });
+
+    it('throws when no user key and no builtin', async () => {
+      vi.stubEnv('VITE_BUILTIN_MIMO_API_KEY', '');
+      await expect(
+        callUniversalAI({
+          config: { ...baseConfig, provider: 'mimo', apiKey: '' },
+          prompt: 'Hello',
+        }),
+      ).rejects.toThrow(/MiMo API Key/);
+    });
+  });
+
   // --- OpenAI ---
   describe('OpenAI provider', () => {
     beforeEach(() => {

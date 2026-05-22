@@ -84,6 +84,8 @@ npm run tauri:build
 
 维护者发版与手动上传说明见 [docs/DESKTOP_INSTALL.md](docs/DESKTOP_INSTALL.md)、[scripts/upload-release-manual.md](scripts/upload-release-manual.md)。
 
+**托管 MiMo（用户免填 Key）：** 见 [docs/BUILTIN_MIMO.md](docs/BUILTIN_MIMO.md)，或 `npm run setup:mimo-key -- tp-你的密钥` 后执行 `npm run build`。
+
 ### 部署到 Netlify（网页）
 
 `npm run build` 输出到 `dist`。画布数据仍在访客浏览器（IndexedDB）；Netlify 只托管静态资源。

@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { Download, Monitor, Settings, X, Sparkles } from 'lucide-react';
-import { MIMO_TOKEN_PLAN_BASE_URL } from '../constants/mimo';
+import { hasBuiltinMimoApiKey, MIMO_TOKEN_PLAN_BASE_URL } from '../constants/mimo';
 import { DESKTOP_RELEASE_URL } from '../constants/desktopRelease';
 import { openExternalUrl } from '../utils/openExternal';
 import { isTauriRuntime } from '../utils/isTauriRuntime';
@@ -28,6 +28,7 @@ export interface AISettingsModalProps {
 export function AISettingsModal({ isOpen, onClose, config, setConfig }: AISettingsModalProps) {
   const { t, i18n } = useTranslation();
   const inDesktopApp = isTauriRuntime();
+  const hostedMimo = config.provider === 'mimo' && hasBuiltinMimoApiKey();
   if (!isOpen) return null;
 
   return (
@@ -181,10 +182,13 @@ export function AISettingsModal({ isOpen, onClose, config, setConfig }: AISettin
             ) : (
               <div className="space-y-2">
                 <label className="text-[10px] font-mono font-bold text-[#8c8a84] uppercase tracking-wider">{t('settings.api_key')}</label>
+                {hostedMimo && (
+                  <p className="text-[11px] text-[#8c8a84] leading-relaxed">{t('settings.builtin_mimo_hint')}</p>
+                )}
                 <input
                   type="password"
                   className="w-full h-10 px-3 bg-[#FAF9F6] border border-[#E6E4DF] rounded-lg text-sm outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C] transition-all"
-                  placeholder="sk-..."
+                  placeholder={hostedMimo ? t('settings.api_key_optional_mimo') : 'tp-...'}
                   value={config.apiKey}
                   onChange={e => setConfig({ ...config, apiKey: e.target.value })}
                 />

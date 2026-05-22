@@ -1,5 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
-import { MIMO_TOKEN_PLAN_BASE_URL } from '../constants/mimo';
+import { MIMO_TOKEN_PLAN_BASE_URL, resolveMimoApiKey } from '../constants/mimo';
 
 const LOG_PREFIX = '[Scribe AI]';
 
@@ -358,6 +358,8 @@ export async function callUniversalAI({
 }): Promise<string> {
   const apiKeyTrimmed = (config.apiKey ?? '').trim();
   const useUserConfig = Boolean(apiKeyTrimmed);
+  const mimoApiKey =
+    config.provider === 'mimo' ? resolveMimoApiKey(apiKeyTrimmed) : '';
 
   if (config.provider === 'local_llama') {
     if (images?.length) {
@@ -453,7 +455,13 @@ export async function callUniversalAI({
     }
   }
 
-  if (!useUserConfig) {
+  if (config.provider === 'mimo' && !mimoApiKey) {
+    throw new Error(
+      'MiMo API Key 未配置。请在设置中粘贴 tp- 密钥，或在构建时设置 VITE_BUILTIN_MIMO_API_KEY。',
+    );
+  }
+
+  if (!useUserConfig && config.provider !== 'mimo') {
     throw new Error(`API Key missing for provider "${config.provider}". Open Settings and paste your key.`);
   }
 
@@ -476,7 +484,8 @@ export async function callUniversalAI({
       top_p: topP
     };
 
-    return postOpenAiCompatibleChatWithOptionalStream(apiKeyTrimmed, chatUrl, body, {
+    const openAiKey = config.provider === 'mimo' ? mimoApiKey : apiKeyTrimmed;
+    return postOpenAiCompatibleChatWithOptionalStream(openAiKey, chatUrl, body, {
       provider: config.provider,
       model,
     }, onStreamChunk);
