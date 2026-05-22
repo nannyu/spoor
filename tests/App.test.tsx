@@ -52,6 +52,12 @@ vi.mock('react-i18next', () => ({
         'settings.profile': '个人资料',
         'settings.ai_config': 'AI 配置',
         'settings.language': '语言',
+        'settings.desktop_download_title': '桌面版（Windows）',
+        'settings.desktop_download_blurb': '安装原生应用可获得本地优先存储、桌面专属能力（如本地 GGUF）。浏览器里的数据留在本浏览器；桌面版使用独立数据目录。',
+        'settings.desktop_download_button': '下载 Windows 安装包',
+        'settings.desktop_installed_title': '桌面版',
+        'settings.desktop_installed_blurb': '当前为桌面应用。',
+        'settings.desktop_releases_button': '打开 Releases 页面',
         'settings.user_name': '显示名称',
         'settings.user_role': '当前焦点 / 状态',
         'settings.provider': 'AI 服务商',
@@ -160,6 +166,7 @@ vi.mock('lucide-react', () => {
     'Focus', 'Image', 'FilePlus', 'Trash2', 'Link2', 'X', 'Camera', 'ChevronLeft',
     'ChevronRight', 'Check', 'Cpu', 'ArrowRight', 'ListChecks', 'CheckCircle2',
     'Loader2', 'PenLine', 'Edit3', 'FileText', 'Globe', 'ExternalLink', 'RotateCcw',
+    'Monitor', 'Download',
   ];
   const icons: Record<string, React.FC> = {};
   for (const name of iconNames) {
@@ -534,6 +541,13 @@ describe('App 组件', () => {
       await openSettings(user);
       const passwordInputs = document.querySelectorAll('input[type="password"]');
       expect(passwordInputs.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('网页版设置面板显示桌面版下载入口', async () => {
+      const user = userEvent.setup();
+      await act(async () => { render(<App />); });
+      await openSettings(user);
+      expect(screen.getByText('下载 Windows 安装包')).toBeInTheDocument();
     });
 
     it('设置面板包含提供商下拉选项', async () => {
