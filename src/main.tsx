@@ -9,6 +9,8 @@ import logoUrl from '../LOGO.png';
 
 registerDevBuiltinAgentReset();
 
+document.title = 'Spoor';
+
 const favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]') ?? document.createElement('link');
 favicon.rel = 'icon';
 favicon.type = 'image/png';

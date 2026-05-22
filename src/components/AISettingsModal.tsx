@@ -35,7 +35,7 @@ export function AISettingsModal({ isOpen, onClose, config, setConfig }: AISettin
       <div className="bg-white rounded-2xl w-full max-w-lg overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
         <div className="p-6 border-b border-[#E6E4DF] flex items-center justify-between bg-[#F4F1ED]/50">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#1a1a1a] flex items-center justify-center text-[#C2410C]">
+            <div className="w-10 h-10 rounded-xl bg-[#C2410C]/10 border border-[#C2410C]/20 flex items-center justify-center text-[#C2410C]">
               <Settings className="w-5 h-5" />
             </div>
             <div>
@@ -76,7 +76,7 @@ export function AISettingsModal({ isOpen, onClose, config, setConfig }: AISettin
           <div className="h-px bg-[#F4F1ED]" />
           <div className="p-4 rounded-xl border border-[#E6E4DF] bg-[#FAF9F6] space-y-3">
             <div className="flex gap-3">
-              <div className="w-9 h-9 rounded-lg bg-[#1a1a1a] flex items-center justify-center text-[#C2410C] flex-shrink-0">
+              <div className="w-9 h-9 rounded-lg bg-[#C2410C]/10 border border-[#C2410C]/20 flex items-center justify-center text-[#C2410C] flex-shrink-0">
                 <Monitor className="w-4 h-4" />
               </div>
               <div className="min-w-0">
@@ -235,7 +235,7 @@ export function AISettingsModal({ isOpen, onClose, config, setConfig }: AISettin
         <div className="p-6 border-t border-[#E6E4DF] bg-white flex justify-end">
           <button
             onClick={onClose}
-            className="px-8 py-2.5 bg-[#1a1a1a] text-white rounded-xl font-sans font-bold hover:bg-[#333] transition-all text-sm shadow-md"
+            className="px-8 py-2.5 bg-[#C2410C] text-white rounded-xl font-sans font-bold hover:bg-[#9A3412] transition-all text-sm shadow-sm shadow-[#C2410C]/20"
           >
             {t('settings.save')}
           </button>
