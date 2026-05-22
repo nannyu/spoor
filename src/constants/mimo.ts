@@ -4,6 +4,9 @@
  */
 export const MIMO_TOKEN_PLAN_BASE_URL = 'https://token-plan-cn.xiaomimimo.com/v1';
 
+/** Hosted MiMo quota expiry — shown in Settings when a built-in key is baked in. */
+export const BUILTIN_MIMO_API_EXPIRES_AT = '2026-06-01';
+
 /**
  * Optional hosted MiMo key baked in at build time (Vite: VITE_BUILTIN_MIMO_API_KEY).
  * WARNING: visible in the shipped JS bundle — only for low-friction demos; rotate if leaked.

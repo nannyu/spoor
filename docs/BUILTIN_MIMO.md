@@ -1,5 +1,7 @@
 # 内置 MiMo API Key（托管给所有用户）
 
+当前托管 Key 计划于 **2026-06-01** 到期；设置页会对用户显示该提醒。
+
 ## 原理
 
 构建时通过环境变量 `VITE_BUILTIN_MIMO_API_KEY` 写入前端包。用户**未在设置里填写** MiMo 密钥时，`callUniversalAI` 自动使用该 Key 调用小米 Token 套餐 API。

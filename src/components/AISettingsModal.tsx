@@ -1,6 +1,10 @@
 import { useTranslation } from 'react-i18next';
 import { Download, Monitor, Settings, X, Sparkles } from 'lucide-react';
-import { hasBuiltinMimoApiKey, MIMO_TOKEN_PLAN_BASE_URL } from '../constants/mimo';
+import {
+  BUILTIN_MIMO_API_EXPIRES_AT,
+  hasBuiltinMimoApiKey,
+  MIMO_TOKEN_PLAN_BASE_URL,
+} from '../constants/mimo';
 import { DESKTOP_RELEASE_URL } from '../constants/desktopRelease';
 import { openExternalUrl } from '../utils/openExternal';
 import { isTauriRuntime } from '../utils/isTauriRuntime';
@@ -29,6 +33,14 @@ export function AISettingsModal({ isOpen, onClose, config, setConfig }: AISettin
   const { t, i18n } = useTranslation();
   const inDesktopApp = isTauriRuntime();
   const hostedMimo = config.provider === 'mimo' && hasBuiltinMimoApiKey();
+  const hostedMimoExpiryLabel =
+    i18n.language === 'zh'
+      ? '2026年6月1日'
+      : new Date(BUILTIN_MIMO_API_EXPIRES_AT).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        });
   if (!isOpen) return null;
 
   return (
@@ -183,7 +195,15 @@ export function AISettingsModal({ isOpen, onClose, config, setConfig }: AISettin
               <div className="space-y-2">
                 <label className="text-[10px] font-mono font-bold text-[#8c8a84] uppercase tracking-wider">{t('settings.api_key')}</label>
                 {hostedMimo && (
-                  <p className="text-[11px] text-[#8c8a84] leading-relaxed">{t('settings.builtin_mimo_hint')}</p>
+                  <div className="space-y-2">
+                    <p
+                      role="alert"
+                      className="text-[11px] leading-relaxed px-3 py-2 rounded-lg border border-amber-300/80 bg-amber-50 text-amber-950"
+                    >
+                      {t('settings.builtin_mimo_expiry', { date: hostedMimoExpiryLabel })}
+                    </p>
+                    <p className="text-[11px] text-[#8c8a84] leading-relaxed">{t('settings.builtin_mimo_hint')}</p>
+                  </div>
                 )}
                 <input
                   type="password"
