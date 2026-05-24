@@ -37,6 +37,12 @@ export const MIMO_DOC_LINKS: DocLink[] = [
   { href: 'https://aistudio.xiaomimimo.com/#/', labelKey: 'settings.docs_link_mimo_aistudio' },
 ];
 
+export const DEEPSEEK_DOC_LINKS: DocLink[] = [
+  { href: 'https://platform.deepseek.com/api_keys', labelKey: 'settings.docs_link_deepseek_keys' },
+  { href: 'https://api-docs.deepseek.com/', labelKey: 'settings.docs_link_deepseek_docs' },
+  { href: 'https://api-docs.deepseek.com/quick_start/pricing', labelKey: 'settings.docs_link_deepseek_pricing' },
+];
+
 /** App calls OpenAI-style POST /v1/chat/completions — avoid dead /docs/api-reference/chat/* URLs. */
 export const CUSTOM_ENDPOINT_DOC_LINKS: DocLink[] = [
   { href: 'https://platform.openai.com/api/docs/guides/chat', labelKey: 'settings.docs_link_openai_chat_completions' },

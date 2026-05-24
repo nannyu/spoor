@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   ANTHROPIC_DOC_LINKS,
   CUSTOM_ENDPOINT_DOC_LINKS,
+  DEEPSEEK_DOC_LINKS,
   GEMINI_DOC_LINKS,
   METASO_DOC_LINKS,
   MIMO_DOC_LINKS,
@@ -35,6 +36,11 @@ describe('aiProviderDocs', () => {
     assertDocLinks(ANTHROPIC_DOC_LINKS, 'ANTHROPIC');
     assertDocLinks(MIMO_DOC_LINKS, 'MIMO');
     expect(MIMO_DOC_LINKS.some((l) => l.href.includes('xiaomimimo'))).toBe(true);
+  });
+
+  it('DeepSeek 文档链接非空且指向官方平台', () => {
+    assertDocLinks(DEEPSEEK_DOC_LINKS, 'DEEPSEEK');
+    expect(DEEPSEEK_DOC_LINKS.some((l) => l.href.includes('deepseek.com'))).toBe(true);
   });
 
   it('Custom 端点与 Metaso 文档链接非空', () => {

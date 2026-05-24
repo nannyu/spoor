@@ -559,6 +559,7 @@ describe('App 组件', () => {
       expect(select?.querySelector('option[value="gemini"]')).toBeTruthy();
       expect(select?.querySelector('option[value="openai"]')).toBeTruthy();
       expect(select?.querySelector('option[value="anthropic"]')).toBeTruthy();
+      expect(select?.querySelector('option[value="deepseek"]')).toBeTruthy();
       expect(select?.querySelector('option[value="custom"]')).toBeTruthy();
     });
 
@@ -578,6 +579,16 @@ describe('App 组件', () => {
       const select = document.querySelector('select')!;
       await user.selectOptions(select, 'openai');
       expect(screen.getByText('基础 URL (可选)')).toBeInTheDocument();
+    });
+
+    it('切换到 DeepSeek 提供商时显示 Base URL 字段', async () => {
+      const user = userEvent.setup();
+      await act(async () => { render(<App />); });
+      await openSettings(user);
+      const select = document.querySelector('select')!;
+      await user.selectOptions(select, 'deepseek');
+      expect(screen.getByText('基础 URL (可选)')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('deepseek-chat')).toBeInTheDocument();
     });
 
     it('切换到 Custom 提供商时显示 Base URL 字段', async () => {

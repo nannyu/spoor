@@ -15,6 +15,13 @@
   status = 200
   force = true
 
+# DeepSeek (OpenAI-compatible): /api/deepseek/* -> https://api.deepseek.com/v1/*
+[[redirects]]
+  from = "/api/deepseek/*"
+  to = "https://api.deepseek.com/v1/:splat"
+  status = 200
+  force = true
+
 # Metaso search: /api/metaso/* -> https://metaso.cn/*
 [[redirects]]
   from = "/api/metaso/*"

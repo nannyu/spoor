@@ -1,5 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import { MIMO_TOKEN_PLAN_BASE_URL, resolveMimoApiKey } from '../constants/mimo';
+import { DEEPSEEK_BASE_URL, DEEPSEEK_DEFAULT_MODEL } from '../constants/deepseek';
 
 const LOG_PREFIX = '[Scribe AI]';
 
@@ -465,15 +466,24 @@ export async function callUniversalAI({
     throw new Error(`API Key missing for provider "${config.provider}". Open Settings and paste your key.`);
   }
 
-  if (config.provider === 'openai' || config.provider === 'custom' || config.provider === 'mimo') {
+  if (config.provider === 'openai' || config.provider === 'custom' || config.provider === 'mimo' || config.provider === 'deepseek') {
     const baseNormalized = (config.baseUrl || 'https://api.openai.com/v1').replace(/\/$/, '');
     const mimoBase = (config.baseUrl || MIMO_TOKEN_PLAN_BASE_URL).replace(/\/$/, '');
+    const deepseekBase = (config.baseUrl || DEEPSEEK_BASE_URL).replace(/\/$/, '');
     const chatUrl =
       config.provider === 'mimo'
         ? (isTauriRuntime() ? `${mimoBase}/chat/completions` : '/api/mimo/chat/completions')
+        : config.provider === 'deepseek'
+          ? (isTauriRuntime() ? `${deepseekBase}/chat/completions` : '/api/deepseek/chat/completions')
         : `${baseNormalized}/chat/completions`;
 
-    const model = config.model || (config.provider === 'mimo' ? 'mimo-v2.5-pro' : 'gpt-4o');
+    const model =
+      config.model ||
+      (config.provider === 'mimo'
+        ? 'mimo-v2.5-pro'
+        : config.provider === 'deepseek'
+          ? DEEPSEEK_DEFAULT_MODEL
+          : 'gpt-4o');
     const body = {
       model,
       messages: [

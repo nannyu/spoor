@@ -161,6 +161,45 @@ describe('callUniversalAI', () => {
     });
   });
 
+  // --- DeepSeek ---
+  describe('DeepSeek provider', () => {
+    beforeEach(() => {
+      const okBody = JSON.stringify({
+        choices: [{ message: { content: 'DeepSeek response' } }],
+      });
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true,
+        text: async () => okBody,
+        json: async () => JSON.parse(okBody),
+      }));
+    });
+
+    it('uses same-origin DeepSeek proxy in web runtime', async () => {
+      const result = await callUniversalAI({
+        config: {
+          ...baseConfig,
+          provider: 'deepseek',
+          apiKey: 'sk-deepseek-test',
+          baseUrl: 'https://api.deepseek.com/v1',
+          model: 'deepseek-chat',
+        },
+        prompt: 'Hello DeepSeek',
+      });
+      expect(result).toBe('DeepSeek response');
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/deepseek/chat/completions',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer sk-deepseek-test',
+          }),
+        }),
+      );
+      const body = JSON.parse((vi.mocked(fetch).mock.calls[0][1] as RequestInit).body as string);
+      expect(body.model).toBe('deepseek-chat');
+    });
+  });
+
   // --- OpenAI ---
   describe('OpenAI provider', () => {
     beforeEach(() => {
