@@ -9,25 +9,23 @@ dist/
 src-tauri/target/
 release/
 
-# --- Promo / Remotion (keep JSX/JSON sources; omit heavy media & renders) ---
+# --- Promo / Remotion (local only; not submitted) ---
+remotion-kit/
+scripts/remotion-server.mjs
+docs/PROMO_SPOOR.md
+docs/SPOOR_PROMO_ZH_SUBTITLES.md
+docs/MINIMAX_SPOOR_EN_SYNC.md
 output/
 *.mp4
 *.mov
 *.webm
 *.mkv
-
-# Voiceovers at repo root (copy locally; see docs/MINIMAX_SPOOR_EN_SYNC.md, SPOOR_PROMO_ZH_SUBTITLES.md)
 /*.wav
 /en.wav
 /en2.wav
 /zh.wav
-
-# Remotion kit: deps, cache, renders, bundled narration
-remotion-kit/node_modules/
-remotion-kit/**/.cache/
-remotion-kit/output/
-remotion-kit/public/audio/
-remotion-kit/remotion/assets/audio/
+/* Icon - Orange Theme.png
+git-log.txt
 
 # Local toolchain (LLVM installer + extracted libclang for bindgen); do not commit
 .build-tools/
