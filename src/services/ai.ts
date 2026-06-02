@@ -3,6 +3,7 @@ import { MIMO_TOKEN_PLAN_BASE_URL, resolveMimoApiKey } from '../constants/mimo';
 import {
   DOUBAO_ARK_BASE_URL,
   DOUBAO_DEFAULT_MODEL,
+  formatDoubaoKeyMissingError,
   resolveDoubaoApiKey,
 } from '../constants/doubao';
 import { DEEPSEEK_BASE_URL, DEEPSEEK_DEFAULT_MODEL } from '../constants/deepseek';
@@ -470,9 +471,7 @@ export async function callUniversalAI({
   }
 
   if (config.provider === 'doubao' && !doubaoApiKey) {
-    throw new Error(
-      '豆包 API Key 未配置。请在设置中粘贴 ark- 密钥，或在构建时设置 VITE_BUILTIN_DOUBAO_API_KEY。',
-    );
+    throw new Error(formatDoubaoKeyMissingError());
   }
 
   if (!useUserConfig && config.provider !== 'mimo' && config.provider !== 'doubao') {

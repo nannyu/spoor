@@ -208,7 +208,7 @@ describe('callUniversalAI', () => {
           config: { ...baseConfig, provider: 'doubao', apiKey: '' },
           prompt: 'Hello',
         }),
-      ).rejects.toThrow(/豆包 API Key/);
+      ).rejects.toThrow(/豆包|托管豆包/);
     });
   });
 

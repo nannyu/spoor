@@ -111,8 +111,9 @@ Built-in Doubao (Volcengine Ark) key option: see [BUILTIN_DOUBAO.md](docs/BUILTI
 `npm run build` outputs to `dist`. Canvas data remains in the visitor's browser IndexedDB; Netlify only hosts the static app.
 
 1. Connect this repository to [Netlify](https://app.netlify.com). The root [`netlify.toml`](netlify.toml) provides the build command and publish directory.
-2. Keep the `netlify.toml` edge rewrites so `/api/doubao/*`, `/api/mimo/*`, and `/api/metaso/*` behave like the local Vite proxy.
-3. Optional: set `GEMINI_API_KEY` in Netlify environment variables as a build-time default. User-configured keys still stay local in the app.
+2. **Required for default hosted Doubao** (end users should not paste API keys): in Netlify → **Environment variables**, set `VITE_BUILTIN_DOUBAO_API_KEY` = `ark-...`, then **redeploy**. See [BUILTIN_DOUBAO.md](docs/BUILTIN_DOUBAO.md). Pushing code alone does not upload `.env.local`.
+3. Keep the `netlify.toml` edge rewrites so `/api/doubao/*`, `/api/mimo/*`, and `/api/metaso/*` behave like the local Vite proxy.
+4. Optional: set `GEMINI_API_KEY` as another build-time default. User overrides still stay in browser local storage.
 
 ---
 

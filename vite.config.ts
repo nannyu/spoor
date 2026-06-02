@@ -12,8 +12,16 @@ const METASO_PROXY_TARGET = 'https://metaso.cn';
 /** Volcengine Ark (Doubao) OpenAI-compatible API proxy target */
 const DOUBAO_PROXY_TARGET = 'https://ark.cn-beijing.volces.com/api/v3';
 
-export default defineConfig(({mode}) => {
+export default defineConfig(({mode, command}) => {
   const env = loadEnv(mode, '.', '');
+  const hostedDoubaoKey = (env.VITE_BUILTIN_DOUBAO_API_KEY ?? '').trim();
+  if (command === 'build' && !hostedDoubaoKey) {
+    console.warn(
+      '\n[Spoor] VITE_BUILTIN_DOUBAO_API_KEY is not set — the built site will NOT include hosted Doubao for end users.\n' +
+        '  Local: npm run setup:doubao-key -- ark-... then npm run build\n' +
+        '  Netlify: Site configuration → Environment variables → add VITE_BUILTIN_DOUBAO_API_KEY → redeploy\n',
+    );
+  }
   return {
     plugins: [react(), tailwindcss()],
     define: {

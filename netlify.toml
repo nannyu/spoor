@@ -7,6 +7,9 @@
 
 [build.environment]
   NODE_VERSION = "22"
+  # Required for hosted Doubao (default AI). Set in Netlify UI → Environment variables (not in git):
+  # VITE_BUILTIN_DOUBAO_API_KEY = ark-xxxxxxxx
+  # See docs/BUILTIN_DOUBAO.md
 
 # MiMo (OpenAI-compatible): /api/mimo/* -> https://token-plan-cn.xiaomimimo.com/v1/*
 [[redirects]]

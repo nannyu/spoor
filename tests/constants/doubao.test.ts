@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  formatDoubaoKeyMissingError,
   getBuiltinDoubaoApiKey,
   hasBuiltinDoubaoApiKey,
   resolveDoubaoApiKey,
@@ -26,5 +27,16 @@ describe('doubao builtin API key', () => {
     expect(getBuiltinDoubaoApiKey()).toBe('');
     expect(hasBuiltinDoubaoApiKey()).toBe(false);
     expect(resolveDoubaoApiKey('')).toBe('');
+  });
+
+  it('formatDoubaoKeyMissingError mentions Netlify in production', () => {
+    vi.stubEnv('PROD', 'true');
+    expect(formatDoubaoKeyMissingError()).toMatch(/Netlify/);
+    expect(formatDoubaoKeyMissingError()).toMatch(/无需自行配置/);
+  });
+
+  it('formatDoubaoKeyMissingError mentions setup script in dev', () => {
+    vi.stubEnv('PROD', '');
+    expect(formatDoubaoKeyMissingError()).toMatch(/setup:doubao-key/);
   });
 });

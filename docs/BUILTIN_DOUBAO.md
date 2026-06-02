@@ -34,11 +34,15 @@ npm run tauri:build    # Windows 安装包
 npm run setup:doubao-key -- ark-你的密钥
 ```
 
-### Netlify（网页）
+### Netlify（网页，线上用户免配置的关键步骤）
 
-1. **Site configuration → Environment variables**
-2. 新增 `VITE_BUILTIN_DOUBAO_API_KEY` = `ark-...`
-3. **必须重新构建**（Drop 上传需在本机 `npm run build` 后再拖 `dist`）
+`git push` **不会**上传 `.env.local`（已在 `.gitignore`）。若 Netlify 构建时没有该变量，线上包内就没有内置 Key，用户会看到「豆包 API Key 未配置」——这不是要让用户自己填，而是**部署漏了注入**。
+
+1. 打开 Netlify → 你的 Spoor 站点 → **Site configuration → Environment variables**
+2. 新增 **`VITE_BUILTIN_DOUBAO_API_KEY`** = `ark-...`（与本地 `.env.local` 相同）
+3. **Deploys → Trigger deploy → Clear cache and deploy site**（必须重新构建，旧 dist 里没有 Key）
+
+验证：部署完成后，在浏览器打开站点 → F12 → Network，触发一次 AI，请求应为 `/api/doubao/chat/completions` 且返回 200（不是立刻弹 Key 未配置）。
 
 ### 不设内置 Key
 
