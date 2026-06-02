@@ -104,14 +104,14 @@ npm run tauri:build
 
 Release notes and manual upload instructions: [DESKTOP_INSTALL.md](docs/DESKTOP_INSTALL.md), [scripts/upload-release-manual.md](scripts/upload-release-manual.md).
 
-Built-in MiMo key option: see [BUILTIN_MIMO.md](docs/BUILTIN_MIMO.md), or run `npm run setup:mimo-key -- tp-your-key` before `npm run build`.
+Built-in Doubao (Volcengine Ark) key option: see [BUILTIN_DOUBAO.md](docs/BUILTIN_DOUBAO.md), or run `npm run setup:doubao-key -- ark-your-key` before `npm run build`. Legacy MiMo: [BUILTIN_MIMO.md](docs/BUILTIN_MIMO.md).
 
 ### Deploy Web App to Netlify
 
 `npm run build` outputs to `dist`. Canvas data remains in the visitor's browser IndexedDB; Netlify only hosts the static app.
 
 1. Connect this repository to [Netlify](https://app.netlify.com). The root [`netlify.toml`](netlify.toml) provides the build command and publish directory.
-2. Keep the `netlify.toml` edge rewrites so `/api/mimo/*` and `/api/metaso/*` behave like the local Vite proxy.
+2. Keep the `netlify.toml` edge rewrites so `/api/doubao/*`, `/api/mimo/*`, and `/api/metaso/*` behave like the local Vite proxy.
 3. Optional: set `GEMINI_API_KEY` in Netlify environment variables as a build-time default. User-configured keys still stay local in the app.
 
 ---

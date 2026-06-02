@@ -22,6 +22,13 @@
   status = 200
   force = true
 
+# Doubao / Volcengine Ark (OpenAI-compatible): /api/doubao/* -> https://ark.cn-beijing.volces.com/api/v3/*
+[[redirects]]
+  from = "/api/doubao/*"
+  to = "https://ark.cn-beijing.volces.com/api/v3/:splat"
+  status = 200
+  force = true
+
 # Metaso search: /api/metaso/* -> https://metaso.cn/*
 [[redirects]]
   from = "/api/metaso/*"

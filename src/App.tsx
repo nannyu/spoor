@@ -25,6 +25,7 @@ import { ResearchLab } from './components/ResearchLab';
 import { AgentsStudio } from './components/AgentsStudio';
 import { callUniversalAI } from './services/ai';
 import { MIMO_TOKEN_PLAN_BASE_URL } from './constants/mimo';
+import { DOUBAO_ARK_BASE_URL, DOUBAO_DEFAULT_MODEL } from './constants/doubao';
 import { NodeRenderer } from './components/nodes/NodeRenderer';
 import { useSeedData } from './hooks/useSeedData';
 import { useUserProfile } from './hooks/useUserProfile';
@@ -49,11 +50,35 @@ const DEBUG_DND =
 /** tp- Token 套餐密钥须走 token-plan-cn；旧版默认 api.xiaomimimo.com 会导致 401 */
 function migrateStoredAiConfig(raw: unknown): AIConfig | null {
   if (!raw || typeof raw !== 'object') return null;
-  const p = raw as AIConfig;
+  let p = raw as AIConfig;
   if (p.provider === 'mimo') {
     const b = (p.baseUrl ?? '').trim();
     if (!b || /api\.xiaomimimo\.com/i.test(b)) {
-      return { ...p, baseUrl: MIMO_TOKEN_PLAN_BASE_URL };
+      p = { ...p, baseUrl: MIMO_TOKEN_PLAN_BASE_URL };
+    }
+    const keyEmpty = !(p.apiKey ?? '').trim();
+    const defaultMimoModel = !p.model?.trim() || p.model === 'mimo-v2.5-pro';
+    if (keyEmpty && defaultMimoModel) {
+      return {
+        ...p,
+        provider: 'doubao',
+        apiKey: '',
+        baseUrl: DOUBAO_ARK_BASE_URL,
+        model: DOUBAO_DEFAULT_MODEL,
+      };
+    }
+    return p;
+  }
+  if (p.provider === 'doubao') {
+    const b = (p.baseUrl ?? '').trim();
+    const legacyModel =
+      p.model === 'doubao-seed-2-0-lite-260428' || !p.model?.trim();
+    if (!b || legacyModel) {
+      return {
+        ...p,
+        baseUrl: b || DOUBAO_ARK_BASE_URL,
+        ...(legacyModel ? { model: DOUBAO_DEFAULT_MODEL } : {}),
+      };
     }
   }
   return p;
@@ -119,10 +144,10 @@ export default function App() {
     const parsed = saved ? migrateStoredAiConfig(JSON.parse(saved)) : null;
     if (!parsed || (parsed.provider === 'gemini' && !parsed.apiKey?.trim())) {
       return {
-        provider: 'mimo',
+        provider: 'doubao',
         apiKey: '',
-        baseUrl: MIMO_TOKEN_PLAN_BASE_URL,
-        model: 'mimo-v2.5-pro'
+        baseUrl: DOUBAO_ARK_BASE_URL,
+        model: DOUBAO_DEFAULT_MODEL,
       };
     }
     return parsed;

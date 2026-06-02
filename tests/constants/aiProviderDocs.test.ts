@@ -5,6 +5,7 @@ import {
   DEEPSEEK_DOC_LINKS,
   GEMINI_DOC_LINKS,
   METASO_DOC_LINKS,
+  DOUBAO_DOC_LINKS,
   MIMO_DOC_LINKS,
   OPENAI_DOC_LINKS,
   type DocLink,
@@ -36,6 +37,11 @@ describe('aiProviderDocs', () => {
     assertDocLinks(ANTHROPIC_DOC_LINKS, 'ANTHROPIC');
     assertDocLinks(MIMO_DOC_LINKS, 'MIMO');
     expect(MIMO_DOC_LINKS.some((l) => l.href.includes('xiaomimimo'))).toBe(true);
+  });
+
+  it('Doubao 文档链接非空且指向火山方舟', () => {
+    assertDocLinks(DOUBAO_DOC_LINKS, 'DOUBAO');
+    expect(DOUBAO_DOC_LINKS.some((l) => l.href.includes('volcengine'))).toBe(true);
   });
 
   it('DeepSeek 文档链接非空且指向官方平台', () => {

@@ -233,7 +233,7 @@ export function useAiActions({
         const msg = formatAiError(error);
         console.error('[Spoor] handleAiSubmit failed', { error: msg, provider: aiConfig.provider, model: aiConfig.model, apiKey: maskApiKeyForLog(aiConfig.apiKey) });
         void appAlert({
-          message: `AI 生成失败\n\n${msg}\n\n请检查：1) 设置中 Provider / MiMo Key / Base URL（需含 /v1） 2) 若用浏览器，需 npm run dev 且已重启（/api/mimo 代理）；桌面端用 Tauri 可不依赖代理。\n\nF12 → Console 查看 [Spoor] 日志。`,
+          message: `AI 生成失败\n\n${msg}\n\n请检查：1) 设置中 Provider / API Key / Base URL 2) 若用浏览器，需 npm run dev 且已重启（豆包 /api/doubao、MiMo /api/mimo 代理）；桌面端用 Tauri 可不依赖代理。\n\nF12 → Console 查看 [Spoor] 日志。`,
         });
       } finally {
         setIsToolbarAiLoading(false);
@@ -283,7 +283,7 @@ export function useAiActions({
       const msg = formatAiError(error);
       console.error('[Spoor] handleAiSubmit after intent clarify failed', { error: msg, provider: aiConfig.provider, model: aiConfig.model, apiKey: maskApiKeyForLog(aiConfig.apiKey) });
       void appAlert({
-        message: `AI 生成失败\n\n${msg}\n\n请检查：1) 设置中 Provider / MiMo Key / Base URL（需含 /v1） 2) 若用浏览器，需 npm run dev 且已重启（/api/mimo 代理）；桌面端用 Tauri 可不依赖代理。\n\nF12 → Console 查看 [Spoor] 日志。`,
+        message: `AI 生成失败\n\n${msg}\n\n请检查：1) 设置中 Provider / API Key / Base URL 2) 若用浏览器，需 npm run dev 且已重启（豆包 /api/doubao、MiMo /api/mimo 代理）；桌面端用 Tauri 可不依赖代理。\n\nF12 → Console 查看 [Spoor] 日志。`,
       });
     } finally {
       setIsToolbarAiLoading(false);

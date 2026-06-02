@@ -1,5 +1,10 @@
 import { GoogleGenAI } from '@google/genai';
 import { MIMO_TOKEN_PLAN_BASE_URL, resolveMimoApiKey } from '../constants/mimo';
+import {
+  DOUBAO_ARK_BASE_URL,
+  DOUBAO_DEFAULT_MODEL,
+  resolveDoubaoApiKey,
+} from '../constants/doubao';
 import { DEEPSEEK_BASE_URL, DEEPSEEK_DEFAULT_MODEL } from '../constants/deepseek';
 
 const LOG_PREFIX = '[Scribe AI]';
@@ -174,7 +179,7 @@ async function postOpenAiCompatibleChat(
     });
   } catch (e) {
     console.error(`${LOG_PREFIX} network/fetch failed`, { url, error: formatAiError(e) });
-    throw new Error(`Network error: ${formatAiError(e)}. If this is MiMo in the browser, ensure Vite dev server is running (proxy /api/mimo) or use the desktop app.`);
+    throw new Error(`Network error: ${formatAiError(e)}. If this is MiMo or Doubao in the browser, ensure Vite dev server is running (proxy /api/mimo or /api/doubao) or use the desktop app.`);
   }
 
   const rawText = await response.text();
@@ -305,7 +310,7 @@ async function postOpenAiCompatibleChatWithOptionalStream(
     });
   } catch (e) {
     console.error(`${LOG_PREFIX} stream network/fetch failed`, { url, error: formatAiError(e) });
-    throw new Error(`Network error: ${formatAiError(e)}. If this is MiMo in the browser, ensure Vite dev server is running (proxy /api/mimo) or use the desktop app.`);
+    throw new Error(`Network error: ${formatAiError(e)}. If this is MiMo or Doubao in the browser, ensure Vite dev server is running (proxy /api/mimo or /api/doubao) or use the desktop app.`);
   }
 
   if (!response.ok) {
@@ -361,6 +366,8 @@ export async function callUniversalAI({
   const useUserConfig = Boolean(apiKeyTrimmed);
   const mimoApiKey =
     config.provider === 'mimo' ? resolveMimoApiKey(apiKeyTrimmed) : '';
+  const doubaoApiKey =
+    config.provider === 'doubao' ? resolveDoubaoApiKey(apiKeyTrimmed) : '';
 
   if (config.provider === 'local_llama') {
     if (images?.length) {
@@ -462,20 +469,35 @@ export async function callUniversalAI({
     );
   }
 
-  if (!useUserConfig && config.provider !== 'mimo') {
+  if (config.provider === 'doubao' && !doubaoApiKey) {
+    throw new Error(
+      '豆包 API Key 未配置。请在设置中粘贴 ark- 密钥，或在构建时设置 VITE_BUILTIN_DOUBAO_API_KEY。',
+    );
+  }
+
+  if (!useUserConfig && config.provider !== 'mimo' && config.provider !== 'doubao') {
     throw new Error(`API Key missing for provider "${config.provider}". Open Settings and paste your key.`);
   }
 
-  if (config.provider === 'openai' || config.provider === 'custom' || config.provider === 'mimo' || config.provider === 'deepseek') {
+  if (
+    config.provider === 'openai' ||
+    config.provider === 'custom' ||
+    config.provider === 'mimo' ||
+    config.provider === 'deepseek' ||
+    config.provider === 'doubao'
+  ) {
     const baseNormalized = (config.baseUrl || 'https://api.openai.com/v1').replace(/\/$/, '');
     const mimoBase = (config.baseUrl || MIMO_TOKEN_PLAN_BASE_URL).replace(/\/$/, '');
     const deepseekBase = (config.baseUrl || DEEPSEEK_BASE_URL).replace(/\/$/, '');
+    const doubaoBase = (config.baseUrl || DOUBAO_ARK_BASE_URL).replace(/\/$/, '');
     const chatUrl =
       config.provider === 'mimo'
         ? (isTauriRuntime() ? `${mimoBase}/chat/completions` : '/api/mimo/chat/completions')
         : config.provider === 'deepseek'
           ? (isTauriRuntime() ? `${deepseekBase}/chat/completions` : '/api/deepseek/chat/completions')
-        : `${baseNormalized}/chat/completions`;
+          : config.provider === 'doubao'
+            ? (isTauriRuntime() ? `${doubaoBase}/chat/completions` : '/api/doubao/chat/completions')
+            : `${baseNormalized}/chat/completions`;
 
     const model =
       config.model ||
@@ -483,7 +505,9 @@ export async function callUniversalAI({
         ? 'mimo-v2.5-pro'
         : config.provider === 'deepseek'
           ? DEEPSEEK_DEFAULT_MODEL
-          : 'gpt-4o');
+          : config.provider === 'doubao'
+            ? DOUBAO_DEFAULT_MODEL
+            : 'gpt-4o');
     const body = {
       model,
       messages: [
@@ -494,7 +518,12 @@ export async function callUniversalAI({
       top_p: topP
     };
 
-    const openAiKey = config.provider === 'mimo' ? mimoApiKey : apiKeyTrimmed;
+    const openAiKey =
+      config.provider === 'mimo'
+        ? mimoApiKey
+        : config.provider === 'doubao'
+          ? doubaoApiKey
+          : apiKeyTrimmed;
     return postOpenAiCompatibleChatWithOptionalStream(openAiKey, chatUrl, body, {
       provider: config.provider,
       model,

@@ -37,6 +37,12 @@ export const MIMO_DOC_LINKS: DocLink[] = [
   { href: 'https://aistudio.xiaomimimo.com/#/', labelKey: 'settings.docs_link_mimo_aistudio' },
 ];
 
+/** Volcengine Ark / Doubao — https://www.volcengine.com/product/ark */
+export const DOUBAO_DOC_LINKS: DocLink[] = [
+  { href: 'https://console.volcengine.com/ark', labelKey: 'settings.docs_link_doubao_console' },
+  { href: 'https://www.volcengine.com/docs/82379', labelKey: 'settings.docs_link_doubao_docs' },
+];
+
 export const DEEPSEEK_DOC_LINKS: DocLink[] = [
   { href: 'https://platform.deepseek.com/api_keys', labelKey: 'settings.docs_link_deepseek_keys' },
   { href: 'https://api-docs.deepseek.com/', labelKey: 'settings.docs_link_deepseek_docs' },

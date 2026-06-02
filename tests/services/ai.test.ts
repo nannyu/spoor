@@ -161,6 +161,57 @@ describe('callUniversalAI', () => {
     });
   });
 
+  // --- Doubao (builtin key) ---
+  describe('Doubao provider', () => {
+    beforeEach(() => {
+      const okBody = JSON.stringify({
+        choices: [{ message: { content: 'Doubao response' } }],
+      });
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true,
+        text: async () => okBody,
+        json: async () => JSON.parse(okBody),
+      }));
+    });
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it('uses builtin key when user apiKey empty', async () => {
+      vi.stubEnv('VITE_BUILTIN_DOUBAO_API_KEY', 'ark-builtin-test');
+      const result = await callUniversalAI({
+        config: {
+          ...baseConfig,
+          provider: 'doubao',
+          apiKey: '',
+          baseUrl: 'https://ark.cn-beijing.volces.com/api/v3',
+          model: 'ep-20260218175314-xrnrn',
+        },
+        prompt: 'Hello Doubao',
+      });
+      expect(result).toBe('Doubao response');
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/doubao/chat/completions',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer ark-builtin-test',
+          }),
+        }),
+      );
+    });
+
+    it('throws when no user key and no builtin', async () => {
+      vi.stubEnv('VITE_BUILTIN_DOUBAO_API_KEY', '');
+      await expect(
+        callUniversalAI({
+          config: { ...baseConfig, provider: 'doubao', apiKey: '' },
+          prompt: 'Hello',
+        }),
+      ).rejects.toThrow(/豆包 API Key/);
+    });
+  });
+
   // --- DeepSeek ---
   describe('DeepSeek provider', () => {
     beforeEach(() => {

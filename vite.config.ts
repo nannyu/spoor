@@ -9,6 +9,8 @@ const MIMO_PROXY_TARGET = 'https://token-plan-cn.xiaomimimo.com/v1';
 const DEEPSEEK_PROXY_TARGET = 'https://api.deepseek.com/v1';
 /** 秘塔搜索 API 代理目标 */
 const METASO_PROXY_TARGET = 'https://metaso.cn';
+/** Volcengine Ark (Doubao) OpenAI-compatible API proxy target */
+const DOUBAO_PROXY_TARGET = 'https://ark.cn-beijing.volces.com/api/v3';
 
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
@@ -35,6 +37,11 @@ export default defineConfig(({mode}) => {
           changeOrigin: true,
           rewrite: (path: string) => path.replace(/^\/api\/deepseek/, ''),
         },
+        '/api/doubao': {
+          target: DOUBAO_PROXY_TARGET,
+          changeOrigin: true,
+          rewrite: (path: string) => path.replace(/^\/api\/doubao/, ''),
+        },
         '/api/metaso': {
           target: METASO_PROXY_TARGET,
           changeOrigin: true,
@@ -53,6 +60,11 @@ export default defineConfig(({mode}) => {
           target: DEEPSEEK_PROXY_TARGET,
           changeOrigin: true,
           rewrite: (path: string) => path.replace(/^\/api\/deepseek/, ''),
+        },
+        '/api/doubao': {
+          target: DOUBAO_PROXY_TARGET,
+          changeOrigin: true,
+          rewrite: (path: string) => path.replace(/^\/api\/doubao/, ''),
         },
         '/api/metaso': {
           target: METASO_PROXY_TARGET,

@@ -6,6 +6,7 @@ import {
   DEEPSEEK_DOC_LINKS,
   GEMINI_DOC_LINKS,
   METASO_DOC_LINKS,
+  DOUBAO_DOC_LINKS,
   MIMO_DOC_LINKS,
   OPENAI_DOC_LINKS,
   type DocLink,
@@ -22,6 +23,8 @@ function linkListForProvider(provider: string): DocLink[] {
       return ANTHROPIC_DOC_LINKS;
     case 'mimo':
       return MIMO_DOC_LINKS;
+    case 'doubao':
+      return DOUBAO_DOC_LINKS;
     case 'deepseek':
       return DEEPSEEK_DOC_LINKS;
     case 'custom':
@@ -41,6 +44,8 @@ function blurbKeyForProvider(provider: string): string {
       return 'settings.docs_blurb_anthropic';
     case 'mimo':
       return 'settings.docs_blurb_mimo';
+    case 'doubao':
+      return 'settings.docs_blurb_doubao';
     case 'deepseek':
       return 'settings.docs_blurb_deepseek';
     case 'custom':
@@ -134,6 +139,10 @@ export function AISettingsDocsPanel({ provider }: { provider: string }) {
             <div>
               <p className="text-[11px] font-bold text-[#1a1a1a]">{t('settings.docs_provider_mimo')}</p>
               <DocLinksList links={MIMO_DOC_LINKS} t={t} />
+            </div>
+            <div>
+              <p className="text-[11px] font-bold text-[#1a1a1a]">{t('settings.docs_provider_doubao')}</p>
+              <DocLinksList links={DOUBAO_DOC_LINKS} t={t} />
             </div>
             <div>
               <p className="text-[11px] font-bold text-[#1a1a1a]">{t('settings.docs_provider_deepseek')}</p>

@@ -5,6 +5,11 @@ import {
   hasBuiltinMimoApiKey,
   MIMO_TOKEN_PLAN_BASE_URL,
 } from '../constants/mimo';
+import {
+  DOUBAO_ARK_BASE_URL,
+  DOUBAO_DEFAULT_MODEL,
+  hasBuiltinDoubaoApiKey,
+} from '../constants/doubao';
 import { DEEPSEEK_BASE_URL, DEEPSEEK_DEFAULT_MODEL } from '../constants/deepseek';
 import { DESKTOP_RELEASE_URL } from '../constants/desktopRelease';
 import { openExternalUrl } from '../utils/openExternal';
@@ -34,6 +39,7 @@ export function AISettingsModal({ isOpen, onClose, config, setConfig }: AISettin
   const { t, i18n } = useTranslation();
   const inDesktopApp = isTauriRuntime();
   const hostedMimo = config.provider === 'mimo' && hasBuiltinMimoApiKey();
+  const hostedDoubao = config.provider === 'doubao' && hasBuiltinDoubaoApiKey();
   const hostedMimoExpiryLabel =
     i18n.language === 'zh'
       ? '2026年6月1日'
@@ -128,6 +134,7 @@ export function AISettingsModal({ isOpen, onClose, config, setConfig }: AISettin
                        openai: { model: 'gpt-4o', baseUrl: '' },
                        anthropic: { model: 'claude-3-5-sonnet-20240620', baseUrl: '' },
                        mimo: { model: 'mimo-v2.5-pro', baseUrl: MIMO_TOKEN_PLAN_BASE_URL },
+                       doubao: { model: DOUBAO_DEFAULT_MODEL, baseUrl: DOUBAO_ARK_BASE_URL },
                        deepseek: { model: DEEPSEEK_DEFAULT_MODEL, baseUrl: DEEPSEEK_BASE_URL },
                        custom: { model: 'gpt-4o', baseUrl: '' },
                        local_llama: { model: 'gemma-4-e4b-it', baseUrl: '' },
@@ -148,6 +155,7 @@ export function AISettingsModal({ isOpen, onClose, config, setConfig }: AISettin
                    <option value="openai">OpenAI (GPT)</option>
                    <option value="anthropic">Anthropic (Claude)</option>
                    <option value="mimo">MiMo (小米大模型)</option>
+                   <option value="doubao">{t('settings.provider_doubao')}</option>
                    <option value="deepseek">DeepSeek</option>
                    <option value="custom">Custom Endpoint</option>
                    <option value="local_llama">{t('settings.provider_local_llama')}</option>
@@ -165,9 +173,11 @@ export function AISettingsModal({ isOpen, onClose, config, setConfig }: AISettin
                          ? 'gemini-1.5-flash'
                          : config.provider === 'mimo'
                            ? 'mimo-v2.5-pro'
-                           : config.provider === 'deepseek'
-                             ? DEEPSEEK_DEFAULT_MODEL
-                             : 'gpt-4o'
+                           : config.provider === 'doubao'
+                             ? DOUBAO_DEFAULT_MODEL
+                             : config.provider === 'deepseek'
+                               ? DEEPSEEK_DEFAULT_MODEL
+                               : 'gpt-4o'
                    }
                    value={config.model}
                    onChange={e => setConfig({ ...config, model: e.target.value })}
@@ -210,17 +220,28 @@ export function AISettingsModal({ isOpen, onClose, config, setConfig }: AISettin
                     <p className="text-[11px] text-[#8c8a84] leading-relaxed">{t('settings.builtin_mimo_hint')}</p>
                   </div>
                 )}
+                {hostedDoubao && (
+                  <p className="text-[11px] text-[#8c8a84] leading-relaxed">{t('settings.builtin_doubao_hint')}</p>
+                )}
                 <input
                   type="password"
                   className="w-full h-10 px-3 bg-[#FAF9F6] border border-[#E6E4DF] rounded-lg text-sm outline-none focus:border-[#C2410C] focus:ring-1 focus:ring-[#C2410C] transition-all"
-                  placeholder={hostedMimo ? t('settings.api_key_optional_mimo') : 'tp-...'}
+                  placeholder={
+                    hostedDoubao
+                      ? t('settings.api_key_optional_doubao')
+                      : hostedMimo
+                        ? t('settings.api_key_optional_mimo')
+                        : config.provider === 'doubao'
+                          ? 'ark-...'
+                          : 'tp-...'
+                  }
                   value={config.apiKey}
                   onChange={e => setConfig({ ...config, apiKey: e.target.value })}
                 />
               </div>
             )}
 
-            {(config.provider === 'custom' || config.provider === 'openai' || config.provider === 'mimo' || config.provider === 'deepseek') && (
+            {(config.provider === 'custom' || config.provider === 'openai' || config.provider === 'mimo' || config.provider === 'doubao' || config.provider === 'deepseek') && (
               <div className="space-y-2">
                 <label className="text-[10px] font-mono font-bold text-[#8c8a84] uppercase tracking-wider">{t('settings.base_url')}</label>
                 <input
@@ -229,9 +250,11 @@ export function AISettingsModal({ isOpen, onClose, config, setConfig }: AISettin
                   placeholder={
                     config.provider === 'mimo'
                       ? MIMO_TOKEN_PLAN_BASE_URL
-                      : config.provider === 'deepseek'
-                        ? DEEPSEEK_BASE_URL
-                        : 'https://api.openai.com/v1'
+                      : config.provider === 'doubao'
+                        ? DOUBAO_ARK_BASE_URL
+                        : config.provider === 'deepseek'
+                          ? DEEPSEEK_BASE_URL
+                          : 'https://api.openai.com/v1'
                   }
                   value={config.baseUrl}
                   onChange={e => setConfig({ ...config, baseUrl: e.target.value })}
