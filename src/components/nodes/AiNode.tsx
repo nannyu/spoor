@@ -14,6 +14,7 @@ export function AiNode({
   onSubmitFollowUp,
   isFollowUpLoading,
   isFollowUpDisabled,
+  isContentStreaming,
 }: AiNodeProps) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState('');
@@ -51,6 +52,12 @@ export function AiNode({
         }}
       >
         {node.content}
+      </div>
+    ) : isContentStreaming ? (
+      <div className="whitespace-pre-wrap text-sm text-[#4a4a44] font-serif leading-relaxed min-h-[40px]">
+        {node.content || (
+          <span className="text-[#8c8a84] italic">{t('nodes.ai_streaming')}</span>
+        )}
       </div>
     ) : (
       <div

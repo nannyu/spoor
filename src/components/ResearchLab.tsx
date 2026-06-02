@@ -191,6 +191,8 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
   const [planRevising, setPlanRevising] = useState(false);
   /** Raw model output while generating outline (streaming when provider supports it). */
   const [planStreamText, setPlanStreamText] = useState('');
+  /** Raw model output while generating report (stream preview; parsed after complete). */
+  const [reportStreamText, setReportStreamText] = useState('');
   const [searchSources, setSearchSources] = useState<ResearchSessionWebpageSnapshot[]>([]);
   const [sourceDetail, setSourceDetail] = useState<ResearchSessionWebpageSnapshot | null>(null);
   const executeResearchInFlightRef = useRef(false);
@@ -339,6 +341,7 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
     setPlanRevisionNote('');
     labNeedWebRef.current = true;
     setPlanStreamText('');
+    setReportStreamText('');
 
     const { context: searchContext } = await resolveWebSearchOutcome(query);
 
@@ -379,6 +382,7 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
     if (!instruction || planRevising || researchPlan.length === 0) return;
 
     setPlanRevising(true);
+    setPlanStreamText('');
     try {
       const prompt = t('lab.ai_revise_decompose', {
         query,
@@ -389,14 +393,17 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
         config: aiConfig,
         systemInstruction: getLocaleDirective(),
         prompt,
+        onStreamChunk: (acc) => setPlanStreamText(acc),
       });
       const revised = normalizeResearchPlan(parseLenientLlmJson(text ?? '[]'));
       if (revised.length > 0) {
         setResearchPlan(revised);
         setPlanRevisionNote('');
       }
+      setPlanStreamText('');
     } catch (e) {
       console.error('[Scribe AI] ResearchLab revisePlan failed', formatAiError(e));
+      setPlanStreamText('');
     } finally {
       setPlanRevising(false);
     }
@@ -425,6 +432,7 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
       } = await resolveWebSearchForExecute(query);
 
       setResearchExecStage('generating_report');
+      setReportStreamText('');
 
       const planContext =
         researchPlan.length > 0
@@ -445,13 +453,16 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
           config: aiConfig,
           systemInstruction: getLocaleDirective(),
           prompt,
+          onStreamChunk: (acc) => setReportStreamText(acc),
         });
+        setReportStreamText('');
         const report = normalizeResearchReport(parseLenientLlmJson(text ?? '{}'));
         setResearchReport(report);
         finalReport = report;
         executionSucceeded = true;
       } catch (e) {
         console.error('[Scribe AI] ResearchLab executeResearch failed', formatAiError(e));
+        setReportStreamText('');
         setReportGenerationFailed(true);
         setResearchReport(fallbackReport);
         finalReport = fallbackReport;
@@ -703,6 +714,12 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
                      </div>
                      <p className="text-[#5a5a54] text-sm font-sans mb-6">{t('lab.plan_edit_hint')}</p>
 
+                     {planRevising && planStreamText ? (
+                       <pre className="mb-6 max-h-[min(280px,40vh)] overflow-auto whitespace-pre-wrap break-words font-mono text-[12px] leading-relaxed text-[#1a1a1a] bg-[#FAF9F6] border border-[#E6E4DF] rounded-lg p-4">
+                         {planStreamText}
+                       </pre>
+                     ) : null}
+
                      <div className="space-y-5 mb-8">
                         {researchPlan.length > 0 ? researchPlan.map((plan, idx) => (
                            <div key={idx} className="flex gap-4">
@@ -841,9 +858,16 @@ export function ResearchLab({ aiConfig, callAI }: ResearchLabProps) {
                            : 'text-[#8c8a84]'
                        }
                      >
-                       {t('lab.stage_generating_report')}
+                       {reportStreamText
+                         ? t('lab.report_stream_status')
+                         : t('lab.stage_generating_report')}
                      </span>
                    </div>
+                   {reportStreamText ? (
+                     <pre className="mt-4 max-h-[min(360px,50vh)] overflow-auto whitespace-pre-wrap break-words font-mono text-[12px] leading-relaxed text-[#1a1a1a] bg-[#FAF9F6] border border-[#E6E4DF] rounded-lg p-4">
+                       {reportStreamText}
+                     </pre>
+                   ) : null}
                  </div>
               </div>
            </div>

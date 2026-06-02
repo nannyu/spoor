@@ -20,6 +20,7 @@ interface NodeRendererProps {
   isAgentAnalysisActionDisabled?: boolean;
   onAiFollowUp?: (nodeId: string, message: string) => void;
   followUpLoadingNodeId?: string | null;
+  streamingAiNodeId?: string | null;
   isFollowUpGloballyDisabled?: boolean;
 }
 
@@ -33,6 +34,7 @@ export function NodeRenderer({
   isAgentAnalysisActionDisabled,
   onAiFollowUp,
   followUpLoadingNodeId,
+  streamingAiNodeId,
   isFollowUpGloballyDisabled,
 }: NodeRendererProps) {
   switch (node.type) {
@@ -55,6 +57,7 @@ export function NodeRenderer({
           setEditingNodeId={setEditingNodeId}
           onSubmitFollowUp={onAiFollowUp ? (msg) => onAiFollowUp(node.id, msg) : undefined}
           isFollowUpLoading={followUpLoadingNodeId === node.id}
+          isContentStreaming={streamingAiNodeId === node.id}
           isFollowUpDisabled={isFollowUpGloballyDisabled}
         />
       );

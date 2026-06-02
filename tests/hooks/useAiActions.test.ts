@@ -45,6 +45,16 @@ import { callUniversalAI } from '../../src/services/ai';
 import { metasoSearch } from '../../src/services/search';
 import i18n from '../../src/i18n';
 
+function mockCallUniversalAIWithStream(finalText: string) {
+  vi.mocked(callUniversalAI).mockImplementation(async (opts) => {
+    if (opts.onStreamChunk) {
+      opts.onStreamChunk('partial');
+      opts.onStreamChunk(finalText);
+    }
+    return finalText;
+  });
+}
+
 const baseAiConfig: AIConfig = {
   provider: 'gemini',
   apiKey: 'test',
@@ -95,7 +105,7 @@ describe('useAiActions', () => {
     await db.edges.clear();
     await i18n.changeLanguage('en');
     vi.mocked(callUniversalAI).mockClear();
-    vi.mocked(callUniversalAI).mockResolvedValue('AI generated text');
+    mockCallUniversalAIWithStream('AI generated text');
     vi.mocked(metasoSearch).mockClear();
     vi.mocked(metasoSearch).mockResolvedValue({
       credits: 0,
@@ -135,6 +145,7 @@ describe('useAiActions', () => {
       });
 
       expect(callUniversalAI).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(callUniversalAI).mock.calls[0][0].onStreamChunk).toBeUndefined();
       expect(result.current.setActiveTab).toHaveBeenCalledWith('reference');
       expect(result.current.setActiveReferenceId).toHaveBeenCalled();
 
@@ -457,6 +468,7 @@ describe('useAiActions', () => {
       expect(callArg.prompt).toContain('我的追问');
       expect(callArg.prompt).toContain('上一轮 AI 正文');
       expect(callArg.systemInstruction).toContain('Always reply entirely in English');
+      expect(callArg.onStreamChunk).toEqual(expect.any(Function));
 
       const allNodes = await db.nodes.toArray();
       expect(allNodes).toHaveLength(2);

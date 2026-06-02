@@ -53,6 +53,7 @@ vi.mock('react-i18next', () => ({
         'lab.plan_revision_applying': 'Updating outline...',
         'lab.plan_stream_hint': 'Streaming hint',
         'lab.plan_stream_status': 'Receiving outline…',
+        'lab.report_stream_status': 'Receiving report…',
         'lab.ai_need_web_classifier': 'Classifier {{query}}',
         'lab.ai_decompose_question': 'Decompose question: {{query}}',
         'lab.ai_revise_decompose': 'Revise decompose for {{query}}. Plan: {{plan}}. Instruction: {{instruction}}',
@@ -236,6 +237,33 @@ describe('ResearchLab', () => {
     expect(prompt).not.toContain('[Source]');
     expect(prompt).not.toContain('Classifier');
     expect(prompt).toContain('memory loss');
+  });
+
+  it('generatePlan 传入 onStreamChunk 并显示流式大纲预览', async () => {
+    const planJson = JSON.stringify([
+      { title: 'Step 1', desc: 'Desc 1' },
+      { title: 'Step 2', desc: 'Desc 2' },
+      { title: 'Step 3', desc: 'Desc 3' },
+    ]);
+    const callAI = vi.fn().mockImplementation(async (opts: { onStreamChunk?: (t: string) => void }) => {
+      opts.onStreamChunk?.('{"title":');
+      opts.onStreamChunk?.(planJson);
+      return planJson;
+    });
+    render(<ResearchLab aiConfig={baseConfig} callAI={callAI} />);
+
+    const input = screen.getByPlaceholderText('Search topic...');
+    fireEvent.change(input, { target: { value: 'streaming plan' } });
+    fireEvent.submit(input.closest('form')!);
+
+    await waitFor(() => {
+      expect(callAI).toHaveBeenCalledTimes(1);
+      expect(callAI.mock.calls[0][0].onStreamChunk).toEqual(expect.any(Function));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Step 1 title')).toHaveValue('Step 1');
+    });
   });
 
   it('calls metasoSearch when metasoApiKey is provided', async () => {

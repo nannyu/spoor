@@ -222,6 +222,11 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
       console.error('[Scribe AI] sandbox persist (user msg) failed', err);
     }
 
+    const streamingModel: SandboxChatMessage = { role: 'model', text: '' };
+    if (sandboxUiAgentRef.current === scopedAgentId) {
+      setSandboxMessages([...afterUser, streamingModel]);
+    }
+
     try {
       const responseText = await callAI({
         config: aiConfig,
@@ -231,6 +236,13 @@ export function AgentsStudio({ agentConfigs, setAgentConfigs, aiConfig, callAI }
         }),
         temperature: activeAgent.temperature ?? 0.7,
         topP: activeAgent.creativity ?? 0.4,
+        onStreamChunk: (acc) => {
+          if (sandboxUiAgentRef.current !== scopedAgentId) return;
+          setSandboxMessages((prev) => {
+            const base = prev.length > 0 && prev[prev.length - 1]?.role === 'model' ? prev.slice(0, -1) : prev;
+            return [...base, { role: 'model', text: acc }];
+          });
+        },
       });
       const afterModel: SandboxChatMessage[] = [...afterUser, { role: 'model', text: responseText }];
       if (sandboxUiAgentRef.current === scopedAgentId) {

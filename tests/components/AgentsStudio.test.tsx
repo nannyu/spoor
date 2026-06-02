@@ -114,6 +114,29 @@ describe('AgentsStudio 沙盒', () => {
     });
   });
 
+  it('发送消息时通过 onStreamChunk 流式更新沙盒回复', async () => {
+    callAIMock.mockImplementation(async (opts: { onStreamChunk?: (t: string) => void }) => {
+      opts.onStreamChunk?.('Part');
+      opts.onStreamChunk?.('Assistant reply');
+      return 'Assistant reply';
+    });
+
+    const user = userEvent.setup();
+    renderStudio();
+    await user.click(screen.getByText('agents.test_sandbox'));
+
+    const input = await screen.findByPlaceholderText('Message Agent Alpha');
+    await user.type(input, 'Stream test');
+    const submitBtn = input.closest('form')!.querySelector('button[type="submit"]') as HTMLButtonElement;
+    await user.click(submitBtn);
+
+    await waitFor(() => {
+      expect(callAIMock).toHaveBeenCalled();
+      expect(callAIMock.mock.calls[0][0].onStreamChunk).toEqual(expect.any(Function));
+      expect(screen.getByText('Assistant reply')).toBeInTheDocument();
+    });
+  });
+
   it('发送消息后写入 agentSandboxThreads', async () => {
     const user = userEvent.setup();
     renderStudio();

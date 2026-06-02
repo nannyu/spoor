@@ -18,4 +18,6 @@ export interface AiNodeProps extends NodeContentProps {
   onSubmitFollowUp?: (message: string) => void;
   isFollowUpLoading?: boolean;
   isFollowUpDisabled?: boolean;
+  /** While model output is streaming into this card, render plain text (not Markdown). */
+  isContentStreaming?: boolean;
 }

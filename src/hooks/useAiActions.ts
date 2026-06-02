@@ -20,6 +20,7 @@ import { getCanvasNodeContextText } from '../utils/canvasNodeContextText';
 import { parsePublishArticleResponse } from '../utils/parsePublishArticleResponse';
 import { db } from '../db';
 import { useAppDialog } from '../components/AppDialogProvider';
+import { runCanvasStreamingAiCall } from '../utils/canvasStreamingAi';
 
 function formatAiFailureAlertMessage(msg: string, provider: string): string {
   const hostedDoubaoUnavailable =
@@ -65,6 +66,7 @@ export function useAiActions({
   const [isToolbarAiLoading, setIsToolbarAiLoading] = useState(false);
   const [analyzingAgentNodeId, setAnalyzingAgentNodeId] = useState<string | null>(null);
   const [followUpParentId, setFollowUpParentId] = useState<string | null>(null);
+  const [streamingAiNodeId, setStreamingAiNodeId] = useState<string | null>(null);
   const [aiPrompt, setAiPrompt] = useState('');
   const [intentClarification, setIntentClarification] = useState<{
     original: string;
@@ -141,92 +143,119 @@ export function useAiActions({
     if (!contextText.trim()) return;
 
     setAnalyzingAgentNodeId(agentNodeId);
+    const agentNode = dynamicNodes.find(n => n.id === agentNodeId);
+    const x = agentNode ? agentNode.x + 350 : window.innerWidth / 2;
+    const y = agentNode ? agentNode.y : window.innerHeight / 2;
+    const newNodeId = crypto.randomUUID();
+    const edgeId = crypto.randomUUID();
+    const { nodeIds: threadContextImageNodeIds, dataUrls: contextImageDataUrls } =
+      collectAgentContextImagePayload(contextNodeId, agentNodeId, dynamicNodes, edges);
+
+    await db.nodes.add({
+      id: newNodeId,
+      canvasId: activeCanvasId,
+      type: 'ai',
+      content: '',
+      x,
+      y,
+      threadRootContextNodeId: contextNodeId,
+      threadAgentConfigId: agentConfigId,
+      ...(threadContextImageNodeIds.length > 0 ? { threadContextImageNodeIds } : {}),
+    });
+    await db.edges.add({ id: edgeId, canvasId: activeCanvasId, from: agentNodeId, to: newNodeId });
+    setStreamingAiNodeId(newNodeId);
+
     try {
-      const { nodeIds: threadContextImageNodeIds, dataUrls: contextImageDataUrls } =
-        collectAgentContextImagePayload(contextNodeId, agentNodeId, dynamicNodes, edges);
-
-      const text = await callUniversalAI({
-        config: aiConfig,
-        prompt: t('ai.prompts.agentContext', { content: contextText }),
-        systemInstruction: buildAgentSystemInstruction(agentConfig),
-        temperature: agentConfig.temperature ?? 0.7,
-        topP: agentConfig.creativity ?? 0.4,
-        images: contextImageDataUrls.length > 0 ? contextImageDataUrls : undefined,
+      const text = await runCanvasStreamingAiCall({
+        nodeId: newNodeId,
+        callAi: (onStreamChunk) =>
+          callUniversalAI({
+            config: aiConfig,
+            prompt: t('ai.prompts.agentContext', { content: contextText }),
+            systemInstruction: buildAgentSystemInstruction(agentConfig),
+            temperature: agentConfig.temperature ?? 0.7,
+            topP: agentConfig.creativity ?? 0.4,
+            images: contextImageDataUrls.length > 0 ? contextImageDataUrls : undefined,
+            onStreamChunk,
+          }),
       });
-
-      if (text) {
-        const agentNode = dynamicNodes.find(n => n.id === agentNodeId);
-        const x = agentNode ? agentNode.x + 350 : window.innerWidth / 2;
-        const y = agentNode ? agentNode.y : window.innerHeight / 2;
-        const newNodeId = crypto.randomUUID();
-
-        await db.nodes.add({
-          id: newNodeId,
-          canvasId: activeCanvasId,
-          type: 'ai',
-          content: text,
-          x,
-          y,
-          threadRootContextNodeId: contextNodeId,
-          threadAgentConfigId: agentConfigId,
-          ...(threadContextImageNodeIds.length > 0
-            ? { threadContextImageNodeIds }
-            : {}),
-        });
-        await db.edges.add({ id: crypto.randomUUID(), canvasId: activeCanvasId, from: agentNodeId, to: newNodeId });
+      if (!text) {
+        await db.edges.delete(edgeId);
       }
     } catch (e) {
+      try {
+        await db.edges.delete(edgeId);
+      } catch {
+        /* edge may be gone with node */
+      }
       const msg = formatAiError(e);
       console.error('[Spoor] triggerAgentAnalysis failed', { error: msg, provider: aiConfig.provider, model: aiConfig.model, apiKey: maskApiKeyForLog(aiConfig.apiKey) });
       void appAlert({
         message: formatAiFailureAlertMessage(msg, aiConfig.provider),
       });
     } finally {
+      setStreamingAiNodeId(null);
       setAnalyzingAgentNodeId(null);
     }
   };
 
   const runToolbarAiGeneration = async (request: string) => {
-    if (selectedNodes.size === 0) {
-      const text = await callUniversalAI({
-        config: aiConfig,
-        systemInstruction: combineSystemParts(
-          t('ai.prompts.toolbarBarePersona'),
-          getLocaleDirective(),
-        ),
-        prompt: request,
-      });
-
-      if (text) {
-        const { x, y } = getCanvasCenterPosition(transformRef.current);
-        await db.nodes.add({ id: crypto.randomUUID(), canvasId: activeCanvasId, type: 'ai', content: text, x, y });
-        setAiPrompt('');
-      }
-      return;
-    }
-
-    let contextText = '';
-    const fragmentLabel = t('ai.prompts.context_fragment_label');
-    for (const id of Array.from(selectedNodes)) {
-      const el = nodesRef.current[id];
-      if (el) {
-        contextText += fragmentLabel + getCanvasNodeContextText(el);
-      }
-    }
-
-    const text = await callUniversalAI({
-      config: aiConfig,
-      systemInstruction: combineSystemParts(
-        t('ai.prompts.toolbarWithNotesSystem'),
-        getLocaleDirective(),
-      ),
-      prompt: t('ai.prompts.toolbarWithNotesUser', { context: contextText, request }),
+    const { x, y } = getCanvasCenterPosition(transformRef.current);
+    const newNodeId = crypto.randomUUID();
+    await db.nodes.add({
+      id: newNodeId,
+      canvasId: activeCanvasId,
+      type: 'ai',
+      content: '',
+      x,
+      y,
     });
+    setStreamingAiNodeId(newNodeId);
 
-    if (text) {
-      const { x, y } = getCanvasCenterPosition(transformRef.current);
-      await db.nodes.add({ id: crypto.randomUUID(), canvasId: activeCanvasId, type: 'ai', content: text, x, y });
-      setAiPrompt('');
+    try {
+      if (selectedNodes.size === 0) {
+        const text = await runCanvasStreamingAiCall({
+          nodeId: newNodeId,
+          callAi: (onStreamChunk) =>
+            callUniversalAI({
+              config: aiConfig,
+              systemInstruction: combineSystemParts(
+                t('ai.prompts.toolbarBarePersona'),
+                getLocaleDirective(),
+              ),
+              prompt: request,
+              onStreamChunk,
+            }),
+        });
+        if (text) setAiPrompt('');
+        return;
+      }
+
+      let contextText = '';
+      const fragmentLabel = t('ai.prompts.context_fragment_label');
+      for (const id of Array.from(selectedNodes)) {
+        const el = nodesRef.current[id];
+        if (el) {
+          contextText += fragmentLabel + getCanvasNodeContextText(el);
+        }
+      }
+
+      const text = await runCanvasStreamingAiCall({
+        nodeId: newNodeId,
+        callAi: (onStreamChunk) =>
+          callUniversalAI({
+            config: aiConfig,
+            systemInstruction: combineSystemParts(
+              t('ai.prompts.toolbarWithNotesSystem'),
+              getLocaleDirective(),
+            ),
+            prompt: t('ai.prompts.toolbarWithNotesUser', { context: contextText, request }),
+            onStreamChunk,
+          }),
+      });
+      if (text) setAiPrompt('');
+    } finally {
+      setStreamingAiNodeId(null);
     }
   };
 
@@ -385,6 +414,7 @@ export function useAiActions({
 
     followUpGuardRef.current = true;
     setFollowUpParentId(parentNodeId);
+    let followUpEdgeId: string | null = null;
     try {
       const agentConfig =
         parent.threadAgentConfigId != null
@@ -404,74 +434,100 @@ export function useAiActions({
         dynamicNodes,
       );
 
+      const el = nodesRef.current[parentNodeId];
+      const h = el?.offsetHeight ?? 200;
+      const w = parent.width && parent.width > 0 ? parent.width : el?.offsetWidth ?? 320;
+      const newNodeId = crypto.randomUUID();
+      const edgeId = crypto.randomUUID();
+      followUpEdgeId = edgeId;
+      const threadMeta =
+        parent.threadRootContextNodeId != null && parent.threadAgentConfigId != null
+          ? {
+              threadRootContextNodeId: parent.threadRootContextNodeId,
+              threadAgentConfigId: parent.threadAgentConfigId,
+              ...(parent.threadContextImageNodeIds != null
+                ? { threadContextImageNodeIds: parent.threadContextImageNodeIds }
+                : {}),
+            }
+          : {};
+
+      await db.nodes.add({
+        id: newNodeId,
+        canvasId: activeCanvasId,
+        type: 'ai',
+        userTurn: trimmed,
+        content: '',
+        x: parent.x,
+        y: parent.y + h + THREAD_GAP,
+        width: w,
+        ...threadMeta,
+      });
+      await db.edges.add({
+        id: edgeId,
+        canvasId: activeCanvasId,
+        from: parentNodeId,
+        to: newNodeId,
+      });
+      setStreamingAiNodeId(newNodeId);
+
       const text = useAgentThread
-        ? await callUniversalAI({
-            config: aiConfig,
-            systemInstruction: buildAgentSystemInstruction(agentConfig, {
-              fallbackPrompt: t('agents.studio.fallback_assistant'),
-            }),
-            prompt: t('ai.prompts.agentThreadFollowUp', {
-              initialContext: (() => {
-                const ctxId = parent.threadRootContextNodeId ?? chain[0]?.threadRootContextNodeId;
-                let initialContext = t('ai.prompts.agentThreadContextMissing');
-                if (ctxId) {
-                  const ctxEl = nodesRef.current[ctxId];
-                  if (ctxEl) {
-                    const raw = getCanvasNodeContextText(ctxEl).trim();
-                    if (raw) initialContext = raw;
-                  }
-                }
-                return initialContext;
-              })(),
-              dialogueHistory: formatAgentThreadDialogueHistory(chain),
-              request: trimmed,
-            }),
-            temperature: agentConfig.temperature ?? 0.7,
-            topP: agentConfig.creativity ?? 0.4,
-            images: threadImageDataUrls.length > 0 ? threadImageDataUrls : undefined,
+        ? await runCanvasStreamingAiCall({
+            nodeId: newNodeId,
+            callAi: (onStreamChunk) =>
+              callUniversalAI({
+                config: aiConfig,
+                systemInstruction: buildAgentSystemInstruction(agentConfig!, {
+                  fallbackPrompt: t('agents.studio.fallback_assistant'),
+                }),
+                prompt: t('ai.prompts.agentThreadFollowUp', {
+                  initialContext: (() => {
+                    const ctxId = parent.threadRootContextNodeId ?? chain[0]?.threadRootContextNodeId;
+                    let initialContext = t('ai.prompts.agentThreadContextMissing');
+                    if (ctxId) {
+                      const ctxEl = nodesRef.current[ctxId];
+                      if (ctxEl) {
+                        const raw = getCanvasNodeContextText(ctxEl).trim();
+                        if (raw) initialContext = raw;
+                      }
+                    }
+                    return initialContext;
+                  })(),
+                  dialogueHistory: formatAgentThreadDialogueHistory(chain),
+                  request: trimmed,
+                }),
+                temperature: agentConfig!.temperature ?? 0.7,
+                topP: agentConfig!.creativity ?? 0.4,
+                images: threadImageDataUrls.length > 0 ? threadImageDataUrls : undefined,
+                onStreamChunk,
+              }),
           })
-        : await callUniversalAI({
-            config: aiConfig,
-            systemInstruction: getLocaleDirective(),
-            prompt: t('ai.prompts.threadFollowUp', {
-              previous: previous || '—',
-              request: trimmed,
-            }),
+        : await runCanvasStreamingAiCall({
+            nodeId: newNodeId,
+            callAi: (onStreamChunk) =>
+              callUniversalAI({
+                config: aiConfig,
+                systemInstruction: getLocaleDirective(),
+                prompt: t('ai.prompts.threadFollowUp', {
+                  previous: previous || '—',
+                  request: trimmed,
+                }),
+                onStreamChunk,
+              }),
           });
 
       if (text) {
-        const el = nodesRef.current[parentNodeId];
-        const h = el?.offsetHeight ?? 200;
-        const w = parent.width && parent.width > 0 ? parent.width : el?.offsetWidth ?? 320;
-        const newNodeId = crypto.randomUUID();
-        await db.nodes.add({
-          id: newNodeId,
-          canvasId: activeCanvasId,
-          type: 'ai',
-          userTurn: trimmed,
-          content: text,
-          x: parent.x,
-          y: parent.y + h + THREAD_GAP,
-          width: w,
-          ...(parent.threadRootContextNodeId != null && parent.threadAgentConfigId != null
-            ? {
-                threadRootContextNodeId: parent.threadRootContextNodeId,
-                threadAgentConfigId: parent.threadAgentConfigId,
-                ...(parent.threadContextImageNodeIds != null
-                  ? { threadContextImageNodeIds: parent.threadContextImageNodeIds }
-                  : {}),
-              }
-            : {}),
-        });
-        await db.edges.add({
-          id: crypto.randomUUID(),
-          canvasId: activeCanvasId,
-          from: parentNodeId,
-          to: newNodeId,
-        });
         await db.nodes.update(parentNodeId, { followUpSent: true });
+      } else {
+        await db.edges.delete(edgeId);
       }
     } catch (e) {
+      if (followUpEdgeId) {
+        try {
+          await db.edges.delete(followUpEdgeId);
+        } catch {
+          /* edge may already be removed */
+        }
+      }
       const msg = formatAiError(e);
       console.error('[Spoor] submitAiThreadFollowUp failed', {
         error: msg,
@@ -485,6 +541,7 @@ export function useAiActions({
     } finally {
       followUpGuardRef.current = false;
       setFollowUpParentId(null);
+      setStreamingAiNodeId(null);
     }
   };
 
@@ -493,6 +550,7 @@ export function useAiActions({
     isToolbarAiLoading,
     analyzingAgentNodeId,
     followUpParentId,
+    streamingAiNodeId,
     isAnyAiBusy,
     aiPrompt,
     setAiPrompt,

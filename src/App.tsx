@@ -281,6 +281,7 @@ export default function App() {
     isToolbarIntentPreflight,
     analyzingAgentNodeId,
     followUpParentId,
+    streamingAiNodeId,
     isAnyAiBusy,
     aiPrompt,
     setAiPrompt,
@@ -532,6 +533,7 @@ export default function App() {
                     isAgentAnalysisActionDisabled={isAnyAiBusy}
                     onAiFollowUp={submitAiThreadFollowUp}
                     followUpLoadingNodeId={followUpParentId}
+                    streamingAiNodeId={streamingAiNodeId}
                     isFollowUpGloballyDisabled={isAnyAiBusy}
                   />
                 </DraggableNode>
